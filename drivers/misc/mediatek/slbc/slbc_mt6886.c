@@ -1085,8 +1085,7 @@ int slbc_request(struct slbc_data *d)
 
 	if (!ret) {
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
-		uid_ref[d->uid] = slbc_read_debug_sram(d->sid);
-		d->ref = uid_ref[d->uid];
+		d->ref = slbc_read_debug_sram(d->sid);
 		slbc_ref = slbc_sram_read(SLBC_REF);
 #else
 		slbc_ref++;
@@ -1230,8 +1229,7 @@ int slbc_release(struct slbc_data *d)
 
 	if (!ret) {
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
-		uid_ref[d->uid] = slbc_read_debug_sram(d->sid);
-		d->ref = uid_ref[d->uid];
+		d->ref = slbc_read_debug_sram(d->sid);
 		slbc_ref = slbc_sram_read(SLBC_REF);
 #else
 		slbc_ref--;
@@ -1359,30 +1357,6 @@ int slbc_secure_off(struct slbc_data *d)
 	slbc_debug_log("%s: %s flag %x", __func__, slbc_uid_str[uid], d->flag);
 
 	return 0;
-}
-
-void slbc_update_mm_bw(unsigned int bw)
-{
-	slbc_sram_write(SLBC_MM_EST_BW, bw);
-}
-
-void slbc_update_mic_num(unsigned int num)
-{
-	int i;
-
-	slbc_mic_num = num;
-	slbc_mic_num_cmd(num);
-
-	if (!uid_ref[UID_HIFI3]) {
-		for (i = 0; i < ARRAY_SIZE(p_config); i++) {
-			if (p_config[i].uid == UID_HIFI3) {
-				if (num == 3)
-					p_config[i].res_slot = 0xe00;
-				else
-					p_config[i].res_slot = 0x200;
-			}
-		}
-	}
 }
 
 void slbc_update_inner(unsigned int inner)
@@ -1694,8 +1668,6 @@ static struct slbc_common_ops common_ops = {
 	.slbc_activate_status = slbc_activate_status,
 	.slbc_sram_read = slbc_sram_read,
 	.slbc_sram_write = slbc_sram_write,
-	.slbc_update_mm_bw = slbc_update_mm_bw,
-	.slbc_update_mic_num = slbc_update_mic_num,
 };
 
 static struct slbc_ipi_ops ipi_ops = {
