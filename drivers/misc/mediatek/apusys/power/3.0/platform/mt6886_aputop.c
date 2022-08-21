@@ -21,6 +21,7 @@
 #include "apusys_secure.h"
 #include "aputop_rpmsg.h"
 #include "apu_top.h"
+#include "aputop_log.h"
 #include "mt6886_apupwr.h"
 #include "mt6886_apupwr_prot.h"
 
@@ -174,6 +175,7 @@ static void aputop_dump_pcu_data(struct device *dev)
 			SMC_PWR_DUMP_PCU);
 }
 
+#if APUPW_DUMP_FROM_APMCU
 static void aputop_dump_pll_data(void)
 {
 	// need to 1-1 in order mapping with array in __apu_pll_init func
@@ -218,12 +220,15 @@ static void aputop_dump_pll_data(void)
 				buf);
 	}
 }
+#endif
 
 static int __apu_wake_rpc_rcx(struct device *dev)
 {
 	int ret = 0, val = 0;
 
-	dev_info(dev, "%s before wakeup RCX APU_RPC_INTF_PWR_RDY 0x%x = 0x%x\n",
+	if (log_lvl)
+		dev_info(dev,
+			"%s before wakeup RCX APU_RPC_INTF_PWR_RDY 0x%x = 0x%x\n",
 			__func__,
 			(u32)(apupw.phy_addr[apu_rpc] + APU_RPC_INTF_PWR_RDY),
 			readl(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY));
@@ -244,10 +249,11 @@ static int __apu_wake_rpc_rcx(struct device *dev)
 		goto out;
 	}
 
-	dev_info(dev, "%s after wakeup RCX APU_RPC_INTF_PWR_RDY 0x%x = 0x%x\n",
-			__func__,
-			(u32)(apupw.phy_addr[apu_rpc] + APU_RPC_INTF_PWR_RDY),
-			readl(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY));
+	/*  show this once per 500ms */
+	apu_info_ratelimited(dev, "%s after wakeup RCX APU_RPC_INTF_PWR_RDY 0x%x = 0x%x\n",
+			     __func__,
+			     (u32)(apupw.phy_addr[apu_rpc] + APU_RPC_INTF_PWR_RDY),
+			     readl(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY));
 
 	/* polling FSM @RPC-lite to ensure RPC is in on/off stage */
 	ret |= readl_relaxed_poll_timeout_atomic(
@@ -273,11 +279,8 @@ static int mt6886_apu_top_on(struct device *dev)
 	if (apupw.env < MP)
 		return 0;
 
-	pr_info("%s +\n", __func__);
-
-	aputop_dump_pwr_reg(dev);
-	aputop_dump_rpc_data();
-	aputop_dump_pcu_data(dev);
+	if (log_lvl)
+		pr_info("%s +\n", __func__);
 
 	ret = __apu_wake_rpc_rcx(dev);
 	if (ret) {
@@ -285,7 +288,9 @@ static int mt6886_apu_top_on(struct device *dev)
 		aputop_dump_pwr_reg(dev);
 		aputop_dump_rpc_data();
 		aputop_dump_pcu_data(dev);
+#if APUPW_DUMP_FROM_APMCU
 		aputop_dump_pll_data();
+#endif
 		if (ret == -EIO)
 			apupw_aee_warn("APUSYS_POWER",
 					"APUSYS_POWER_RPC_CFG_ERR");
@@ -296,9 +301,12 @@ static int mt6886_apu_top_on(struct device *dev)
 	}
 
 	dump_volt_info();
+#if APUPW_DUMP_FROM_APMCU
 	aputop_dump_pll_data();
+#endif
+	if (log_lvl)
+		pr_info("%s -\n", __func__);
 
-	pr_info("%s -\n", __func__);
 	return 0;
 }
 
@@ -337,12 +345,8 @@ static int mt6886_apu_top_off(struct device *dev)
 	if (apupw.env < MP)
 		return 0;
 
-	pr_info("%s +\n", __func__);
-
-	aputop_dump_pwr_reg(dev);
-	aputop_dump_rpc_data();
-	aputop_dump_pcu_data(dev);
-	aputop_dump_pll_data();
+	if (log_lvl)
+		pr_info("%s +\n", __func__);
 
 #if APMCU_REQ_RPC_SLEEP
 	__apu_sleep_rpc_rcx(dev);
@@ -370,13 +374,18 @@ static int mt6886_apu_top_off(struct device *dev)
 		aputop_dump_pwr_reg(dev);
 		aputop_dump_rpc_data();
 		aputop_dump_pcu_data(dev);
+#if APUPW_DUMP_FROM_APMCU
 		aputop_dump_pll_data();
+#endif
 		apupw_aee_warn("APUSYS_POWER", "APUSYS_POWER_SLEEP_TIMEOUT");
 		return -1;
 	}
 
 	dump_volt_info();
-	pr_info("%s -\n", __func__);
+
+	if (log_lvl)
+		pr_info("%s -\n", __func__);
+
 	return 0;
 }
 
@@ -470,8 +479,10 @@ static int mt6886_apu_top_func(struct platform_device *pdev,
 		break;
 	case APUTOP_FUNC_ARE_DUMP1:
 	case APUTOP_FUNC_ARE_DUMP2:
+#if APUPW_DUMP_FROM_APMCU
 		aputop_dump_reg(apu_are, 0x0, 0x4000);
 		aputop_dump_reg(apu_vcore, 0x3000, 0x10);
+#endif
 		break;
 	default:
 		pr_info("%s invalid func_id : %d\n", __func__, aputop->func_id);

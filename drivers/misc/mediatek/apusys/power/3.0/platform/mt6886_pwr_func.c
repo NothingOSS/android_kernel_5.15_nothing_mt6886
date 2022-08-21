@@ -6,6 +6,7 @@
 #include <linux/slab.h>
 
 #include "apu_top.h"
+#include "aputop_log.h"
 #include "aputop_rpmsg.h"
 #include "mt6886_apupwr.h"
 #include "mt6886_apupwr_prot.h"
@@ -499,6 +500,7 @@ int mt6886_drv_cfg_remote_sync(struct aputop_func_param *aputop)
 	cfg.dvfs_debounce = aputop->param2 & 0xf;
 	cfg.disable_hw_meter = aputop->param3 & 0xf;
 
+	log_lvl = cfg.log_level;
 	reg_data = cfg.log_level |
 		(cfg.dvfs_debounce << 8) |
 		(cfg.disable_hw_meter << 16);
