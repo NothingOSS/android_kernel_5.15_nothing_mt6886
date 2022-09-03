@@ -593,6 +593,10 @@
 /* Resource lock event to control resource in GCE thread */
 #define CMDQ_SYNC_RESOURCE_WROT0			710
 #define CMDQ_SYNC_RESOURCE_WROT1			711
+
+/* HW TRACE sw token */
+#define CMDQ_SYNC_TOKEN_HW_TRACE_WAIT			712
+#define CMDQ_SYNC_TOKEN_HW_TRACE_LOCK			713
 /* end of GCE-D sw token */
 
 /* begin of GCE-M sw token */
