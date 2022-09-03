@@ -246,7 +246,7 @@
 
 		idle-states {
 			entry-method = "arm,psci";
-			cpuoff_l: cpuoff_l {
+			cpuoff_l: cpuoff-l {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
@@ -254,7 +254,7 @@
 				exit-latency-us = <100>;
 				min-residency-us = <11100>;
 			};
-			cpuoff_b: cpuoff_b {
+			cpuoff_b: cpuoff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
@@ -262,7 +262,7 @@
 				exit-latency-us = <240>;
 				min-residency-us = <7600>;
 			};
-			clusteroff_l: clusteroff_l {
+			clusteroff_l: clusteroff-l {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
@@ -270,7 +270,7 @@
 				exit-latency-us = <340>;
 				min-residency-us = <11200>;
 			};
-			clusteroff_b: clusteroff_b {
+			clusteroff_b: clusteroff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
@@ -278,7 +278,7 @@
 				exit-latency-us = <260>;
 				min-residency-us = <11900>;
 			};
-			mcusysoff_l: mcusysoff_l {
+			mcusysoff_l: mcusysoff-l {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010007>;
 				local-timer-stop;
@@ -286,7 +286,7 @@
 				exit-latency-us = <1400>;
 				min-residency-us = <12700>;
 			};
-			mcusysoff_b: mcusysoff_b {
+			mcusysoff_b: mcusysoff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010007>;
 				local-timer-stop;
@@ -294,7 +294,7 @@
 				exit-latency-us = <1400>;
 				min-residency-us = <12000>;
 			};
-			system_mem: system_mem {
+			system_mem: system-mem {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x0101000f>;
 				local-timer-stop;
@@ -302,7 +302,7 @@
 				exit-latency-us = <1800>;
 				min-residency-us = <13200>;
 			};
-			system_pll: system_pll {
+			system_pll: system-pll {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x0101001f>;
 				local-timer-stop;
@@ -310,7 +310,7 @@
 				exit-latency-us = <1850>;
 				min-residency-us = <13200>;
 			};
-			system_bus: system_bus {
+			system_bus: system-bus {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x0101007f>;
 				local-timer-stop;
@@ -318,7 +318,7 @@
 				exit-latency-us = <2800>;
 				min-residency-us = <13200>;
 			};
-			system_vcore: system_vcore {
+			system_vcore: system-vcore {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x010100ff>;
 				local-timer-stop;
@@ -9505,7 +9505,7 @@
 		interrupts = <GIC_SPI 317 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	mtk_lpm: mtk_lpm {
+	mtk_lpm: mtk-lpm {
 		compatible = "mediatek,mtk-lpm";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -9513,8 +9513,8 @@
 		lpm-kernel-suspend = <0>;
 		suspend-method = "enable";
 
-		logger-enable-states = "mcusysoff_l", "mcusysoff_b", "system_mem",
-					"system_pll", "system_bus", "system_vcore";
+		logger-enable-states = "mcusysoff-l", "mcusysoff-b", "system-mem",
+					"system-pll", "system-bus", "system-vcore";
 
 		irq-remain = <&edge_keypad>,
 				<&level_btif_tx &level_btif_rx &level_bt>,
@@ -9543,34 +9543,34 @@
 			reg = <0 0x0c040000 0 0x1000>;
 		};
 
-		lpm_sysram: lpm_sysram@11b500 {
+		lpm_sysram: lpm-sysram@11b500 {
 			compatible = "mediatek,lpm-sysram";
 			reg = <0 0x0011b500 0 0x300>;
 		};
 
 
 		irq-remain-list {
-			edge_keypad: edge_keypad {
+			edge_keypad: edge-keypad {
 				target = <&keypad>;
 				value = <1 0 0 0x04>;
 			};
-			level_bt: level_bt {
+			level_bt: level-bt {
 				target = <&bt>;
 				value = <0 0 0 0>;
 			};
-			level_btif_tx: level_btif_tx {
+			level_btif_tx: level-btif-tx {
 				target = <&btif>;
 				value = <0 1 0 0>;
 			};
-			level_btif_rx: level_btif_rx {
+			level_btif_rx: level-btif-rx {
 				target = <&btif>;
 				value = <0 2 0 0>;
 			};
-			level_usb_host: level_usb_host {
+			level_usb_host: level-usb-host {
 				target = <&usb_host>;
 				value = <0 0 0 0>;
 			};
-			level_ufshci: level_ufshci {
+			level_ufshci: level-ufshci {
 				target = <&ufshci>;
 				value = <0 0 0 0>;
 			};
@@ -9597,46 +9597,46 @@
 				id = <0x00000002>;
 				value = <0>;
 			};
-			dram_s0: dram_s0 {
+			dram_s0: dram-s0 {
 				id = <0x00000003>;
 				value = <0>;
 			};
-			dram_s1: dram_s1 {
+			dram_s1: dram-s1 {
 				id = <0x00000004>;
 				value = <0>;
 			};
-			spm_vcore: spm_vcore {
+			spm_vcore: spm-vcore {
 				id = <0x00000005>;
 				value = <0>;
 			};
 
 		};
 		constraint-list {
-			rc_vcore: rc_vcore {
+			rc_vcore: rc-vcore {
 				rc-name = "vcore";
 				id = <0x00000000>;
 				value = <1>;
 				cond-info = <1>;
 			};
-			rc_bus26m: rc_bus26m {
+			rc_bus26m: rc-bus26m {
 				rc-name = "bus26m";
 				id = <0x00000001>;
 				value = <1>;
 				cond-info = <1>;
 			};
-			rc_syspll: rc_syspll {
+			rc_syspll: rc-syspll {
 				rc-name = "syspll";
 				id = <0x00000002>;
 				value = <1>;
 				cond-info = <1>;
 			};
-			rc_dram: rc_dram {
+			rc_dram: rc-dram {
 				rc-name = "dram";
 				id = <0x00000003>;
 				value = <1>;
 				cond-info = <1>;
 			};
-			rc_cpu_buck_ldo: rc_cpu_buck_ldo{
+			rc_cpu_buck_ldo: rc-cpu-buck-ldo{
 				rc-name = "cpu-buck-ldo";
 				id = <0x00000004>;
 				value = <1>;
@@ -9645,7 +9645,7 @@
 		};
 
 		spm-cond-list {
-			spm_cond_cg: spm_cond_cg {
+			spm_cond_cg: spm-cond-cg {
 				cg-name = "MTCMOS_0",
 					"INFRA_0",
 					"INFRA_1",
@@ -9657,7 +9657,7 @@
 					"PERI_1",
 					"PERI_2";
 			};
-			spm_cond_pll: spm_cond_pll {
+			spm_cond_pll: spm-cond-pll {
 				pll-name = "UNIVPLL",
 					"MFGPLL",
 					"MFGSCPLL",
