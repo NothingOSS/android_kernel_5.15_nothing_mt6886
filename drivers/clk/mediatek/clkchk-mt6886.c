@@ -28,10 +28,7 @@
 #define CHECK_VCORE_FREQ		1
 #define CG_CHK_PWRON_ENABLE		0
 
-#define HWV_ADDR_HISTORY_0		0x1F04
-#define HWV_DATA_HISTORY_0		0x1F44
-#define HWV_IDX_POINTER			0x1F84
-#define HWV_DOMAIN_KEY			0x155C
+#define HWV_DOMAIN_KEY			0x055C
 #define HWV_SECURE_KEY			0x10907
 #define HWV_CG_SET(xpu, id)		((0x200 * (xpu)) + (id * 0x8))
 #define HWV_CG_STA(id)			(0x1800 + (id * 0x4))
