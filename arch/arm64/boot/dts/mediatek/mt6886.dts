@@ -7036,6 +7036,8 @@
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
 			firmware_idle_hytseresis_time_ms = <5>;
+			default-glb-pwroff-timeout-us = <300>;
+
 		};
 
 		gpu_mali_opp: opp-table0 {
