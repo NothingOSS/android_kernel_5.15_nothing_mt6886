@@ -2673,6 +2673,11 @@
 		enable_fast_charging_indicator;
 	};
 
+	logstore: logstore {
+		enabled = <1>;
+		pmic-register = <0xa0d>;
+	};
+
 	bus_parity {
 		compatible = "mediatek,bus-parity";
 		reg = <0 0x0c000900 0 0x20>, /* MST_EMI0_CH0 */
