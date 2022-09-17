@@ -6852,6 +6852,7 @@
 				mediatek,eye-vrt = <0x2>;
 				mediatek,rx-sqth = <0x5>;
 				mediatek,discth = <0x7>;
+				mediatek,lpm-parameter = <0x19 0x1e 0x1e>;
 			};
 
 			u3port0: usb3-phy0@11e43000 {
