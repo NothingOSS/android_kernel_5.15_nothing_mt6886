@@ -7032,10 +7032,6 @@
 			status = "disabled";
 		};
 
-		gpu_api_sync: gpu-sync {
-			compatible = "mediatek,gpu-api-sync";
-		};
-
 		gpu_protected_memory_allocator: protected-memory-allocator@13c00000 {
 			compatible = "arm,protected-memory-allocator";
 			reg = <0 0x13c00000 0 0x30000>;
