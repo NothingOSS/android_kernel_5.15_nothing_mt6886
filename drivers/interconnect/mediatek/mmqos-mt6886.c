@@ -698,8 +698,8 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6886 = {
 			HRT_NONE, HRT_CAM, HRT_CAM, HRT_DISP },
 	},
 	//.dual_pipe_larbs = { SLAVE_LARB(1), SLAVE_LARB(20) },
-	.mmqos_state = MMQOS_ENABLE | P2_COMM_OSTDL_ENABLE,
-	.p2_larbs = { SLAVE_LARB(9), SLAVE_LARB(10),
+	.mmqos_state = MMQOS_ENABLE | COMM_OSTDL_ENABLE,
+	.report_bw_larbs = { SLAVE_LARB(9), SLAVE_LARB(10),
 			SLAVE_LARB(15), SLAVE_LARB(22) },
 };
 static const struct of_device_id mtk_mmqos_mt6886_of_ids[] = {
