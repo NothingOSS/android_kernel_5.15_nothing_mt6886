@@ -386,7 +386,7 @@ static int mt6886_apu_power_init(struct mtk_apu *apu)
 static int mt6886_apu_power_on(struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
-	int ret, timeout, i = 0;
+	int ret, timeout, i = 0, j = 0;
 
 	/* to force apu top power on synchronously */
 	ret = pm_runtime_get_sync(apu->power_dev);
@@ -402,15 +402,23 @@ static int mt6886_apu_power_on(struct mtk_apu *apu)
 	/* workaround possible nested disable issue */
 	do {
 		ret = pm_runtime_get_sync(apu->apu_iommu0);
-		/*try atmost 7 times since disable_depth is 3-bit wide */
+		/* try atmost 7 times since disable_depth is 3-bit wide */
 		if (ret == -EACCES && i <= 7) {
 			pm_runtime_enable(apu->apu_iommu0);
 			pm_runtime_put_sync(apu->apu_iommu0);
 			i++;
 			dev_info(apu->dev,
-				 "%s: %s is disabled. Enable and retry(%d)\n",
+				 "%s: %s is disabled. Enable and retry acces(%d)\n",
 				 __func__,
 				 to_platform_device(apu->apu_iommu0)->name, i);
+		/* try atmost 1000 times, total 2s */
+		} else if (ret == -EAGAIN && j <= 1000) {
+			usleep_range(1000, 2000);
+			j++;
+			dev_info(apu->dev,
+				"%s: %s is disabled. Enable and retry again(%d)\n",
+				__func__,
+				to_platform_device(apu->apu_iommu0)->name, j);
 		} else if (ret < 0)
 			goto iommu_get_error;
 
@@ -466,7 +474,7 @@ error_put_power_dev:
 static int mt6886_apu_power_off(struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
-	int ret, timeout, i = 0;
+	int ret, timeout, i = 0, j = 0;
 
 	ret = pm_runtime_put_sync(apu->dev);
 	if (ret) {
@@ -480,15 +488,23 @@ static int mt6886_apu_power_off(struct mtk_apu *apu)
 	/* to notify IOMMU power off */
 	do {
 		ret = pm_runtime_put_sync(apu->apu_iommu0);
-		/*try atmost 7 times since disable_depth is 3-bit wide */
+		/* try atmost 7 times since disable_depth is 3-bit wide */
 		if (ret == -EACCES && i <= 7) {
 			pm_runtime_enable(apu->apu_iommu0);
 			pm_runtime_get_sync(apu->apu_iommu0);
 			i++;
 			dev_info(apu->dev,
-				 "%s: %s is disabled. Enable and retry(%d)\n",
+				 "%s: %s is disabled. Enable and retry acces(%d)\n",
 				 __func__,
 				 to_platform_device(apu->apu_iommu0)->name, i);
+		/* try atmost 1000 times, total 2s */
+		} else if (ret == -EAGAIN && j <= 1000) {
+			usleep_range(1000, 2000);
+			j++;
+			dev_info(apu->dev,
+				"%s: %s is disabled. Enable and retry again(%d)\n",
+				__func__,
+				to_platform_device(apu->apu_iommu0)->name, j);
 		} else if (ret < 0)
 			goto iommu_put_error;
 
