@@ -2683,35 +2683,31 @@
 		reg = <0 0x0c000900 0 0x20>, /* MST_EMI0_CH0 */
 			<0 0x0c000920 0 0x20>,   /* MST_EMI0_CH1 */
 			<0 0x0c000980 0 0x20>,   /* MST_INFRA */
-			/* <0 0x0c0009a0 0 0x30>, SLV_L3GIC */
+			<0 0x0c0009a0 0 0x30>,   /* SLV_L3GIC */
 			<0 0x10270600 0 0x20>,   /* MCU2EMI_M0 */
 			<0 0x10270620 0 0x20>,   /* MCU2EMI_M1 */
 			<0 0x100017a8 0 0x14>,   /* MCU2IFR_REG */
-			/* <0 0x100017bc 0 0x8>,    INF_L3C2MCU */
+			<0 0x100017bc 0 0x8>,    /* INF_L3C2MCU */
 			<0 0x0c0009dc 0 0x4>;    /* BUS_PARITY_FAIL */
 
 		interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH 0>,	/* MCU */
 			     <GIC_SPI 254 IRQ_TYPE_LEVEL_HIGH 0>;	/* Infra */
 		interrupt-names = "mcu-bus-parity", "infra-bus-parity";
 
-		mcu-names = "MST_EMI0_CH0", "MST_EMI0_CH1", "MST_INFRA";
-		infra-names = "MCU2EMI_M0", "MCU2EMI_M1", "MCU2IFR_REG";
+		mcu-names = "MST_EMI0_CH0", "MST_EMI0_CH1", "MST_INFRA", "SLV_L3GIC";
+		infra-names = "MCU2EMI_M0", "MCU2EMI_M1", "MCU2IFR_REG", "INF_L3C2MCU";
 
 		/* 0:master, 1:slave, 2:emi */
-		mcu-types = <0 0 0>;
-		/* mcu-types = <0 0 0 1>; */
-		infra-types = <2 2 1>;
+		mcu-types = <0 0 0 1>;
+		infra-types = <2 2 1 0>;
 
 		/* offset of MST_XXX_LOG_RD0/SLV_XXX_LOG_WD0 for mcu bpm */
-		mcu-rd0wd0-offset = <0x0c 0x0c 0x0c>;
-		/*  mcu-rd0wd0-offset = <0x0c 0x0c 0x0c 0x24>; */
+		mcu-rd0wd0-offset = <0x0c 0x0c 0x0c 0x24>;
 
 		/* shift of parity fail bit in BUS_PARITY_FAIL for mcu bpm */
-		mcu-fail-bit-shift = <0 1 4>;
-		/* mcu-fail-bit-shift = <0 1 4 5>; */
+		mcu-fail-bit-shift = <0 1 4 5>;
 
-		mcu-data-len = <4 4 4>;
-		/* mcu-data-len = <4 4 4 2>; */
+		mcu-data-len = <4 4 4 2>;
 	};
 
 	bus_tracer@d040000 {
