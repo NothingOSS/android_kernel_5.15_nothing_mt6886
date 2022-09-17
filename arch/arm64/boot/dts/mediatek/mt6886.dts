@@ -4799,9 +4799,9 @@
 				IPI_MMDVFS_VCP SPEC_MMDVFS_ALONE &opp_table_venc>,
 			<&mmdvfs_clk CLK_MMDVFS_JPEGENC PWR_MMDVFS_VCORE 6
 				IPI_MMDVFS_VCP SPEC_MMDVFS_ALONE &opp_table_venc>,
-			<&mmdvfs_clk CLK_MMDVFS_VDEC PWR_MMDVFS_VMM 7
+			<&mmdvfs_clk CLK_MMDVFS_VDEC PWR_MMDVFS_VCORE 7
 				IPI_MMDVFS_VCP SPEC_MMDVFS_ALONE &opp_table_vdec>,
-			<&mmdvfs_clk CLK_MMDVFS_VFMT PWR_MMDVFS_VMM 8
+			<&mmdvfs_clk CLK_MMDVFS_VFMT PWR_MMDVFS_VCORE 8
 				IPI_MMDVFS_VCP SPEC_MMDVFS_ALONE &opp_table_vdec>,
 			<&mmdvfs_clk CLK_MMDVFS_JPEGDEC PWR_MMDVFS_VMM 6
 				IPI_MMDVFS_VCP SPEC_MMDVFS_ALONE &opp_table_venc>,
@@ -8964,7 +8964,7 @@
 			<0 0x1602f000 0 0x10000>; /* VDEC_SOC_GCON */
 		clocks = <&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>,
 			<&vdec_gcon_base_clk CLK_VDE2_MINI_MDP_EN>,
-			<&mmdvfs_clk CLK_MMDVFS_VDEC>;
+			<&mmdvfs_clk CLK_MMDVFS_VFMT>;
 		clock-names = "MT_CG_VDEC", "MT_CG_MINI_MDP", "mmdvfs_clk";
 		mediatek,fmt-gce-th-num = <1>; /* FMT GCE HW THREAD NUM */
 		mboxes = <&gce_m 6 2000 CMDQ_THR_PRIO_1>,
@@ -9000,7 +9000,6 @@
 		power-domains = <&scpsys MT6886_POWER_DOMAIN_VDE0>;
 		mediatek,larbs = <&smi_larb4>;
 		operating-points-v2 = <&opp_table_vdec>;
-		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		interconnects =
 		<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_HW_MINI_MDP_R0_EXT) &mmqos SLAVE_COMMON(0)>,
 		<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_HW_MINI_MDP_W0_EXT) &mmqos SLAVE_COMMON(0)>;
