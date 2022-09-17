@@ -45,11 +45,6 @@ static struct apu_power apupw = {
 	.env = MP,
 };
 
-#if IS_ENABLED(CONFIG_PM_SLEEP)
-/* backup/restore opp limit */
-static uint32_t g_opp_cfg_acx0;
-#endif
-
 static void dump_volt_info(void)
 {
 #if REGULATOR_FRAMEWORK
@@ -433,19 +428,11 @@ static int mt6886_apu_top_rm(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 static int mt6886_apu_top_suspend(struct device *dev)
 {
-	g_opp_cfg_acx0 = apu_readl(
-			apupw.regs[apu_md32_mbox] + ACX0_LIMIT_OPP_REG);
-
-	pr_info("%s backup data 0x%08x\n", __func__, g_opp_cfg_acx0);
 	return 0;
 }
 
 static int mt6886_apu_top_resume(struct device *dev)
 {
-	pr_info("%s restore data 0x%08x\n", __func__, g_opp_cfg_acx0);
-
-	apu_writel(g_opp_cfg_acx0,
-			apupw.regs[apu_md32_mbox] + ACX0_LIMIT_OPP_REG);
 	return 0;
 }
 #endif
