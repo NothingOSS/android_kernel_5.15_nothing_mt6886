@@ -72,6 +72,7 @@
 		y2r0 = &disp_y2r0;
 		dlo-async3 = &disp_dlo_async3;
 		dli-async3 = &disp_dli_async3;
+		mml-wrot0 = &mml_wrot0;
 	};
 
 	cache-parity {
