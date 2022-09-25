@@ -7588,6 +7588,22 @@
 			lkginfo: lkg {
 				reg = <0x218 0x18>;
 			};
+
+			csi_efuse0: csidata@0 {
+				reg = <0x31c 0x4>;
+			};
+
+			csi_efuse1: csidata@1 {
+				reg = <0x320 0x4>;
+			};
+
+			csi_efuse2: csidata@2 {
+				reg = <0x324 0x4>;
+			};
+
+			csi_efuse3: csidata@3 {
+				reg = <0x328 0x4>;
+			};
 		};
 
 		lvts: lvts@10315000 {
