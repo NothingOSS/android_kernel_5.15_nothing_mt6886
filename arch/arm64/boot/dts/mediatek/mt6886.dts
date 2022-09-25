@@ -6825,6 +6825,8 @@
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
 			mediatek,hwrscs-vers = <1>;
+			mediatek,syscon-wakeup = <&pericfg_ao_clk 0x200 104>;
+			wakeup-source;
 			usb-role-switch;
 			cdp-block;
 			port {
