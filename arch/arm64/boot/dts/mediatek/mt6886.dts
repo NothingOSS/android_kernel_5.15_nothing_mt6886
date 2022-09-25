@@ -7911,7 +7911,7 @@
 				<0>, /*MTK_DRM_OPT_DUAL_TE*/
 				<1>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
 				<0>, /*MTK_DRM_OPT_RES_SWITCH*/
-				<1>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
+				<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 				<0>; /*MTK_DRM_OPT_GPU_CACHE*/
 		};
 
