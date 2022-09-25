@@ -511,6 +511,8 @@ static const struct mtk_fixed_factor top_divs[] = {
 			"camtm_sel", 1, 1),
 	FACTOR(CLK_TOP_IMGAVS, "imgavs_ck",
 			"tck_26m_mx9_ck", 1, 1),
+	FACTOR(CLK_TOP_I2C_PSEUDO, "i2c_pseudo_ck",
+			"ifrao_i2c_dummy", 1, 1),
 };
 
 static const char * const vlp_scp_vlp_parents[] = {

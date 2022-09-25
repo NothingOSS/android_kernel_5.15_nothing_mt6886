@@ -112,6 +112,7 @@ const char * const *get_mt6886_all_clk_names(void)
 		"apll12_div_etdm_out1",
 
 		/* infracfg_ao */
+		"ifrao_i2c_dummy",
 		"ifrao_therm",
 		"ifrao_dma",
 		"ifrao_ccif1_ap",

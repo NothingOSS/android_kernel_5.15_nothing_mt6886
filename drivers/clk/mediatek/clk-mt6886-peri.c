@@ -37,13 +37,13 @@ static const struct mtk_gate_regs impc_cg_regs = {
 
 static const struct mtk_gate impc_clks[] = {
 	GATE_IMPC(CLK_IMPC_I2C5, "impc_i2c5",
-			"i2c_ck"/* parent */, 0),
+			"i2c_pseudo_ck"/* parent */, 0),
 	GATE_IMPC(CLK_IMPC_I2C6, "impc_i2c6",
-			"i2c_ck"/* parent */, 1),
+			"i2c_pseudo_ck"/* parent */, 1),
 	GATE_IMPC(CLK_IMPC_I2C10, "impc_i2c10",
-			"i2c_ck"/* parent */, 2),
+			"i2c_pseudo_ck"/* parent */, 2),
 	GATE_IMPC(CLK_IMPC_I2C11, "impc_i2c11",
-			"i2c_ck"/* parent */, 3),
+			"i2c_pseudo_ck"/* parent */, 3),
 };
 
 static const struct mtk_clk_desc impc_mcd = {
@@ -68,11 +68,11 @@ static const struct mtk_gate_regs impe_cg_regs = {
 
 static const struct mtk_gate impe_clks[] = {
 	GATE_IMPE(CLK_IMPE_I2C3, "impe_i2c3",
-			"i2c_ck"/* parent */, 0),
+			"i2c_pseudo_ck"/* parent */, 0),
 	GATE_IMPE(CLK_IMPE_I2C7, "impe_i2c7",
-			"i2c_ck"/* parent */, 1),
+			"i2c_pseudo_ck"/* parent */, 1),
 	GATE_IMPE(CLK_IMPE_I2C8, "impe_i2c8",
-			"i2c_ck"/* parent */, 2),
+			"i2c_pseudo_ck"/* parent */, 2),
 };
 
 static const struct mtk_clk_desc impe_mcd = {
@@ -97,11 +97,11 @@ static const struct mtk_gate_regs impes_cg_regs = {
 
 static const struct mtk_gate impes_clks[] = {
 	GATE_IMPES(CLK_IMPES_I2C2, "impes_i2c2",
-			"i2c_ck"/* parent */, 0),
+			"i2c_pseudo_ck"/* parent */, 0),
 	GATE_IMPES(CLK_IMPES_I2C4, "impes_i2c4",
-			"i2c_ck"/* parent */, 1),
+			"i2c_pseudo_ck"/* parent */, 1),
 	GATE_IMPES(CLK_IMPES_I2C9, "impes_i2c9",
-			"i2c_ck"/* parent */, 2),
+			"i2c_pseudo_ck"/* parent */, 2),
 };
 
 static const struct mtk_clk_desc impes_mcd = {
@@ -126,9 +126,9 @@ static const struct mtk_gate_regs impw_cg_regs = {
 
 static const struct mtk_gate impw_clks[] = {
 	GATE_IMPW(CLK_IMPW_I2C0, "impw_i2c0",
-			"i2c_ck"/* parent */, 0),
+			"i2c_pseudo_ck"/* parent */, 0),
 	GATE_IMPW(CLK_IMPW_I2C1, "impw_i2c1",
-			"i2c_ck"/* parent */, 1),
+			"i2c_pseudo_ck"/* parent */, 1),
 };
 
 static const struct mtk_clk_desc impw_mcd = {

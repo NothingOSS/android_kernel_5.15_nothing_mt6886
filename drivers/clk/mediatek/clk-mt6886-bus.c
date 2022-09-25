@@ -97,6 +97,8 @@ static const struct mtk_gate_regs ifrao4_cg_regs = {
 
 static const struct mtk_gate ifrao_clks[] = {
 	/* IFRAO0 */
+	GATE_IFRAO0(CLK_IFRAO_I2C_DUMMY, "ifrao_i2c_dummy",
+			"i2c_ck"/* parent */, 0),
 	GATE_IFRAO0(CLK_IFRAO_THERM, "ifrao_therm",
 			"axi_ck"/* parent */, 10),
 	GATE_IFRAO0(CLK_IFRAO_CQ_DMA_FPC, "ifrao_dma",
