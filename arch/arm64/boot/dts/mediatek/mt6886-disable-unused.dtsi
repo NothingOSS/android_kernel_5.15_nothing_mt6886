@@ -434,6 +434,7 @@
 	disable-unused-clk-infracfg_ao {
 		compatible = "mediatek,clk-disable-unused";
 		clocks =
+			<&infracfg_ao_clk CLK_IFRAO_I2C_DUMMY>,
 			<&infracfg_ao_clk CLK_IFRAO_CQ_DMA_FPC>,
 			<&infracfg_ao_clk CLK_IFRAO_CCIF1_AP>,
 			<&infracfg_ao_clk CLK_IFRAO_CCIF1_MD>,
