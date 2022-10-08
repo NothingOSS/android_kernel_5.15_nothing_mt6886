@@ -20,6 +20,8 @@
  * The clk names in Mediatek CCF.
  */
 
+static unsigned int suspend_cnt;
+
 /* afe */
 struct pd_check_swcg afe_swcgs[] = {
 	SWCG("afe_afe"),
@@ -588,6 +590,22 @@ static int *get_suspend_allow_id(void)
 	return suspend_allow_id;
 }
 
+static bool pdchk_suspend_retry(bool reset_cnt)
+{
+	if (reset_cnt == true) {
+		suspend_cnt = 0;
+		return true;
+	}
+
+	suspend_cnt++;
+	pr_notice("%s: suspend cnt: %d\n", __func__, suspend_cnt);
+
+	if (suspend_cnt < 2)
+		return false;
+
+	return true;
+}
+
 /*
  * init functions
  */
@@ -603,10 +621,13 @@ static struct pdchk_ops pdchk_mt6886_ops = {
 	.get_notice_mtcmos_id = get_notice_mtcmos_id,
 	.is_mtcmos_chk_bug_on = is_mtcmos_chk_bug_on,
 	.get_suspend_allow_id = get_suspend_allow_id,
+	.pdchk_suspend_retry = pdchk_suspend_retry,
 };
 
 static int pd_chk_mt6886_probe(struct platform_device *pdev)
 {
+	suspend_cnt = 0;
+
 	pdchk_common_init(&pdchk_mt6886_ops);
 
 	return 0;

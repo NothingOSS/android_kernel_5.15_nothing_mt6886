@@ -37,6 +37,9 @@
 #define HWV_CG_CLR_STA(id)		(0x1B00 + (id * 0x4))
 #define HWV_CG_DONE(id)			(0x1C00 + (id * 0x4))
 
+
+static unsigned int suspend_cnt;
+
 /* xpu*/
 enum {
 	APMCU = 0,
@@ -949,6 +952,22 @@ static void dump_pll_reg(bool bug_on)
 	}
 }
 
+static bool suspend_retry(bool reset_cnt)
+{
+	if (reset_cnt == true) {
+		suspend_cnt = 0;
+		return true;
+	}
+
+	suspend_cnt++;
+	pr_notice("%s: suspend cnt: %d\n", __func__, suspend_cnt);
+
+	if (suspend_cnt < 2)
+		return false;
+
+	return true;
+}
+
 /*
  * init functions
  */
@@ -970,10 +989,13 @@ static struct clkchk_ops clkchk_mt6886_ops = {
 	.get_bus_reg = get_bus_reg,
 	.dump_bus_reg = dump_bus_reg,
 	.dump_pll_reg = dump_pll_reg,
+	.suspend_retry = suspend_retry,
 };
 
 static int clk_chk_mt6886_probe(struct platform_device *pdev)
 {
+	suspend_cnt = 0;
+
 	init_regbase();
 
 	set_clkchk_notify();
