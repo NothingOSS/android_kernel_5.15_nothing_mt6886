@@ -3858,6 +3858,7 @@
 		reg = <0 0x1602e000 0 0x1000>;
 		mediatek,smi = <&smi_disp_common>;
 		mediatek,larb-id = <4>;
+		clk-on-delay;
 		power-domains = <&scpsys MT6886_POWER_DOMAIN_VDE0>;
 		clocks = <&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN>,
 				<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN>;
