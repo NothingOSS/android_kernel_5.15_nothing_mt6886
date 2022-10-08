@@ -368,9 +368,9 @@ static const struct scp_domain_data scp_domain_mt6886_spm_data[] = {
 		.basic_clk_name = {"vde"},
 		.subsys_clk_prefix = "vde0",
 		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
+			BUS_PROT(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6886_TOP_AXI_PROT_EN_MMSYS_STA_0_VDE0),
-			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
+			BUS_PROT(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6886_TOP_AXI_PROT_EN_MMSYS_STA_0_VDE0_2ND),
 		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON,
