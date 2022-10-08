@@ -2413,7 +2413,7 @@
 				idle_masks = <0xc 0xffff8000>,
 					       <0x10 0x3fff>;
 				num_ports = <17>;
-				bus_freq_mhz = <78>;
+				bus_freq_mhz = <688>;
 			};
 			monitor4 {
 				monitor_name = "debug_ctrl_ao_PERI_PAR_AO";
