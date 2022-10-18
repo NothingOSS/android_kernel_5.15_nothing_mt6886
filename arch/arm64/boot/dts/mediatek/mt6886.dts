@@ -9023,6 +9023,7 @@
 			<&mmdvfs_clk CLK_MMDVFS_VFMT>;
 		clock-names = "MT_CG_VDEC", "MT_CG_MINI_MDP", "mmdvfs_clk";
 		mediatek,fmt-gce-th-num = <1>; /* FMT GCE HW THREAD NUM */
+		mediatek,fmt-qos-threshold = <30>; /* FMT MIN MMQoS BW Threshold*/
 		mboxes = <&gce_m 6 2000 CMDQ_THR_PRIO_1>,
 				<&gce_m 7 2000 CMDQ_THR_PRIO_1>;
 		/* rdma0_sw_rst_done_eng_event */
