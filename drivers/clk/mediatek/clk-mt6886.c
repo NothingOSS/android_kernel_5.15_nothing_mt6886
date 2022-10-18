@@ -1980,7 +1980,7 @@ static const struct mtk_mux top_muxes[] = {
 		31/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
 		TOP_MUX_VENC_SHIFT/* upd shift */),
 	/* CLK_CFG_13 */
-	MUX_IPI(CLK_TOP_VDEC_SEL/* dts */, "vdec_sel", vdec_parents/* parent */,
+	MUX_IPI_VDE(CLK_TOP_VDEC_SEL/* dts */, "vdec_sel", vdec_parents/* parent */,
 		CLK_CFG_13, CLK_CFG_13_SET, CLK_CFG_13_CLR/* set parent */,
 		HWV_CG_1_DONE, HWV_CG_1_SET, HWV_CG_1_CLR, /* hwv */
 		0/* ipi */, 0/* lsb */, 4/* width */,

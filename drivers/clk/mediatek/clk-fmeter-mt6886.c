@@ -13,7 +13,7 @@
 #include "clk-fmeter.h"
 #include "clk-mt6886-fmeter.h"
 
-#define FM_TIMEOUT			30
+#define FM_TIMEOUT			50
 #define SUBSYS_PLL_NUM			4
 #define VLP_FM_WAIT_TIME		40	/* ~= 38.64ns * 1023 */
 
@@ -405,10 +405,16 @@ static int __mt_get_freq(unsigned int ID, int type)
 	}
 
 	while (clk_readl(cali0_addr) & 0x10) {
-		udelay(10);
+		udelay(1);
 		i++;
 		if (i > FM_TIMEOUT)
 			break;
+	}
+
+	clk_dbg_cfg = clk_readl(dbg_addr);
+	if (type == CKGEN || type == CKGEN_CK2) {
+		if (((clk_dbg_cfg & 0x00007F00) >> 8 == ID) && ((clk_dbg_cfg & 0x3) == 0x1))
+			goto docali1;
 	}
 
 	/* CLK26CALI_0[15]: rst 1 -> 0 */
@@ -433,13 +439,15 @@ static int __mt_get_freq(unsigned int ID, int type)
 	clk_writel(misc_addr, (clk_misc_cfg_0 & 0x00FFFFFF) | (3 << 24));
 
 	clk26cali_1 = clk_readl(cali1_addr);
+	clk_writel(cali1_addr, (clk26cali_1 & 0x0000FFFF) | (0x3f << 16));
 	clk_writel(cali0_addr, 0x9000);
+docali1:
 	clk_writel(cali0_addr, 0x9010);
 
 	/* wait frequency meter finish */
 	i = 0;
 	do {
-		udelay(10);
+		udelay(1);
 		i++;
 		if (i > FM_TIMEOUT)
 			break;
@@ -452,7 +460,7 @@ static int __mt_get_freq(unsigned int ID, int type)
 
 	clk_div = get_clk_div(type, ID);
 
-	output = (temp * 26000) / 1024 * clk_div / post_div;
+	output = (temp * 26000) / 64 * clk_div / post_div;
 
 	clk_writel(dbg_addr, clk_dbg_cfg);
 	clk_writel(misc_addr, clk_misc_cfg_0);
