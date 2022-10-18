@@ -23,6 +23,8 @@
 
 #include "clkchk.h"
 #include "clkchk-mt6886.h"
+#include "clk-fmeter.h"
+#include "clk-mt6886-fmeter.h"
 
 #define BUG_ON_CHK_ENABLE		0
 #define CHECK_VCORE_FREQ		1
@@ -56,6 +58,40 @@ static u32 xpu_id[XPU_NUM] = {
 	[SSPM] = 4,
 	[MMUP] = 7,
 	[SCP] = 9,
+};
+
+enum {
+	CHK_FM_ADSPPLL = 0,
+	CHK_FM_MAINPLL,
+	CHK_FM_MMPLL,
+	CHK_FM_MSDCPLL,
+	CHK_FM_IMGPLL,
+	CHK_FM_UNIVPLL,
+	CHK_FM_UFS,
+	CHK_FM_IMG1,
+	CHK_FM_IPE,
+	CHK_FM_VDE,
+	CHK_FM_NUM,
+};
+
+struct clkchk_fm {
+	const char *fm_name;
+	unsigned int fm_id;
+	unsigned int fm_type;
+};
+
+struct  clkchk_fm chk_fm_list[] = {
+	[CHK_FM_ADSPPLL] = {"adsppll", FM_ADSPPLL_CK, ABIST},
+	[CHK_FM_MAINPLL] = {"mainpll", FM_MAINPLL_CK, ABIST},
+	[CHK_FM_MMPLL] = {"mmpll", FM_MMPLL_CK, ABIST},
+	[CHK_FM_MSDCPLL] = {"msdcpll", FM_MSDCPLL_CK, ABIST},
+	[CHK_FM_IMGPLL] = {"imgpll", FM_IMGPLL_CK, ABIST},
+	[CHK_FM_UNIVPLL] = {"univpll", FM_UNIVPLL_CK, ABIST},
+	[CHK_FM_UFS] = {"ufs sel", FM_U_CK, CKGEN},
+	[CHK_FM_IMG1] = {"img1 sel", FM_IMG1_CK, CKGEN},
+	[CHK_FM_IPE] = {"ipe sel", FM_IPE_CK, CKGEN},
+	[CHK_FM_VDE] = {"vde sel", FM_VDEC_CK, CKGEN},
+	{},
 };
 
 /*
@@ -816,24 +852,60 @@ static enum chk_sys_id devapc_dump_id[] = {
 	gpu_eb_rpc,
 	mfg_ao,
 	mfgsc_ao,
+	img_sub0_bus,
+	img_sub1_bus,
+	cam_sub0_bus,
+	cam_sub2_bus,
+	cam_sub1_bus,
 	vlpcfg,
 	vlp_ck,
 	cci,
 	cpu_ll,
 	cpu_bl,
 	ptp,
+	hwv,
+	hwv_ext,
 	chk_sys_num,
 };
 
 static void devapc_dump(void)
 {
+	u32 freq[CHK_FM_NUM];
+	int i;
+
+	for (i = 0; i < CHK_FM_NUM; i++)
+		freq[i] = mt_get_fmeter_freq(chk_fm_list[i].fm_id, chk_fm_list[i].fm_type);
+
 	set_subsys_reg_dump_mt6886(devapc_dump_id);
+	for (i = 0; i < CHK_FM_NUM; i++)
+		pr_notice("[%s] %d khz\n", chk_fm_list[i].fm_name, freq[i]);
+
+	get_subsys_reg_dump_mt6886();
+}
+
+static void serror_dump(void)
+{
+	u32 freq[CHK_FM_NUM];
+	int i;
+
+	for (i = 0; i < CHK_FM_NUM; i++)
+		freq[i] = mt_get_fmeter_freq(chk_fm_list[i].fm_id, chk_fm_list[i].fm_type);
+
+	set_subsys_reg_dump_mt6886(devapc_dump_id);
+	for (i = 0; i < CHK_FM_NUM; i++)
+		pr_notice("[%s] %d khz\n", chk_fm_list[i].fm_name, freq[i]);
+
 	get_subsys_reg_dump_mt6886();
 }
 
 static struct devapc_vio_callbacks devapc_vio_handle = {
 	.id = DEVAPC_SUBSYS_CLKMGR,
 	.debug_dump = devapc_dump,
+};
+
+static struct devapc_vio_callbacks serror_handle = {
+	.id = DEVAPC_SUBSYS_CLKM,
+	.debug_dump = serror_dump,
 };
 
 #endif
@@ -1004,6 +1076,7 @@ static int clk_chk_mt6886_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_MTK_DEVAPC)
 	register_devapc_vio_callback(&devapc_vio_handle);
+	register_devapc_vio_callback(&serror_handle);
 #endif
 
 #if CHECK_VCORE_FREQ
