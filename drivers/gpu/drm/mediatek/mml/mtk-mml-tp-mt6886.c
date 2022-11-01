@@ -337,27 +337,25 @@ static inline bool tp_need_resize(struct mml_frame_info *info)
 {
 	u32 w = info->dest[0].data.width;
 	u32 h = info->dest[0].data.height;
-	bool ret;
 
 	if (info->dest[0].rotate == MML_ROT_90 ||
 		info->dest[0].rotate == MML_ROT_270)
 		swap(w, h);
 
-	ret = info->dest_cnt != 1 ||
+	mml_msg("[topology]%s target %ux%u crop %ux%u",
+		__func__, w, h,
+		info->dest[0].crop.r.width,
+		info->dest[0].crop.r.height);
+
+	return info->dest_cnt != 1 ||
 		info->dest[0].crop.r.width != w ||
 		info->dest[0].crop.r.height != h ||
 		info->dest[0].crop.x_sub_px ||
 		info->dest[0].crop.y_sub_px ||
 		info->dest[0].crop.w_sub_px ||
-		info->dest[0].crop.h_sub_px;
-
-	mml_msg("[topology]%s target %ux%u crop %ux%u ret %d",
-		__func__, w, h,
-		info->dest[0].crop.r.width,
-		info->dest[0].crop.r.height,
-		ret);
-
-	return ret;
+		info->dest[0].crop.h_sub_px ||
+		info->dest[0].compose.width != info->dest[0].data.width ||
+		info->dest[0].compose.height != info->dest[0].data.height;
 }
 
 static void tp_select_path(struct mml_topology_cache *cache,
