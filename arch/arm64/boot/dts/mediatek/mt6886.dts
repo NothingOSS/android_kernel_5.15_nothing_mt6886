@@ -9071,7 +9071,7 @@
 		compatible = "mediatek,mt6886-vcodec-enc";
 		mediatek,platform = "platform:mt6886";
 		mediatek,ipm = <1>;
-		reg = <0 0x17020000 0 0x2000>,
+		reg = <0 0x17020000 0 0x6000>,
 			  <0 0x17820000 0 0x20000>;
 		reg-names =
 			"VENC_SYS",
