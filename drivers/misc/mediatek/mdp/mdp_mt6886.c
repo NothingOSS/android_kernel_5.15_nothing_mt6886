@@ -1684,6 +1684,12 @@ static bool mdp_vcp_pq_readback_support(void)
 {
 	return gVcpPQReadbackSupport;
 }
+
+static u32 mdp_get_poll_gpr(u16 engine, u32 reg_addr)
+{
+	return CMDQ_GPR_R12;
+}
+
 void cmdq_mdp_platform_function_setting(void)
 {
 	struct cmdqMDPFuncStruct *pFunc = cmdq_mdp_get_func();
@@ -1734,6 +1740,7 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->getRegMSBOffset = mdp_get_reg_msb_offset;
 	pFunc->mdpIsCaminSupport = mdp_check_camin_support_virtual;
 	pFunc->mdpVcpPQReadbackSupport = mdp_vcp_pq_readback_support;
+	pFunc->mdpGetPollGpr = mdp_get_poll_gpr;
 
 }
 
