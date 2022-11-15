@@ -4847,6 +4847,10 @@
 		compatible = "mediatek,mmdvfs-v3-start";
 	};
 
+	mmdvfs-ccu {
+		compatible = "mediatek,mmdvfs-ccu";
+	};
+
 	mmdvfs {
 		compatible = "mediatek,mmdvfs";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
