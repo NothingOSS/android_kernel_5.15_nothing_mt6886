@@ -249,7 +249,8 @@ void cm_mgr_perf_platform_set_status_mt6886(int enable)
 #endif
 
 		if (!cm_thresh)
-			icc_set_bw(cm_mgr_get_bw_path(), 0, cm_mgr_perfs[cm_mgr_dram_opp]);
+			icc_set_bw(cm_mgr_get_bw_path(), 0,
+				cm_mgr_get_perfs_mt6886(cm_mgr_dram_opp));
 
 		pm_qos_update_request_status = enable;
 	} else {
@@ -282,7 +283,7 @@ void cm_mgr_perf_platform_set_status_mt6886(int enable)
 
 			if (!cm_thresh)
 				icc_set_bw(cm_mgr_get_bw_path(), 0,
-					cm_mgr_perfs[cm_mgr_dram_opp]);
+					cm_mgr_get_perfs_mt6886(cm_mgr_dram_opp));
 		} else {
 			cm_mgr_dram_opp = -1;
 			cm_mgr_set_dram_opp_base(cm_mgr_dram_opp);
@@ -332,7 +333,8 @@ static void cm_mgr_perf_platform_set_force_status(int enable)
 		cm_mgr_dram_opp = cm_mgr_judge_perfs_dram_opp(cm_mgr_dram_opp);
 #endif
 
-		icc_set_bw(cm_mgr_get_bw_path(), 0, cm_mgr_perfs[cm_mgr_dram_opp]);
+		icc_set_bw(cm_mgr_get_bw_path(), 0,
+			cm_mgr_get_perfs_mt6886(cm_mgr_dram_opp));
 
 		pm_qos_update_request_status = enable;
 	} else {
@@ -355,12 +357,12 @@ static void cm_mgr_perf_platform_set_force_status(int enable)
 					down_force_local /
 					debounce_times_perf_force_down_get();
 				icc_set_bw(cm_mgr_get_bw_path(), 0,
-						cm_mgr_perfs[cm_mgr_dram_opp]);
+					cm_mgr_get_perfs_mt6886(cm_mgr_dram_opp));
 			} else {
 				cm_mgr_dram_opp = -1;
 				cm_mgr_set_dram_opp_base(cm_mgr_dram_opp);
 				icc_set_bw(cm_mgr_get_bw_path(), 0,
-						cm_mgr_perfs[cm_mgr_dram_opp]);
+					cm_mgr_get_perfs_mt6886(cm_mgr_dram_opp));
 				pm_qos_update_request_status = enable;
 				debounce_times_perf_down_force_local_set(-1);
 			}
@@ -516,7 +518,6 @@ static int platform_cm_mgr_remove(struct platform_device *pdev)
 	cm_mgr_unregister_hook(&local_hk);
 	cm_mgr_common_exit();
 	icc_put(cm_mgr_get_bw_path());
-	kfree(cm_mgr_perfs);
 
 	return 0;
 }
