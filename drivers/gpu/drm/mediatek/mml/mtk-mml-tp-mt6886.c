@@ -572,9 +572,6 @@ static const struct mml_topology_ops tp_ops_mt6886 = {
 
 static __init int mml_topology_ip_init(void)
 {
-	/* This is temp solution, FIX IT !! */
-	mml_align_width = 0;
-
 	return mml_topology_register_ip(TOPOLOGY_PLATFORM, &tp_ops_mt6886);
 }
 module_init(mml_topology_ip_init);
