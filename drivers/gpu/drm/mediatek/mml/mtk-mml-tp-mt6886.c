@@ -16,12 +16,12 @@
 #define AAL_MIN_WIDTH		50	/* TODO: define in tile? */
 
 /* fhd size and pixel as upper bound */
-#define MML_IR_WIDTH_UPPER	1920
-#define MML_IR_HEIGHT_UPPER	1088
+#define MML_IR_WIDTH_UPPER	(1920 + 30)
+#define MML_IR_HEIGHT_UPPER	(1088 + 30)
 #define MML_IR_MAX		(MML_IR_WIDTH_UPPER * MML_IR_HEIGHT_UPPER)
 /* fhd size and pixel as lower bound */
-#define MML_IR_WIDTH_LOWER	640
-#define MML_IR_HEIGHT_LOWER	480
+#define MML_IR_WIDTH_LOWER	(1920 - 30)
+#define MML_IR_HEIGHT_LOWER	(1088 - 30)
 #define MML_IR_MIN		(MML_IR_WIDTH_LOWER * MML_IR_HEIGHT_LOWER)
 #define MML_IR_RSZ_MIN_RATIO	375	/* resize must lower than this ratio */
 
