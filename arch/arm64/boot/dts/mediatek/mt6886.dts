@@ -7489,6 +7489,7 @@
 			clock-names = "gce","gce-timer";
 			dma-mask-bit = <35>;
 			prebuilt-enable;
+			error-irq-no-reboot;
 			#size-cells = <2>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_PORT_L36_GCE_D_M>;
@@ -7534,6 +7535,7 @@
 			clock-names = "gce","gce-timer";
 			dma-mask-bit = <35>;
 			prebuilt-enable;
+			error-irq-no-reboot;
 			#size-cells = <2>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_PORT_L36_GCE_M_M>;
