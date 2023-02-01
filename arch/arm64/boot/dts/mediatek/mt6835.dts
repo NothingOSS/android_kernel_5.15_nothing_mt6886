@@ -3640,6 +3640,9 @@
 			fake-engine = <&smi_larb0 M4U_PORT_L0_DISP_FAKE1>,
 				<&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
 
+			nvmem-cells = <&efuse_segment>;
+			nvmem-cell-names = "efuse_seg_disp_cell";
+
 			clocks = <&dispsys_config_clk CLK_MM_APB_BUS>,
 				<&dispsys_config_clk CLK_MM_DISP_HRT_URGENT>,
 				<&dispsys_config_clk CLK_MM_DISP_MUTEX0>;
