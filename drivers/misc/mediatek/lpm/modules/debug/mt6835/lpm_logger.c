@@ -371,7 +371,9 @@ static void suspend_spm_rsc_req_check
 		is_blocked_cnt = 0;
 
 	/* Check if ever enter deepest System LPM */
-	is_no_blocked = wakesta->debug_flag & (SPM_DBG_DEBUG_IDX_26M_SLEEP);
+	/* All resources turned off */
+	is_no_blocked = (wakesta->debug_flag & (SPM_DBG_DEBUG_IDX_26M_SLEEP))
+			&& is_infra_pdn(wakesta->sw_flag0);
 
 	/* Check if System LPM ever is blocked over is_lp_blocked_threshold times */
 	if (!is_no_blocked) {
