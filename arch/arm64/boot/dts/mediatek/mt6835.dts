@@ -3996,6 +3996,10 @@
 			status = "disabled";
 		};
 
+		bdgsupport: bdgsupport {
+			compatible = "mediatek,disp,6382,bdg";
+		};
+
 		disp_wdma0: disp_wdma0@14018000 {
 			compatible = "mediatek,disp_wdma0",
 					"mediatek,mt6835-disp-wdma";
