@@ -251,18 +251,18 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6835 = {
 	.hrt = {
 		.hrt_bw = {4360, 0, 0},
 		.hrt_total_bw = 17064, /*Todo: Use DRAMC API 4266*2(channel)*2(io width)*/
-		.md_speech_bw = {4360, 4374},
+		.md_speech_bw = {4937, 5523},
 		.hrt_ratio = {1000, 880, 900, 1000}, /* MD, CAM, DISP, MML */
 		.blocking = true,
-		.emi_ratio = 628,
+		.emi_ratio = 745,
 	},
 	.hrt_LPDDR4 = {
 		.hrt_bw = {4360, 0, 0},
 		.hrt_total_bw = 17064, /*Todo: Use DRAMC API 4266*2(channel)*2(io width)*/
-		.md_speech_bw = {4360, 4374},
+		.md_speech_bw = {4937, 5523},
 		.hrt_ratio = {1000, 880, 900, 1000}, /* MD, CAM, DISP, MML */
 		.blocking = true,
-		.emi_ratio = 628,
+		.emi_ratio = 745,
 	},
 	.comm_port_channels = {
 		{ 0x1, 0x2, 0x1, 0x2, 0x1, 0x1, 0x2, 0x1, 0x3}
