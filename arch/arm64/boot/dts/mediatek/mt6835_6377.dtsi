@@ -324,6 +324,10 @@
 	gauge = <&mtk_gauge>;
 };
 
+&mt6375_chg {
+	pmic-uvlo = <&mt6377_dynamic_loading_throttling>;
+};
+
 &gps {
 	gnss-pmic = <6377>;
 };

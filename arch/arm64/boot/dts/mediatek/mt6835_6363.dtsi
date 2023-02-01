@@ -399,5 +399,9 @@
 	gauge = <&mtk_gauge>;
 };
 
+&mt6375_chg {
+	pmic-uvlo = <&mt6363_dynamic_loading_throttling>;
+};
+
 #include "mediatek/bat_setting/mt6835_battery_prop.dtsi"
 /delete-node/ &mt6363_vbuck1_sshub;
