@@ -6,6 +6,7 @@
  * MT6835 MSDC DTSI File
  ********************************************/
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
 
 &mmc0 {
 	host-index = <0>;
@@ -51,6 +52,10 @@
 	no-sdio;
 	dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 	req-vcore = <650000>;
+	mediatek,mmc-qos;
+	interconnects = <&dvfsrc MT6873_MASTER_UFS &dvfsrc MT6873_SLAVE_DDR_EMI>;
+	interconnect-names = "msdc-perf-bw";
+	required-opps = <&dvfsrc_freq_opp4>;
 };
 
 &pio {
