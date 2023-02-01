@@ -1116,7 +1116,7 @@
 		};
 		gpu2 {
 			polling-delay = <500>; /* milliseconds */
-			polling-delay-passive = <12>; /* milliseconds */
+			polling-delay-passive = <300>; /* milliseconds */
 			thermal-sensors = <&lvts 9>;
 			trips {
 				gpu_throttle: trip-point@0 {
