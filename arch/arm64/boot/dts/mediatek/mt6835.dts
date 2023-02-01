@@ -3478,6 +3478,8 @@
 			mediatek,dpmaif-ver = <3>;
 			mediatek,dpmaif-cap = <0x00000004>;
 			mediatek,plat-info = <6835>;
+			/* skb-gfp-mask for skb alloc mask, 1 is GFP_ATOMIC */
+			mediatek,skb-gfp-mask = <1>;
 			clocks = <&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
 				<&infracfg_ao_clk CLK_IFRAO_CLDMA_BCLK>,
 				<&infracfg_ao_clk CLK_IFRAO_RG_MMW_DPMAIF26M_CK>;
