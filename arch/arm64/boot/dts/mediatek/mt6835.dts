@@ -4726,6 +4726,7 @@
 				<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 				/*ap dma clock*/
 			clock-names = "btifc","apdmac";
+			debug-reg = <0x11036158 0x1103615c>;
 		};
 
 		consys: consys@18002000 {
