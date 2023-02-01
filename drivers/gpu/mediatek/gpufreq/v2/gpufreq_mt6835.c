@@ -1117,11 +1117,11 @@ void __gpufreq_update_temperature(unsigned int instant_dvfs)
 {
 #if GPUFREQ_TEMPER_COMP_ENABLE
 	struct thermal_zone_device *tzd;
-	int cur_temper = 0;
+	int cur_temper = 0, ret = 0;
 
 #if IS_ENABLED(CONFIG_THERMAL)
 	tzd = thermal_zone_get_zone_by_name("gpu2");
-	thermal_zone_get_temp(tzd, &cur_temper);
+	ret = thermal_zone_get_temp(tzd, &cur_temper);
 	cur_temper /= 1000;
 #else
 	cur_temper = 30;
