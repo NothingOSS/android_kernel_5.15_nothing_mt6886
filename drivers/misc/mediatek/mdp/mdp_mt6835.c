@@ -541,11 +541,9 @@ bool cmdq_mdp_clock_is_on(u32 engine)
 	switch (engine) {
 	case CMDQ_ENG_MDP_CAMIN:
 		return cmdq_mdp_clock_is_enable_IMG_DL_ASYNC0() &&
-			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_ASYNC0() &&
 			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_RELAY0_ASYNC0();
 	case CMDQ_ENG_MDP_CAMIN2:
 		return cmdq_mdp_clock_is_enable_IMG_DL_ASYNC1() &&
-			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_ASYNC1() &&
 			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_RELAY1_ASYNC1();
 	case CMDQ_ENG_MDP_RDMA0:
 		return cmdq_mdp_clock_is_enable_MDP_RDMA0();
@@ -574,12 +572,10 @@ void cmdq_mdp_enable_clock(bool enable, u32 engine)
 	switch (engine) {
 	case CMDQ_ENG_MDP_CAMIN:
 		cmdq_mdp_enable_clock_IMG_DL_ASYNC0(enable);
-		cmdq_mdp_enable_clock_IMG0_IMG_DL_ASYNC0(enable);
 		cmdq_mdp_enable_clock_IMG0_IMG_DL_RELAY0_ASYNC0(enable);
 		break;
 	case CMDQ_ENG_MDP_CAMIN2:
 		cmdq_mdp_enable_clock_IMG_DL_ASYNC1(enable);
-		cmdq_mdp_enable_clock_IMG0_IMG_DL_ASYNC1(enable);
 		cmdq_mdp_enable_clock_IMG0_IMG_DL_RELAY1_ASYNC1(enable);
 		break;
 	case CMDQ_ENG_MDP_RDMA0:
