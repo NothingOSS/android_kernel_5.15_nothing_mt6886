@@ -873,14 +873,9 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dac_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dac_hires_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dac_predis_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_3rd_dac_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_3rd_dac_hires_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_3rd_dac_predis_clk"),
 
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_adc_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_adc_hires_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_adda6_adc_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_adda6_adc_hires_clk"),
 #endif
 };
 
@@ -1008,9 +1003,7 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"top_mux_audio_h", NULL, APLL2_W_NAME},
 
 	{"aud_dac_hires_clk", NULL, "top_mux_audio_h"},
-	{"aud_3rd_dac_hires_clk", NULL, "top_mux_audio_h"},
 	{"aud_adc_hires_clk", NULL, "top_mux_audio_h"},
-	{"aud_adda6_adc_hires_clk", NULL, "top_mux_audio_h"},
 #endif
 };
 

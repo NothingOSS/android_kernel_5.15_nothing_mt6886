@@ -28,14 +28,8 @@ static struct audio_gpio_attr aud_gpios[MT6835_AFE_GPIO_GPIO_NUM] = {
 	[MT6835_AFE_GPIO_DAT_MOSI_ON] = {"aud_dat_mosi_on", false, NULL},
 	[MT6835_AFE_GPIO_I2S0_OFF] = {"aud_gpio_i2s0_off", false, NULL},
 	[MT6835_AFE_GPIO_I2S0_ON] = {"aud_gpio_i2s0_on", false, NULL},
-	[MT6835_AFE_GPIO_I2S1_OFF] = {"aud_gpio_i2s1_off", false, NULL},
-	[MT6835_AFE_GPIO_I2S1_ON] = {"aud_gpio_i2s1_on", false, NULL},
-	[MT6835_AFE_GPIO_I2S2_OFF] = {"aud_gpio_i2s2_off", false, NULL},
-	[MT6835_AFE_GPIO_I2S2_ON] = {"aud_gpio_i2s2_on", false, NULL},
 	[MT6835_AFE_GPIO_I2S3_OFF] = {"aud_gpio_i2s3_off", false, NULL},
 	[MT6835_AFE_GPIO_I2S3_ON] = {"aud_gpio_i2s3_on", false, NULL},
-	[MT6835_AFE_GPIO_I2S5_OFF] = {"aud_gpio_i2s5_off", false, NULL},
-	[MT6835_AFE_GPIO_I2S5_ON] = {"aud_gpio_i2s5_on", false, NULL},
 };
 
 static DEFINE_MUTEX(gpio_request_mutex);
