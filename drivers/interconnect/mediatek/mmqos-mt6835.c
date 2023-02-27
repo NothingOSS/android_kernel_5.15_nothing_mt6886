@@ -271,7 +271,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6835 = {
 		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE,
 			HRT_NONE, HRT_CAM, HRT_CAM, HRT_DISP },
 	},
-	.mmqos_state = MMQOS_ENABLE | BWL_MIN_ENABLE,
+	.mmqos_state = MMQOS_ENABLE | BWL_MIN_ENABLE | BWL_NO_QOSBOUND,
 };
 static const struct of_device_id mtk_mmqos_mt6835_of_ids[] = {
 	{
