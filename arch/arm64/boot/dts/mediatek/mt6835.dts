@@ -4001,6 +4001,14 @@
 			status = "disabled";
 		};
 
+		mt6382nfc: mt6382nfc {
+			compatible = "mediatek, mt6382_nfc-eint";
+			interrupt-parent = <&pio>;
+			interrupts = <41 IRQ_TYPE_EDGE_BOTH 41 0>;
+			mt6382-nfc-srclk = <&pio 41 0x0>;
+			status = "disabled";
+		};
+
 		bdgsupport: bdgsupport {
 			compatible = "mediatek,disp,6382,bdg";
 		};
