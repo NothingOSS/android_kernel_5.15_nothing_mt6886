@@ -288,7 +288,6 @@ void cmdq_mdp_dump_mmsys_config(const struct cmdqRecStruct *handle)
 		{0x8F0,	"MDPSYS_HRT_WEIGHT_READ"},
 		{0x900,	"MDPSYS_PWR_METER_CTL0"},
 		{0x904,	"MDPSYS_PWR_METER_CTL1"},
-		{0x920,	"MDP_DL_RELAY0_CFG_WD"},
 		{0x924,	"MDP_DL_RELAY0_CFG_RD"},
 		{0x928,	"MDP_DL_ASYNC0_CFG_RD0"},
 		{0x92c,	"MDP_DL_ASYNC0_CFG_RD1"},
