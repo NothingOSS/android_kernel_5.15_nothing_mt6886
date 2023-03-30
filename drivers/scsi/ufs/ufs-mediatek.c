@@ -3272,7 +3272,7 @@ static int ufs_mtk_suspend_check(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		s_node) {
 
 		/* If consumer is active, stop supplier enter suspend. */
-		if (link->consumer->power.runtime_status == RPM_ACTIVE) {
+		if (link->consumer->power.runtime_status != RPM_SUSPENDED) {
 			err = -EBUSY;
 			goto out;
 		}
