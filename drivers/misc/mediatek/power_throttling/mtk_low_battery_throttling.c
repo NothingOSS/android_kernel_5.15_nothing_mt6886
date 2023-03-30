@@ -142,6 +142,11 @@ void exec_throttle(unsigned int level)
 	int i;
 
 	pr_info("[%s] throttle level = %d\n", __func__, level);
+	if (!low_bat_thl_data) {
+		pr_info("[%s] low_bat_thl_data not allocate\n", __func__);
+		return;
+	}
+
 	for (i = 0; i < ARRAY_SIZE(lbcb_tb); i++) {
 		if (lbcb_tb[i].lbcb)
 			lbcb_tb[i].lbcb(low_bat_thl_data->low_bat_thl_level);
@@ -152,6 +157,11 @@ static unsigned int thd_to_level(unsigned int thd)
 {
 	unsigned int i, level = 0;
 	struct lbat_intr_tbl *info;
+
+	if (!low_bat_thl_data) {
+		pr_info("[%s] low_bat_thl_data not allocate\n", __func__);
+		return 0;
+	}
 
 	for (i = 0; i < low_bat_thl_data->thd_volts_size; i++) {
 		info = &(low_bat_thl_data->lbat_intr_info[i]);
@@ -201,6 +211,11 @@ void low_battery_vbat_callback(unsigned int thd)
 
 	pr_notice("[%s] [vbat] thd = %d\n", __func__, thd);
 
+	if (!low_bat_thl_data) {
+		pr_info("[%s] low_bat_thl_data not allocate\n", __func__);
+		return;
+	}
+
 	if (isThreeLevel) {
 		level = thd_to_level(thd);
 		exec_low_battery_throttle(level);
@@ -224,6 +239,10 @@ static int low_battery_vsys_callback(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
 	pr_notice("[%s] [lvsys] thd = %d\n", __func__, event);
+	if (!low_bat_thl_data) {
+		pr_info("[%s] low_bat_thl_data not allocate\n", __func__);
+		return NOTIFY_DONE;
+	}
 	if (event == LVSYS_F_3400)
 		exec_low_battery_throttle(LOW_BATTERY_LEVEL_2);
 	else if (event == LVSYS_R_3500)
@@ -526,17 +545,20 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 		dev_notice(&pdev->dev, "%d mV, %d mV, %d mV Done\n",
 			   priv->hv_thd_volt, priv->lv1_thd_volt, priv->lv2_thd_volt);
 	}
-	low_bat_thl_data = priv;
+
 	ret = device_create_file(&(pdev->dev),
 		&dev_attr_low_battery_protect_ut);
 	ret |= device_create_file(&(pdev->dev),
 		&dev_attr_low_battery_protect_stop);
 	ret |= device_create_file(&(pdev->dev),
 		&dev_attr_low_battery_protect_level);
-	if (ret)
+	if (ret) {
 		dev_notice(&pdev->dev, "create file error ret=%d\n", ret);
+		return ret;
+	}
 
-	return ret;
+	low_bat_thl_data = priv;
+	return 0;
 }
 
 static const struct of_device_id low_bat_thl_of_match[] = {
