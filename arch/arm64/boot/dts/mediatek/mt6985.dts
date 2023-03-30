@@ -15477,6 +15477,8 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 };
 
 /delete-node/ &mt6363_vbuck4_sshub;
+/delete-node/ &mt6373_vmch;
+/delete-node/ &mt6373_vmch_eint_low;
 
 &main_pmic {
 	pmic-lvsys-notify {

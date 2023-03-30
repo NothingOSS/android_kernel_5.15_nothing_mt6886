@@ -47,7 +47,7 @@
 	sd-uhs-sdr104;
 	sd-uhs-ddr50;
 	eint-gpios = <&pio 41 GPIO_ACTIVE_LOW>;
-	vmmc-supply = <&mt6373_vmch>;
+	vmmc-supply = <&mt6373_vmch_eint_high>;
 	vqmmc-supply = <&mt6363_vio18>;
 	no-mmc;
 	no-sd;
