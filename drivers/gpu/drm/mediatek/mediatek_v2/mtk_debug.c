@@ -59,6 +59,9 @@
 #define SMI_LARB_NON_SEC_CON(port) (0x380 + 4 * (port))
 #define GET_M4U_PORT 0x1F
 
+int dsi0_panel_id = -1;
+EXPORT_SYMBOL(dsi0_panel_id);
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static struct dentry *mtkfb_dbgfs;
 #endif
@@ -4082,6 +4085,8 @@ static void process_dbg_opt(const char *opt)
 
 		ret = mtk_drm_get_conn_obj_id_from_idx(value, 0);
 		DDPINFO("disp_idx %u, conn_obj_id %d\n", value, ret);
+	} else if (strncmp(opt, "dsi0_panel_id", 13) == 0) {
+		DDPINFO("dsi0_panel_id is %d\n", dsi0_panel_id);
 	}
 
 
