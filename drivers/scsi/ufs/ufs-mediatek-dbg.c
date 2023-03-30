@@ -1084,7 +1084,7 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 
 	cur = cmd_buf;
 	tok = strsep(&cur, " ");
-	if (kstrtoul(tok, 10, &op))
+	if (!tok || kstrtoul(tok, 10, &op))
 		return -EINVAL;
 
 	if (op == UFSDBG_CMD_LIST_DUMP) {
