@@ -4389,6 +4389,15 @@
 			iommus = <&disp_iommu M4U_PORT_L22_VIDEO_UP_256MB2>;
 		};
 
+		vcp-iommu-sec {
+		#address-cells = <2>;
+		#size-cells = <2>;
+			vcp-support = <7>;
+			compatible =  "mediatek,vcp-io-sec";
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&disp_iommu M4U_PORT_L22_VIDEO_UP_512MB1>;
+		};
+
 		vcu: vcu@16000000 {
 			compatible = "mediatek-vcu";
 			mediatek,vcuid = <0>;

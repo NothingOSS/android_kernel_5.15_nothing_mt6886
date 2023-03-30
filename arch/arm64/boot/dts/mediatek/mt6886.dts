@@ -8913,6 +8913,7 @@
 			<M4U_PORT_L4_HW_VDEC_AVC_MV_EXT>,
 			<M4U_PORT_L4_HW_VDEC_RG_CTRL_DMA_EXT>,
 			<M4U_PORT_L4_HW_VDEC_UFO_ENC_EXT>,
+			<M4U_PORT_L36_VIDEO_uP>,
 			<M4U_PORT_L36_VIDEO_uP>;
 		m4u-port-names =
 			"M4U_PORT_VDEC_MC",
@@ -8927,7 +8928,8 @@
 			"M4U_PORT_VDEC_AVC_MV",
 			"M4U_PORT_VDEC_RG_CTRL_DMA",
 			"M4U_PORT_VDEC_UFO_ENC",
-			"M4U_PORT_VDEC_L32_VIDEO_UP";
+			"M4U_PORT_VDEC_VIDEO_UP_SEC",
+			"M4U_PORT_VDEC_VIDEO_UP_NOR";
 		mediatek,larbs = <&smi_larb4>;
 		interrupts = <GIC_SPI 685 IRQ_TYPE_LEVEL_HIGH 0>;
 		//dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
@@ -9448,6 +9450,15 @@
 	vcp-iommu-work {
 		vcp-support = <4>;
 		compatible = "mediatek,vcp-io-work";
+		dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+		iommus = <&disp_iommu M4U_PORT_L36_VIDEO_uP>;
+	};
+
+	vcp-iommu-sec {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		vcp-support = <7>;
+		compatible =  "mediatek,vcp-io-sec";
 		dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 		iommus = <&disp_iommu M4U_PORT_L36_VIDEO_uP>;
 	};
