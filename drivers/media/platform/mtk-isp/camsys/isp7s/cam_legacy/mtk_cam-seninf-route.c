@@ -1945,18 +1945,32 @@ void notify_fsync_listen_target_with_kthread(struct seninf_ctx *ctx,
 
 int stream_sensor(struct seninf_ctx *ctx, int enable)
 {
-	int ret;
+	int ret, skip;
 
-	ret = v4l2_subdev_call(ctx->sensor_sd, video, s_stream, enable);
-	if (ret) {
-		dev_info(ctx->dev, "%s sensor stream-%s fail,ret(%d)\n",
-			 __func__,
-			 enable ? "on" : "off",
-			 ret);
-	} else {
+	mutex_lock(&ctx->delay_s_sensor_mutex);
+
+	skip = enable && (!ctx->delay_s_sensor_flag);
+	ctx->delay_s_sensor_flag = 0;
+
+	if (!skip) {
+		ret = v4l2_subdev_call(ctx->sensor_sd, video, s_stream, enable);
+		mutex_unlock(&ctx->delay_s_sensor_mutex);
+		if (ret) {
+			dev_info(ctx->dev, "%s sensor stream-%s fail,ret(%d)\n",
+				 __func__,
+				 enable ? "on" : "off",
+				 ret);
+		} else {
 #ifdef SENINF_UT_DUMP
-		g_seninf_ops->_debug(ctx);
+			g_seninf_ops->_debug(ctx);
 #endif
+		}
+	} else {
+		mutex_unlock(&ctx->delay_s_sensor_mutex);
+		ret = 0;
+		dev_info(ctx->dev, "%s skip sensor stream-%s\n",
+			 __func__,
+			 enable ? "on" : "off");
 	}
 
 	return ret;
@@ -1972,6 +1986,10 @@ void notify_fsync_with_kthread_and_s_stream(struct seninf_ctx *ctx,
 		stream_sensor(ctx, 0);
 		return;
 	}
+
+	mutex_lock(&ctx->delay_s_sensor_mutex);
+	ctx->delay_s_sensor_flag = 1;
+	mutex_unlock(&ctx->delay_s_sensor_mutex);
 
 	seninf_work = kmalloc(sizeof(struct mtk_seninf_work),
 				GFP_ATOMIC);

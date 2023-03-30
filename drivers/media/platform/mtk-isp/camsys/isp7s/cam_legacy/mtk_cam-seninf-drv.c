@@ -1722,6 +1722,9 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 			dev_info(ctx->dev,
 				 "[%s] pad_inited(%d)\n", __func__, pad_inited);
 			// stream on sensor while csi streamed
+			mutex_lock(&ctx->delay_s_sensor_mutex);
+			ctx->delay_s_sensor_flag = 1;
+			mutex_unlock(&ctx->delay_s_sensor_mutex);
 			stream_sensor(ctx, enable);
 			return 0;
 		}
@@ -2440,7 +2443,9 @@ static int seninf_probe(struct platform_device *pdev)
 	ctx->dbg_chmux_param = NULL;
 
 	ctx->open_refcnt = 0;
+	ctx->delay_s_sensor_flag = 0;
 	mutex_init(&ctx->mutex);
+	mutex_init(&ctx->delay_s_sensor_mutex);
 
 	ret = get_csi_port(dev, &port);
 	if (ret) {
