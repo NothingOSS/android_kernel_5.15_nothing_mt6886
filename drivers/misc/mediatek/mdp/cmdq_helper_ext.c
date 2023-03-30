@@ -3619,6 +3619,11 @@ void cmdq_core_release_handle_by_file_node(void *file_node)
 #endif
 			cmdq_mbox_thread_remove_task(client->chan, handle->pkt);
 
+		if (handle->pkt_rb) {
+			client = cmdq_clients[(u32)handle->thread_rb];
+			cmdq_mbox_thread_remove_task(client->chan, handle->pkt_rb);
+		}
+
 		cmdq_pkt_auto_release_task(handle, true);
 	}
 	mutex_unlock(&cmdq_handle_list_mutex);
@@ -4385,6 +4390,12 @@ static void cmdq_pkt_auto_release_destroy_work(struct work_struct *work)
 s32 cmdq_pkt_auto_release_task(struct cmdqRecStruct *handle,
 	bool destroy)
 {
+	if (handle->auto_released) {
+		CMDQ_ERR("Handle: %p pkt:%p already auto released\n",
+			handle, handle->pkt);
+		return 0;
+	}
+
 	if (handle->thread == CMDQ_INVALID_THREAD) {
 		CMDQ_ERR(
 			"handle:0x%p pkt:0x%p invalid thread:%d scenario:%d\n",
@@ -4395,22 +4406,25 @@ s32 cmdq_pkt_auto_release_task(struct cmdqRecStruct *handle,
 	CMDQ_PROF_MMP(mdp_mmp_get_event()->autoRelease_add,
 		MMPROFILE_FLAG_PULSE, ((unsigned long)handle), handle->thread);
 
-	if (destroy) {
-		/* the work item is embedded in pTask already
-		 * but we need to initialized it
-		 */
-		INIT_WORK(&handle->auto_release_work,
-			cmdq_pkt_auto_release_destroy_work);
-	} else {
-		/* use for mdp release by file node case,
-		 * helps destroy task since user space not wait.
-		 */
-		INIT_WORK(&handle->auto_release_work,
-			cmdq_pkt_auto_release_work);
-	}
+	if (!work_pending(&handle->auto_release_work)) {
+		if (destroy) {
+			/* the work item is embedded in pTask already
+			 * but we need to initialized it
+			 */
+			INIT_WORK(&handle->auto_release_work,
+				cmdq_pkt_auto_release_destroy_work);
+		} else {
+			/* use for mdp release by file node case,
+			 * helps destroy task since user space not wait.
+			 */
+			INIT_WORK(&handle->auto_release_work,
+				cmdq_pkt_auto_release_work);
+		}
 
-	queue_work(cmdq_ctx.taskThreadAutoReleaseWQ[handle->thread],
-		&handle->auto_release_work);
+		queue_work(cmdq_ctx.taskThreadAutoReleaseWQ[handle->thread],
+			&handle->auto_release_work);
+		handle->auto_released = true;
+	}
 	return 0;
 }
 

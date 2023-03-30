@@ -709,6 +709,7 @@ struct cmdqRecStruct {
 	enum cmdq_thread_dispatch thd_dispatch;
 	/* work item when auto release is used */
 	struct work_struct auto_release_work;
+	bool auto_released;
 
 	/* register backup at end of task */
 	u32 reg_count;
