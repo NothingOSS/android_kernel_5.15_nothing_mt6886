@@ -412,6 +412,9 @@ static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused)
 	//if (alloc_skb_threshold > g_max_bat_skb_cnt_for_md)
 	//	alloc_skb_threshold = g_max_bat_skb_cnt_for_md;
 
+	if (g_max_bat_skb_cnt_for_md == 0xFFFF)  //need alloc max skb to bat
+		alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+
 	buf_used = get_ringbuf_used_cnt(bat_req->bat_cnt,
 					atomic_read(&bat_req->bat_rd_idx),
 					atomic_read(&bat_req->bat_wr_idx));
