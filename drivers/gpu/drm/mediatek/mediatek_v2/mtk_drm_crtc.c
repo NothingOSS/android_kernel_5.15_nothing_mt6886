@@ -6505,21 +6505,23 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 	int i, j;
 	struct mtk_ddp_comp *comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	static bool is_inited;
 
 	if (drm_crtc_index(&mtk_crtc->base) == 0)
 		mtk_crtc_fill_fb_para(mtk_crtc);
 
 #ifndef DRM_CMDQ_DISABLE
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_M4U)) {
-		if (priv->data->mmsys_id == MMSYS_MT6983 ||
+		if (!is_inited && (priv->data->mmsys_id == MMSYS_MT6983 ||
 			priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6879 ||
 			priv->data->mmsys_id == MMSYS_MT6895 ||
 			priv->data->mmsys_id == MMSYS_MT6835 ||
 			priv->data->mmsys_id == MMSYS_MT6855 ||
-			priv->data->mmsys_id == MMSYS_MT6886) {
+			priv->data->mmsys_id == MMSYS_MT6886)) {
 			/*set smi_larb_sec_con reg as 1*/
 			mtk_crtc_exec_atf_prebuilt_instr(mtk_crtc, handle);
+			is_inited = true;
 		}
 	}
 #endif
@@ -9419,7 +9421,6 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 	struct cmdq_pkt *handle;
 
 	if (priv->data->mmsys_id == MMSYS_MT6983 ||
-		priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6879 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6886 ||
