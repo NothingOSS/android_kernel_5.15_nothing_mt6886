@@ -3976,6 +3976,7 @@ static s32 cmdq_pkt_lock_handle(struct cmdqRecStruct *handle,
 
 	mutex_lock(&cmdq_handle_list_mutex);
 	list_add_tail(&handle->list_entry, &cmdq_ctx.handle_active);
+	cmdq_task_use(handle);
 	mutex_unlock(&cmdq_handle_list_mutex);
 
 	return 0;
@@ -4055,6 +4056,7 @@ void cmdq_pkt_release_handle(struct cmdqRecStruct *handle)
 			handle, ref, handle->thread);
 		mutex_lock(&cmdq_handle_list_mutex);
 		list_del_init(&handle->list_entry);
+		cmdq_task_destroy(handle);
 		mutex_unlock(&cmdq_handle_list_mutex);
 		dump_stack();
 		return;
@@ -4108,6 +4110,7 @@ void cmdq_pkt_release_handle(struct cmdqRecStruct *handle)
 
 	mutex_lock(&cmdq_handle_list_mutex);
 	list_del_init(&handle->list_entry);
+	cmdq_task_destroy(handle);
 	mutex_unlock(&cmdq_handle_list_mutex);
 }
 

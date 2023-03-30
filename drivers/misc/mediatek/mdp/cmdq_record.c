@@ -381,6 +381,7 @@ s32 cmdq_task_create(enum CMDQ_SCENARIO_ENUM scenario,
 	INIT_LIST_HEAD(&handle->list_entry);
 	handle->scenario = scenario;
 	handle->ctrl = cmdq_core_get_controller();
+	cmdq_ref_init(handle);
 
 	/* define thread type by scenario */
 	handle->thread = CMDQ_INVALID_THREAD;
@@ -2330,12 +2331,30 @@ s32 cmdq_op_profile_marker(struct cmdqRecStruct *handle, const char *tag)
 	return status;
 }
 
-s32 cmdq_task_destroy(struct cmdqRecStruct *handle)
+void cmdq_ref_init(struct cmdqRecStruct *handle)
 {
+	kref_init(&handle->use_cnt);
+}
+
+void cmdq_task_use(struct cmdqRecStruct *handle)
+{
+	kref_get(&handle->use_cnt);
+}
+
+void cmdq_task_destroy(struct cmdqRecStruct *handle)
+{
+	kref_put(&handle->use_cnt, cmdq_task_destroy_handle);
+}
+
+void cmdq_task_destroy_handle(struct kref *kref)
+{
+	struct cmdqRecStruct *handle;
+
+	handle = container_of(kref, struct cmdqRecStruct, use_cnt);
 	if (!handle) {
 		CMDQ_ERR("try to release null handle\n");
 		dump_stack();
-		return -EINVAL;
+		return;
 	}
 
 	CMDQ_SYSTRACE_BEGIN("%s\n", __func__);
@@ -2363,8 +2382,6 @@ s32 cmdq_task_destroy(struct cmdqRecStruct *handle)
 	kfree(handle);
 
 	CMDQ_SYSTRACE_END();
-
-	return 0;
 }
 
 s32 cmdq_op_set_nop(struct cmdqRecStruct *handle, u32 index)

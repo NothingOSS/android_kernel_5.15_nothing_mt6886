@@ -10,6 +10,7 @@
 #include <linux/printk.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <linux/trace_events.h>
+#include <linux/kref.h>
 
 #include "mdp_def.h"
 
@@ -710,6 +711,7 @@ struct cmdqRecStruct {
 	/* work item when auto release is used */
 	struct work_struct auto_release_work;
 	bool auto_released;
+	struct kref use_cnt;
 
 	/* register backup at end of task */
 	u32 reg_count;
