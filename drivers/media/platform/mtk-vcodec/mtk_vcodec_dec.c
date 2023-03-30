@@ -442,7 +442,7 @@ static void mtk_vdec_check_vcp_active(struct mtk_vcodec_ctx *ctx, bool from_time
 	char *debug_str)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-#ifdef VDEC_CHECK_ALIVE
+#if VDEC_VCP_BACKGROUND_IDLE
 	if (mtk_vcodec_vcp & (1 << MTK_INST_DECODER)) {
 		if (!from_timer)
 			mutex_lock(&ctx->vcp_active_mutex);
@@ -465,10 +465,10 @@ static void mtk_vdec_check_vcp_active(struct mtk_vcodec_ctx *ctx, bool from_time
 #endif
 }
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#if VDEC_VCP_BACKGROUND_IDLE
 static void mtk_vdec_check_vcp_inactive(struct mtk_vcodec_ctx *ctx, bool from_timer)
 {
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-#ifdef VDEC_CHECK_ALIVE
 	if (mtk_vcodec_vcp & (1 << MTK_INST_DECODER)) {
 		if (!from_timer)
 			mutex_lock(&ctx->vcp_active_mutex);
@@ -486,9 +486,9 @@ static void mtk_vdec_check_vcp_inactive(struct mtk_vcodec_ctx *ctx, bool from_ti
 		if (!from_timer)
 			mutex_unlock(&ctx->vcp_active_mutex);
 	}
-#endif
-#endif
 }
+#endif
+#endif
 
 static int mtk_vdec_set_frame(struct mtk_vcodec_ctx *ctx,
 	struct mtk_video_dec_buf *buf)
@@ -2089,6 +2089,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	caws = container_of(ws, struct vdec_check_alive_work_struct, work);
 	dev = caws->dev;
 
+#if VDEC_VCP_BACKGROUND_IDLE
 	/* vcp background idle check */
 	mutex_lock(&dev->ctx_mutex);
 	if (list_empty(&dev->ctx_list) || dev->is_codec_suspending == 1) {
@@ -2117,15 +2118,6 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	}
 	mutex_unlock(&dev->ctx_mutex);
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	/* vcp background idle check may turn off vcp power */
-	/* if vcp is powered off, skip dvfs check */
-	if (!is_vcp_ready(VCP_A_ID)) {
-		mtk_v4l2_debug(4, "vcp powered off, skip dvfs check");
-		if (caws->ctx != NULL)
-			kfree(caws);
-		return;
-	}
 #endif
 
 	mmdvfs_in_vcp = (dev->vdec_reg == 0 && dev->vdec_mmdvfs_clk == 0);
@@ -2141,48 +2133,64 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 
 	if (caws->ctx != NULL) { // ctx retrigger case
 		ctx = caws->ctx;
-		// cur ctx should be in dvfs list
-		list_for_each(item, &dev->vdec_dvfs_inst) {
-			inst = list_entry(item, struct vcodec_inst, list);
-			if (inst->ctx == ctx)
-				need_update = true;
-		}
-		if (!need_update) {
+		mutex_lock(&ctx->vcp_active_mutex);
+		if (ctx->is_vcp_active) {
+			// cur ctx should be in dvfs list
+			list_for_each(item, &dev->vdec_dvfs_inst) {
+				inst = list_entry(item, struct vcodec_inst, list);
+				if (inst->ctx == ctx)
+					need_update = true;
+			}
+			if (!need_update) {
+				kfree(caws);
+				mutex_unlock(&dev->dec_dvfs_mutex);
+				return;
+			}
+			ctx->is_active = 1;
+			mtk_vdec_dvfs_update_active_state(ctx);
 			kfree(caws);
+			mtk_v4l2_debug(0, "[VDVFS] %s [%d] is active now", __func__, ctx->id);
+		} else {
+			mtk_v4l2_debug(4, "[VDVFS] [%d] vcp inactive, skip dvfs check", ctx->id);
+			kfree(caws);
+			mutex_unlock(&ctx->vcp_active_mutex);
 			mutex_unlock(&dev->dec_dvfs_mutex);
 			return;
 		}
-		ctx->is_active = 1;
-		mtk_vdec_dvfs_update_active_state(ctx);
-		kfree(caws);
-		mtk_v4l2_debug(0, "[VDVFS] %s [%d] is active now", __func__, ctx->id);
+		mutex_unlock(&ctx->vcp_active_mutex);
 	} else { // timer trigger case
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 		inst = list_entry(item, struct vcodec_inst, list);
 		ctx = inst->ctx;
-		mtk_v4l2_debug(8, "[VDVFS] ctx:%d, active:%d, decoded_cnt:%d, last_decoded_cnt:%d",
+		mutex_lock(&ctx->vcp_active_mutex);
+		mtk_v4l2_debug(8, "[VDVFS] ctx:%d, active:%d, dec_cnt:%d, last_dec_cnt:%d, vcp_active:%d",
 			ctx->id, ctx->is_active, ctx->decoded_frame_cnt,
-			ctx->last_decoded_frame_cnt);
+			ctx->last_decoded_frame_cnt, ctx->is_vcp_active);
 		if (ctx->state != MTK_STATE_ABORT) {
-			if (ctx->last_decoded_frame_cnt >= ctx->decoded_frame_cnt) {
-				if (ctx->is_active) {
-					need_update = true;
-					ctx->is_active = 0;
-					mtk_vdec_dvfs_update_active_state(ctx);
-					mtk_v4l2_debug(0, "[VDVFS] ctx %d inactive", ctx->id);
+			if (ctx->is_vcp_active) {
+				if (ctx->last_decoded_frame_cnt >= ctx->decoded_frame_cnt) {
+					if (ctx->is_active) {
+						need_update = true;
+						ctx->is_active = 0;
+						mtk_vdec_dvfs_update_active_state(ctx);
+						mtk_v4l2_debug(0, "[VDVFS] ctx %d inactive",
+							ctx->id);
+					}
+				} else {
+					if (!ctx->is_active) {
+						need_update = true;
+						ctx->is_active = 1;
+						mtk_vdec_dvfs_update_active_state(ctx);
+						mtk_v4l2_debug(0, "[VDVFS] ctx %d active", ctx->id);
+					}
+					ctx->last_decoded_frame_cnt = ctx->decoded_frame_cnt;
 				}
-			} else {
-				if (!ctx->is_active) {
-					need_update = true;
-					ctx->is_active = 1;
-					mtk_vdec_dvfs_update_active_state(ctx);
-					mtk_v4l2_debug(0, "[VDVFS] ctx %d active", ctx->id);
-				}
-				ctx->last_decoded_frame_cnt = ctx->decoded_frame_cnt;
-			}
+			} else
+				mtk_v4l2_debug(4, "[VDVFS] [%d] vcp inactive, skip dvfs check",
+					ctx->id);
 		} else
 			mtk_v4l2_err("[VDVFS] %s ctx: %d is abort", __func__, ctx->id);
-
+		mutex_unlock(&ctx->vcp_active_mutex);
 		}
 	}
 

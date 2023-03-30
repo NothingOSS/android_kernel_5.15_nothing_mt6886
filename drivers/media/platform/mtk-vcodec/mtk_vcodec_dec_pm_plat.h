@@ -17,6 +17,10 @@
 #define VDEC_CHECK_ALIVE 1 /* vdec check alive have to enable DEC_DVFS first */
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#define VDEC_VCP_BACKGROUND_IDLE    0
+#endif
+
 void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev);
 void mtk_unprepare_vdec_dvfs(struct mtk_vcodec_dev *dev);
 void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev);

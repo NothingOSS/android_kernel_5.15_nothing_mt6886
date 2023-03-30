@@ -564,7 +564,9 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 #endif
 
 	INIT_LIST_HEAD(&dev->log_param_list);
+	mutex_init(&dev->log_param_mutex);
 	INIT_LIST_HEAD(&dev->prop_param_list);
+	mutex_init(&dev->prop_param_mutex);
 	dev_ptr = dev;
 
 	return 0;
