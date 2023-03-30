@@ -19,7 +19,9 @@
 #define LK_RESV_DOM				(2)
 #define CCU0_DOM				(3)
 #define CCU1_DOM				(4)
-#define VIDEO_UP_DOM				(5)
+#define VIDEO_UP_DOM0				(5)
+#define VIDEO_UP_DOM1				(6)
+
 
 #define APU_DATA_DOM				(0)
 #define APU_SEC_DOM				(1)
@@ -506,7 +508,8 @@
 #define M4U_PORT_L38_CCU1			MTK_M4U_PORT_ID(MM_TAB, CCU1_DOM, 38, 1)
 
 /* fake larb39 */
-#define M4U_PORT_L39_VIDEO_UP			MTK_M4U_PORT_ID(MM_TAB, VIDEO_UP_DOM, 39, 0)
+#define M4U_PORT_L39_VIDEO_UP0			MTK_M4U_PORT_ID(MM_TAB, VIDEO_UP_DOM0, 39, 0)
+#define M4U_PORT_L39_VIDEO_UP1			MTK_M4U_PORT_ID(MM_TAB, VIDEO_UP_DOM1, 39, 0)
 #define M4U_PORT_L39_GCE_DM			MTK_M4U_PORT_ID(MM_TAB, NORMAL_DOM, 39, 1)
 #define M4U_PORT_L39_GCE_MM			MTK_M4U_PORT_ID(MM_TAB, NORMAL_DOM, 39, 2)
 
