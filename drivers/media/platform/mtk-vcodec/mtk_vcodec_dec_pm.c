@@ -1061,8 +1061,10 @@ int mtk_vdec_m4u_port_name_to_index(const char *name)
 		return VDEC_M4U_PORT_LAT0_UFO;
 	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_LAT0_UFO_ENC_C, name))
 		return VDEC_M4U_PORT_LAT0_UFO_C;
-	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_L32_VIDEO_UP, name))
-		return VDEC_M4U_PORT_L32_VIDEO_UP;
+	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_VIDEO_UP_SEC, name))
+		return VDEC_M4U_PORT_VIDEO_UP_SEC;
+	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_VIDEO_UP_NOR, name))
+		return VDEC_M4U_PORT_VIDEO_UP_NOR;
 	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_UP_1, name))
 		return VDEC_M4U_PORT_UP_1;
 	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_UP_2, name))
@@ -1082,10 +1084,10 @@ void mtk_vdec_translation_fault_callback_setting(
 	int i;
 
 	for (i = 0; i < NUM_MAX_VDEC_M4U_PORT; i++) {
-		if (dev->dec_m4u_ports[i] != 0 && i < VDEC_M4U_PORT_L32_VIDEO_UP)
+		if (dev->dec_m4u_ports[i] != 0 && i < VDEC_M4U_PORT_VIDEO_UP_SEC)
 			mtk_iommu_register_fault_callback(dev->dec_m4u_ports[i],
 				mtk_vdec_translation_fault_callback, (void *)dev, false);
-		if (dev->dec_m4u_ports[i] != 0 && i >= VDEC_M4U_PORT_L32_VIDEO_UP)
+		if (dev->dec_m4u_ports[i] != 0 && i >= VDEC_M4U_PORT_VIDEO_UP_SEC)
 			mtk_iommu_register_fault_callback(dev->dec_m4u_ports[i],
 				mtk_vdec_uP_translation_fault_callback, (void *)dev, false);
 	}

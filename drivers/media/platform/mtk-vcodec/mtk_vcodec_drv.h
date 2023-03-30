@@ -586,6 +586,7 @@ struct mtk_vcodec_ctx {
 
 	struct v4l2_fh fh;
 	struct v4l2_m2m_ctx *m2m_ctx;
+	struct device *general_dev;
 	struct mtk_q_data q_data[2];
 	int id;
 	enum mtk_instance_state state;

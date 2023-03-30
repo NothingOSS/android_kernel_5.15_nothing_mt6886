@@ -126,6 +126,18 @@ static int fops_vcodec_open(struct file *file)
 	}
 	ctx->m2m_ctx = v4l2_m2m_ctx_init(dev->m2m_dev_dec, ctx,
 		&mtk_vcodec_dec_queue_init);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	ctx->general_dev = vcp_get_io_device(VCP_IOMMU_VDEC_512MB1);
+	mtk_v4l2_debug(4, "general buffer use VCP_IOMMU_VDEC_512MB1 domain");
+#if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
+	if (!ctx->general_dev) {
+		ctx->general_dev = &ctx->dev->plat_dev->dev;
+		mtk_v4l2_debug(4, "general buffer use plat_dev  domain");
+	}
+#endif
+#else
+	ctx->general_dev = &ctx->dev->plat_dev->dev;
+#endif
 	if (IS_ERR((__force void *)ctx->m2m_ctx)) {
 		ret = PTR_ERR((__force void *)ctx->m2m_ctx);
 		mtk_v4l2_err("Failed to v4l2_m2m_ctx_init() (%d)",

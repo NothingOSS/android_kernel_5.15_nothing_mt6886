@@ -1013,7 +1013,7 @@ static void *create_general_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 
 	buf_att = dma_buf_attach(
 		dmabuf,
-		ctx->m2m_ctx->out_q_ctx.q.dev);
+		ctx->general_dev);
 	if (IS_ERR_OR_NULL(buf_att)) {
 		mtk_v4l2_err("attach fail ret %d", PTR_ERR(buf_att));
 		return NULL;
@@ -4243,12 +4243,26 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctx->dec_params.decode_mode = ctrl->val;
 		ctx->dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
 		break;
-	case V4L2_CID_MPEG_MTK_SEC_DECODE:
+	case V4L2_CID_MPEG_MTK_SEC_DECODE: {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+		struct vb2_queue *src_vq;
+
+		if (ctrl->val) {
+			if (vcp_get_io_device(VCP_IOMMU_SEC)) {
+				src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
+					V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+				src_vq->dev = vcp_get_io_device(VCP_IOMMU_SEC);
+				mtk_v4l2_debug(4, "use VCP_IOMMU_SEC domain");
+			}
+
+		}
+#endif
 		ctx->dec_params.svp_mode = ctrl->val;
 		ctx->dec_param_change |= MTK_DEC_PARAM_SEC_DECODE;
 		mtk_v4l2_debug(ctrl->val ? 0 : 1, "[%d] V4L2_CID_MPEG_MTK_SEC_DECODE id %d val %d",
 			ctx->id, ctrl->id, ctrl->val);
 		break;
+	}
 	case V4L2_CID_MPEG_MTK_FRAME_SIZE:
 		if (ctx->dec_params.frame_size_width == 0)
 			ctx->dec_params.frame_size_width = ctrl->val;

@@ -2900,6 +2900,10 @@ static const struct of_device_id vcp_ube_core_of_ids[] = {
 	{ .compatible = "mediatek,vcp-io-ube-core", },
 	{}
 };
+static const struct of_device_id vcp_sec_of_ids[] = {
+	{ .compatible = "mediatek,vcp-io-sec", },
+	{}
+};
 
 static struct platform_driver mtk_vcp_io_vdec = {
 	.probe = vcp_io_device_probe,
@@ -2948,6 +2952,16 @@ static struct platform_driver mtk_vcp_io_ube_core = {
 		.name = "vcp_io_ube_core",
 		.owner = THIS_MODULE,
 		.of_match_table = vcp_ube_core_of_ids,
+	},
+};
+
+static struct platform_driver mtk_vcp_io_sec = {
+	.probe = vcp_io_device_probe,
+	.remove = vcp_io_device_remove,
+	.driver = {
+		.name = "vcp_io_sec",
+		.owner = THIS_MODULE,
+		.of_match_table = vcp_sec_of_ids,
 	},
 };
 
@@ -3002,6 +3016,10 @@ static int __init vcp_init(void)
 	if (platform_driver_register(&mtk_vcp_io_work)) {
 		pr_info("[VCP] mtk_vcp_io_work probe fail\n");
 		goto err_io_work;
+	}
+	if (platform_driver_register(&mtk_vcp_io_sec)) {
+		pr_info("[VCP] mtk_vcp_io_sec probe fail\n");
+		goto err_io_sec;
 	}
 
 	if (!vcp_support)
@@ -3092,6 +3110,8 @@ static int __init vcp_init(void)
 
 	return ret;
 err:
+	platform_driver_unregister(&mtk_vcp_io_sec);
+err_io_sec:
 	platform_driver_unregister(&mtk_vcp_io_work);
 err_io_work:
 	platform_driver_unregister(&mtk_vcp_io_venc);
@@ -3141,6 +3161,7 @@ static void __exit vcp_exit(void)
 	for (i = 0; i < VCP_CORE_TOTAL ; i++)
 		del_timer(&vcp_ready_timer[i].tl);
 #endif
+	platform_driver_unregister(&mtk_vcp_io_sec);
 	platform_driver_unregister(&mtk_vcp_io_work);
 	platform_driver_unregister(&mtk_vcp_io_venc);
 	platform_driver_unregister(&mtk_vcp_io_vdec);
