@@ -695,16 +695,6 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 #else
 	c->rec_info[idx].irq_cur_cpu = 0xff;
 #endif
-#ifdef CONFIG_UART_DMA_DATA_RECORD
-	if (d->vd.tx.callback_param != NULL) {
-		struct uart_8250_port *p = (struct uart_8250_port *)d->vd.tx.callback_param;
-		struct uart_8250_dma *dma = p->dma;
-
-	if ((dma != NULL) && (cnt <= UART_RECORD_MAXLEN))
-		memcpy(c->rec_info[idx].rec_buf, (unsigned char *)dma->rx_buf,
-			cnt);
-	}
-#endif
 
 	list_del(&d->vd.node);
 	vchan_cookie_complete_thread_irq(&d->vd);
@@ -952,7 +942,7 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 		mtk_uart_apdma_write(c, VFF_FLUSH, VFF_FLUSH_B);
 		ret = readx_poll_timeout(readl, c->base + VFF_FLUSH,
 				  status, status != VFF_FLUSH_B, 10, 100);
-		dev_info(c->vc.chan.device->dev, "flush %s[%d]: %d\n",
+		dev_info(c->vc.chan.device->dev, "flush begin %s[%d]: %d\n",
 			c->dir == DMA_DEV_TO_MEM ? "RX":"TX", c->irq, ret);
 		/*
 		 * DMA hardware will generate a interrupt immediately
@@ -967,6 +957,9 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 		while (state)
 			irq_get_irqchip_state(c->irq,
 				IRQCHIP_STATE_ACTIVE, &state);
+
+		dev_info(c->vc.chan.device->dev, "flush end %s\n",
+			c->dir == DMA_DEV_TO_MEM ? "RX":"TX");
 	}
 
 	/*
