@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
 
-obj-$(CONFIG_DRM_PANEL_BOE_NT37705_DPHY_CMD_FHD) += panel-boe-nt37705-dphy-cmd-fhd.o
-obj-$(CONFIG_DRM_PANEL_BOE_BF130_DPHY_CMD_HD) += panel-boe-bf130-dphy-cmd-hd.o
 obj-$(CONFIG_DRM_PANEL_ABT_Y030XX067A) += panel-abt-y030xx067a.o
 obj-$(CONFIG_DRM_PANEL_ARM_VERSATILE) += panel-arm-versatile.o
 obj-$(CONFIG_DRM_PANEL_ASUS_Z00T_TM5P5_NT35596) += panel-asus-z00t-tm5p5-n35596.o
@@ -109,6 +107,11 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/k6985v1_64_alpha),)
 obj-$(CONFIG_DRM_PANEL_NT37705_ALPHA_CMD) += k6985v1_64_alpha/panel-nt37705-alpha-cmd.o
 obj-$(CONFIG_DRM_PANEL_NT37705_ALPHA_CMD_SPR) += k6985v1_64_alpha/panel-nt37705-alpha-cmd-spr.o
+endif
+ifneq ($(wildcard $(srctree)/$(src)/k6985v1_64_flip_alpha),)
+obj-$(CONFIG_DRM_PANEL_BOE_NT37705_DPHY_CMD_FHD) += k6985v1_64_flip_alpha/panel-boe-nt37705-dphy-cmd-fhd.o
+obj-$(CONFIG_DRM_PANEL_BOE_BF130_DPHY_CMD_HD) += k6985v1_64_flip_alpha/panel-boe-bf130-dphy-cmd-hd.o
+obj-$(CONFIG_DRM_PANEL_SAMSUNG_AMF680CM01_CMD_FHD) += k6985v1_64_flip_alpha/panel-samsung-amf680cm01-cmd-fhd.o
 endif
 
 mediatek-drm-gateic-y := mtk_drm_panel_i2c.o \
