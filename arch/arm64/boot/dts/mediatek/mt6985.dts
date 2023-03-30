@@ -12673,7 +12673,8 @@
 			<M4U_PORT_L5_HW_VDEC_UFO_ENC_EXT>,
 			<M4U_PORT_L5_HW_VDEC_UFO_ENC_EXT_C>,
 			<M4U_PORT_L5_HW_VDEC_MC_EXT>,
-			<M4U_PORT_L39_VIDEO_UP>;
+			<M4U_PORT_L39_VIDEO_UP0>,
+			<M4U_PORT_L39_VIDEO_UP1>;
 		m4u-port-names =
 			"M4U_PORT_VDEC_MC",
 			"M4U_PORT_VDEC_UFO",
@@ -12695,7 +12696,8 @@
 			"M4U_PORT_VDEC_LAT0_UFO_ENC",
 			"M4U_PORT_VDEC_LAT0_UFO_ENC_C",
 			"M4U_PORT_VDEC_LAT0_MC",
-			"M4U_PORT_VDEC_L32_VIDEO_UP";
+			"M4U_PORT_VDEC_VIDEO_UP_SEC",
+			"M4U_PORT_VDEC_VIDEO_UP_NOR";
 		interconnects = <&mmqos SLAVE_LARB(4) &mmqos SLAVE_COMMON(1)>,
 				<&mmqos SLAVE_LARB(5) &mmqos SLAVE_COMMON(0)>;
 		interconnect-names = "path_larb4", "path_larb5";
@@ -13022,7 +13024,7 @@
 				  "mbox4";
 
 		dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
-		iommus = <&mdp_iommu M4U_PORT_L39_VIDEO_UP>;
+		iommus = <&mdp_iommu M4U_PORT_L39_VIDEO_UP1>;
 		mediatek,smi = <&mmsram_smi_2x1_sub_comm4 &smi_mdp_2x1_subcommon>;
 
 		core-0 = "enable";
@@ -13099,21 +13101,30 @@
 		compatible =  "mediatek,vcp-io-vdec";
 		vcp-support = <2>;
 		dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
-		iommus = <&mdp_iommu M4U_PORT_L39_VIDEO_UP>;
+		iommus = <&mdp_iommu M4U_PORT_L39_VIDEO_UP1>;
 	};
 
 	vcp_io3: vcp-iommu-venc {
 		compatible =  "mediatek,vcp-io-venc";
 		vcp-support = <3>;
 		dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
-		iommus = <&mdp_iommu M4U_PORT_L39_VIDEO_UP>;
+		iommus = <&mdp_iommu M4U_PORT_L39_VIDEO_UP1>;
 	};
 
 	vcp_io4: vcp-iommu-work {
 		compatible = "mediatek,vcp-io-work";
 		vcp-support = <4>;
 		dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
-		iommus = <&mdp_iommu M4U_PORT_L39_VIDEO_UP>;
+		iommus = <&mdp_iommu M4U_PORT_L39_VIDEO_UP1>;
+	};
+
+	vcp_io5: vcp-iommu-sec {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible =  "mediatek,vcp-io-sec";
+		vcp-support = <7>;
+		dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+		iommus = <&mdp_iommu M4U_PORT_L39_VIDEO_UP0>;
 	};
 
 	slbc: slbc@113e00 {
