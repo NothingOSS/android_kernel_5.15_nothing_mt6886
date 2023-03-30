@@ -2778,10 +2778,10 @@ void DSI_MIPI_deskew(struct mtk_dsi *dsi)
 	timeout = 5000;
 	while (timeout) {
 		status = readl(dsi->regs + DSI_INTSTA);
-		DDPMSG("%s, status=0x%x\n", __func__, status);
+		DDPDBG("%s, status=0x%x\n", __func__, status);
 
 		if (status & 0x800) {
-			DDPMSG("%s, break, status=0x%x\n", __func__, status);
+			DDPDBG("%s, break, status=0x%x\n", __func__, status);
 			break;
 		}
 		udelay(10);
@@ -2789,7 +2789,7 @@ void DSI_MIPI_deskew(struct mtk_dsi *dsi)
 	}
 
 	if (timeout == 0)
-		DDPDBG("%s, dsi wait idle timeout!\n", __func__);
+		DDPMSG("%s, dsi wait idle timeout!\n", __func__);
 
 	writel(phy_syncon, dsi->regs + DSI_PHY_SYNCON);
 	value = 0;
@@ -3623,6 +3623,9 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		bdg_tx_start(DISP_BDG_DSI0, NULL);
 
 		if (get_ap_data_rate() > bdg_rx_v12)
+			DSI_MIPI_deskew(dsi);
+	} else {
+		if (mtk_dsi_default_rate(dsi) > 1500) // data rate > 1.5Gbsp, skew calibration
 			DSI_MIPI_deskew(dsi);
 	}
 #ifdef DSI_SELF_PATTERN
