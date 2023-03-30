@@ -1170,12 +1170,15 @@ static bool vow_service_SetApDumpAddr(unsigned long arg)
 	if ((vow_info[2] == 0) || ((vow_info[3] != kReadVowDumpSize) &&
 	    (vow_info[3] != kReadVowDumpSize_Big)) || (vow_info[4] == 0) ||
 	    (vow_info[0] >= NUM_DUMP_DATA)) {
+		VOWDRV_DEBUG("%s(), vow SetdumpAddr error!\n", __func__);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
 		VOWDRV_DEBUG("%s(): error id %d, addr_%x, size_%x, addr_%x\n",
 		 __func__,
 		 (unsigned int)vow_info[0],
 		 (unsigned int)vow_info[2],
 		 (unsigned int)vow_info[3],
 		 (unsigned int)vow_info[4]);
+#endif
 		return false;
 	}
 	id = vow_info[0];
@@ -1208,9 +1211,9 @@ static bool vow_service_SetApAddr(unsigned long arg)
 	/* add return condition */
 	if ((vow_info[2] == 0) || (vow_info[3] != VOW_VBUF_LENGTH) ||
 	    (vow_info[4] == 0)) {
-		VOWDRV_DEBUG("%s(), vow SetVBufAddr error!\n", __func__);
+		VOWDRV_DEBUG("%s(), vow SetApAddr error!\n", __func__);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
-		VOWDRV_DEBUG("%s(), vow SetVBufAddr:addr_%x, size_%x, addr_%x\n",
+		VOWDRV_DEBUG("%s(), vow SetApAddr:addr_%x, size_%x, addr_%x\n",
 		 __func__,
 		 (unsigned int)vow_info[2],
 		 (unsigned int)vow_info[3],
@@ -1239,10 +1242,13 @@ static bool vow_service_SetVBufAddr(unsigned long arg)
 	/* add return condition */
 	if ((vow_info[2] == 0) || (vow_info[3] != VOW_VBUF_LENGTH) ||
 	    (vow_info[4] == 0)) {
+		VOWDRV_DEBUG("%s(), vow SetVBufAddr error!\n", __func__);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
 		VOWDRV_DEBUG("vow SetVBufAddr:addr_%x, size_%x, addr_%x\n",
 		 (unsigned int)vow_info[2],
 		 (unsigned int)vow_info[3],
 		 (unsigned int)vow_info[4]);
+#endif
 		return false;
 	}
 
@@ -1828,10 +1834,12 @@ static bool vow_service_AllocKernelDumpBuffer(void)
 			vow_dump_info[I].kernel_dump_addr = vmalloc(kReadVowDumpSize_Big);
 			vow_dump_info[I].kernel_dump_size = kReadVowDumpSize_Big;
 		}
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
 		VOWDRV_DEBUG("%s vow_dump_info[%d].addr = 0x%p, size = 0x%x\n",
 			     __func__, I,
 			     vow_dump_info[I].kernel_dump_addr,
 			     vow_dump_info[I].kernel_dump_size);
+#endif
 		VOW_ASSERT(vow_dump_info[I].kernel_dump_addr != NULL);
 		vow_dump_info[I].kernel_dump_idx = 0;
 	}
@@ -2520,14 +2528,21 @@ static int VowDrv_QueryVowEINTStatus(void)
 
 static int VowDrv_open(struct inode *inode, struct file *fp)
 {
+	VOWDRV_DEBUG("%s() do nothing\n", __func__);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
+	// no print in user load
 	VOWDRV_DEBUG("%s() do nothing inode:%p, file:%p\n",
 		    __func__, inode, fp);
+#endif
 	return 0;
 }
 
 static int VowDrv_release(struct inode *inode, struct file *fp)
 {
+	VOWDRV_DEBUG("%s(), enter\n", __func__);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
 	VOWDRV_DEBUG("%s() inode:%p, file:%p\n", __func__, inode, fp);
+#endif
 
 	if (!(fp->f_mode & FMODE_WRITE || fp->f_mode & FMODE_READ))
 		return -ENODEV;
