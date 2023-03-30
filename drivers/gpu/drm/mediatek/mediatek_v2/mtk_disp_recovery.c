@@ -730,7 +730,12 @@ static void mtk_disp_esd_chk_init(struct drm_crtc *crtc)
 	struct mtk_drm_esd_ctx *esd_ctx;
 	struct mtk_ddp_comp *output_comp;
 
-	output_comp = (mtk_crtc) ? mtk_ddp_comp_request_output(mtk_crtc) : NULL;
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPPR_ERR("%s invalid crtc\n", __func__);
+		return;
+	}
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	panel_ext = mtk_crtc->panel_ext;
 	if (!(panel_ext && panel_ext->params)) {
 		DDPMSG("can't find panel_ext handle\n");

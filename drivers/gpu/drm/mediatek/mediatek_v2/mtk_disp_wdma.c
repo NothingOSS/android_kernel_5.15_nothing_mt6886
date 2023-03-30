@@ -1074,7 +1074,7 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 	dma_addr_t addr = 0;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	struct mtk_wdma_cfg_info *cfg_info = &wdma->cfg_info;
-	int crtc_idx = drm_crtc_index(&comp->mtk_crtc->base);
+	unsigned int crtc_idx = drm_crtc_index(&comp->mtk_crtc->base);
 	int clip_w, clip_h;
 	struct golden_setting_context *gsc;
 	u32 sec;
@@ -1149,7 +1149,7 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_mask(comp, 0xe0000000,
 			DISP_REG_WDMA_CFG, WDMA_DEBUG_SEL, handle);
 
-	if (priv->usage[crtc_idx] == DISP_OPENING)
+	if (crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING)
 		mtk_wdma_blank_output(comp, handle, 1);
 	else
 		mtk_wdma_blank_output(comp, handle, 0);

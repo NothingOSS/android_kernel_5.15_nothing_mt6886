@@ -9191,6 +9191,11 @@ void mtk_crtc_stop_ddp(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int crtc_idx;
 	bool only_output = false;
 
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPPR_ERR("%s:%u invalid mtk_crtc\n", __func__, __LINE__);
+		return;
+	}
+
 	if (crtc) {
 		crtc_idx = drm_crtc_index(crtc);
 		if (crtc_idx < MAX_CRTC)
@@ -9587,6 +9592,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	CRTC_MMP_EVENT_START((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);
 
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPPR_ERR("%s:%u invalid priv\n", __func__, __LINE__);
+		goto end;
+	}
 	if (mtk_crtc->enabled) {
 		CRTC_MMP_MARK(crtc_id, enable, 0, 0);
 		DDPINFO("crtc%d skip %s\n", crtc_id, __func__);
@@ -9608,7 +9617,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	if (mtk_crtc->avail_modes_num == 0 && mtk_crtc->avail_modes)
 		drm_mode_copy(mtk_crtc->avail_modes, &crtc->state->adjusted_mode);
 
-	only_output = (priv && priv->usage[crtc_id] == DISP_OPENING);
+	only_output = (crtc_id < MAX_CRTC && priv->usage[crtc_id] == DISP_OPENING);
 	/* adjust path for ovl switch if necessary */
 	mtk_drm_crtc_path_adjust(priv, crtc, mtk_crtc->ddp_mode);
 
@@ -9897,7 +9906,8 @@ static void mtk_drm_crtc_update_interface(struct drm_crtc *crtc,
 			}
 		}
 	}
-	if (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI && timing == NULL) {
+	if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI &&
+			timing == NULL) {
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_TIMING, &timing);
 		if (timing == NULL) {
 			DDPPR_ERR("%s %d fail to get default timing\n",
@@ -10095,13 +10105,18 @@ struct drm_display_mode *mtk_drm_crtc_avail_disp_mode(struct drm_crtc *crtc,
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPPR_ERR("%s:%u invalid mtk_crtc\n", __func__, __LINE__);
+		return NULL;
+	}
+
 	/* For not multiple display mode's display, would use first display_mode since resume */
-	if (mtk_crtc && mtk_crtc->avail_modes_num == 0 && mtk_crtc->avail_modes)
+	if (mtk_crtc->avail_modes_num == 0 && mtk_crtc->avail_modes)
 		return mtk_crtc->avail_modes;
 
 	/* If not crtc0 and avail_modes is NULL, use crtc0 instead. */
 
-	if (drm_crtc_index(crtc) != 0 && (mtk_crtc && mtk_crtc->avail_modes == NULL)) {
+	if (drm_crtc_index(crtc) != 0 && (mtk_crtc->avail_modes == NULL)) {
 		struct drm_crtc *crtc0;
 
 		DDPPR_ERR("%s no support CRTC%u", __func__,
@@ -10120,6 +10135,9 @@ struct drm_display_mode *mtk_drm_crtc_avail_disp_mode(struct drm_crtc *crtc,
 			idx, mtk_crtc->avail_modes_num);
 		idx = 0;
 	}
+
+	if (mtk_crtc->avail_modes == NULL)
+		return NULL;
 
 	return &mtk_crtc->avail_modes[idx];
 }
@@ -10481,7 +10499,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = (crtc && crtc->dev) ?
 			crtc->dev->dev_private : NULL;
-	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
+	unsigned int crtc_id = (crtc) ? drm_crtc_index(crtc) : 0;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
 #ifndef DRM_CMDQ_DISABLE
@@ -10489,6 +10507,10 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 #endif
 	int en = 0;
 
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("%s:%u invalid crtc\n", __func__, __LINE__);
+		goto end;
+	}
 	CRTC_MMP_EVENT_START((int) crtc_id, disable,
 			mtk_crtc->enabled, 0);
 
@@ -10499,7 +10521,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	if (output_comp)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
 				&en);
-	if (priv && priv->usage[crtc_id] == DISP_OPENING &&
+	if (priv && crtc_id < MAX_CRTC && priv->usage[crtc_id] == DISP_OPENING &&
 			output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_WDMA) {
 		;/* no goto end when display WDMA output in OPENING state */
 	} else if (!mtk_crtc->enabled) {
@@ -11812,7 +11834,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				  mtk_crtc_state->cmdq_handle);
 #endif
 
-	if ((priv->usage[crtc_idx] == DISP_OPENING) &&
+	if ((crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING) &&
 			comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)
 		goto end;
 

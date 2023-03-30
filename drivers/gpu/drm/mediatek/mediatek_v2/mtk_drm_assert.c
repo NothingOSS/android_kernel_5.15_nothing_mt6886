@@ -318,11 +318,16 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = (crtc && crtc->dev) ? crtc->dev->dev_private : NULL;
 	struct mtk_plane_state *plane_state;
-	struct mtk_ddp_comp *ovl_comp = _handle_phy_top_plane(mtk_crtc);
+	struct mtk_ddp_comp *ovl_comp;
 	struct cmdq_pkt *cmdq_handle;
 	int layer_id;
 	int ret = 0;
 
+	if (unlikely(crtc == NULL || mtk_crtc == NULL)) {
+		DDPPR_ERR("%s: can't find crtc or mtk_crtc\n", __func__);
+		return 0;
+	}
+	ovl_comp = _handle_phy_top_plane(mtk_crtc);
 	if (ovl_comp == NULL) {
 		DDPPR_ERR("%s: can't find ovl comp\n", __func__);
 		return 0;
