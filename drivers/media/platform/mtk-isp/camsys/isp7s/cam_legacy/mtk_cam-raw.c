@@ -1639,7 +1639,7 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 	if (raw_rst_stat2 != RAW_RST_STAT2_CHECK || yuv_rst_stat != YUV_RST_STAT_CHECK)
 		return false;
 
-	/* check beside rawi_r2/r3/r5*/
+	/* check beside rawi_r2/r3/r5 ufdi_r2/r3/r5 */
 	if (~raw_rst_stat & RAW_RST_STAT_CHECK)
 		return false;
 
@@ -1649,6 +1649,16 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 		 (readl(dev->base + REG_RAWI_R2_BASE + DMA_OFFSET_SPECIAL_DCIF)
 			& DC_CAMSV_STAGER_EN) &&
 		 (readl(dev->base + REG_CTL_MOD6_EN) & CAMCTL_RAWI_R2_EN))
+			? true:false;
+		dev_info(dev->dev, "%s: chasing_stat: 0x%llx ret=%d\n",
+				__func__, chasing_stat, ret);
+	}
+	if (~raw_rst_stat & RST_STAT_UFDI_R2) { /* UFDI_R2 */
+		chasing_stat = readl(dev->base + REG_DMA_DBG_CHASING_STATUS);
+		ret = ((chasing_stat & UFDI_R2_SMI_REQ_ST) == 0 &&
+		 (readl(dev->base + REG_UFDI_R2_BASE + DMA_OFFSET_SPECIAL_DCIF)
+			& DC_CAMSV_STAGER_EN) &&
+		 (readl(dev->base + REG_CTL_MOD6_EN) & CAMCTL_UFDI_R2_EN))
 			? true:false;
 		dev_info(dev->dev, "%s: chasing_stat: 0x%llx ret=%d\n",
 				__func__, chasing_stat, ret);
@@ -1663,6 +1673,16 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 		dev_info(dev->dev, "%s: chasing_stat: 0x%llx, ret=%d\n",
 				__func__, chasing_stat, ret);
 	}
+	if (~raw_rst_stat & RST_STAT_UFDI_R3) { /* UFDI_R3 */
+		chasing_stat = readl(dev->base + REG_DMA_DBG_CHASING_STATUS);
+		ret = ((chasing_stat & UFDI_R3_SMI_REQ_ST) == 0 &&
+		 (readl(dev->base + REG_UFDI_R3_BASE + DMA_OFFSET_SPECIAL_DCIF)
+			& DC_CAMSV_STAGER_EN) &&
+		 (readl(dev->base + REG_CTL_MOD6_EN) & CAMCTL_UFDI_R3_EN))
+			? true:false;
+		dev_info(dev->dev, "%s: chasing_stat: 0x%llx ret=%d\n",
+				__func__, chasing_stat, ret);
+	}
 	if (~raw_rst_stat & RST_STAT_RAWI_R5) {
 		chasing_stat = readl(dev->base + REG_DMA_DBG_CHASING_STATUS2);
 		ret = ((chasing_stat & RAWI_R5_SMI_REQ_ST) == 0 &&
@@ -1671,6 +1691,16 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 		 (readl(dev->base + REG_CTL_MOD6_EN) & CAMCTL_RAWI_R5_EN))
 			? true:false;
 		dev_info(dev->dev, "%s: chasing_stat: 0x%llx, ret=%d\n",
+				__func__, chasing_stat, ret);
+	}
+	if (~raw_rst_stat & RST_STAT_UFDI_R5) { /* UFDI_R5 */
+		chasing_stat = readl(dev->base + REG_DMA_DBG_CHASING_STATUS2);
+		ret = ((chasing_stat & UFDI_R5_SMI_REQ_ST) == 0 &&
+		 (readl(dev->base + REG_UFDI_R5_BASE + DMA_OFFSET_SPECIAL_DCIF)
+			& DC_CAMSV_STAGER_EN) &&
+		 (readl(dev->base + REG_CTL_MOD6_EN) & CAMCTL_UFDI_R5_EN))
+			? true:false;
+		dev_info(dev->dev, "%s: chasing_stat: 0x%llx ret=%d\n",
 				__func__, chasing_stat, ret);
 	}
 

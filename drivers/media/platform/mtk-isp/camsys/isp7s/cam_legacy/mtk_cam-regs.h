@@ -296,20 +296,33 @@
 #define REG_DMA_DBG_CHASING_STATUS2         0x409c
 
 #define RAWI_R2_SMI_REQ_ST		BIT(0)
+#define UFDI_R2_SMI_REQ_ST		BIT(8)
 #define RAWI_R3_SMI_REQ_ST		BIT(16)
+#define UFDI_R3_SMI_REQ_ST		BIT(24)
 #define RAWI_R5_SMI_REQ_ST		BIT(16)
+#define UFDI_R5_SMI_REQ_ST		BIT(24)
 
 #define CAMCTL_RAWI_R2_EN		BIT(0)
+#define CAMCTL_UFDI_R2_EN		BIT(1)
 #define CAMCTL_RAWI_R3_EN		BIT(2)
+#define CAMCTL_UFDI_R3_EN		BIT(3)
 #define CAMCTL_RAWI_R5_EN		BIT(4)
+#define CAMCTL_UFDI_R5_EN		BIT(5)
+
 #define RST_STAT_RAWI_R2		BIT(4)
+#define RST_STAT_UFDI_R2		BIT(5)
 #define RST_STAT_RAWI_R3		BIT(6)
+#define RST_STAT_UFDI_R3		BIT(7)
 #define RST_STAT_RAWI_R5		BIT(8)
+#define RST_STAT_UFDI_R5		BIT(9)
 
 #define RAW_RST_STAT_CHECK		(0x3fffffff ^ \
 					(RST_STAT_RAWI_R2 |\
+					 RST_STAT_UFDI_R2 |\
 					 RST_STAT_RAWI_R3 |\
-					 RST_STAT_RAWI_R5))
+					 RST_STAT_UFDI_R3 |\
+					 RST_STAT_RAWI_R5 |\
+					 RST_STAT_UFDI_R5))
 #define RAW_RST_STAT2_CHECK		0x7
 #define YUV_RST_STAT_CHECK		0x1efffff
 

@@ -9669,6 +9669,9 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 		ctx->synced = 0;
 	}
 
+    // If stagger, need to turn off cam sv in advanced
+	mtk_cam_sv_dev_stream_on(ctx, 0);
+
 	if (ctx->used_raw_num) {
 		dev = mtk_cam_find_raw_dev(cam, ctx->used_raw_dev);
 		if (!dev) {
@@ -9730,9 +9733,6 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 			return -EPERM;
 		}
 	}
-
-    // If stagger, need to turn off cam sv in advanced
-	mtk_cam_sv_dev_stream_on(ctx, 0);
 
 	/* stream off seninf in non-m2m scenario including camsv/mraw only case */
 	if (!scen_active || !mtk_cam_scen_is_m2m(scen_active)) {
