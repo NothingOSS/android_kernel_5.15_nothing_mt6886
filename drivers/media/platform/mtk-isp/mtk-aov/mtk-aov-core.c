@@ -577,16 +577,9 @@ int aov_core_send_cmd(struct mtk_aov *aov_dev, uint32_t cmd,
 		slb.type = TP_BUFFER;
 		ret = slbc_status(&slb);
 		if (ret > 0) {
-			dev_info(aov_dev->dev, "%s: force release slb(%d)\n", __func__, ret);
-
-			slb.uid = UID_AOV_DC;
-			slb.type = TP_BUFFER;
-			AOV_TRACE_BEGIN("AOV Release SLB");
-			ret = slbc_release(&slb);
-			AOV_TRACE_END();
-			if (ret < 0)
-				dev_info(aov_dev->dev, "%s: failed to release slb buffer\n",
-					__func__);
+			dev_info(aov_dev->dev,
+				"%s: still have slb user at resume. ref count: %d\n",
+				__func__, ret);
 		}
 #endif  // AOV_SLB_ALLOC_FREE
 	} else if (cmd == AOV_SCP_CMD_NOTIFY) {
