@@ -1342,6 +1342,7 @@ void mml_drm_put_context(struct mml_drm_ctx *ctx)
 	if (IS_ERR_OR_NULL(ctx))
 		return;
 	mml_log("[drm]%s", __func__);
+	mml_sys_put_dle_ctx(ctx->mml);
 	mml_dev_put_drm_ctx(ctx->mml, drm_ctx_release);
 }
 EXPORT_SYMBOL_GPL(mml_drm_put_context);
