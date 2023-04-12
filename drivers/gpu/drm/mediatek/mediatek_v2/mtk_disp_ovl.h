@@ -34,6 +34,7 @@ struct mtk_disp_ovl_data {
 	unsigned int source_bpc;
 	bool support_pq_selfloop;
 	bool (*is_right_ovl_comp)(struct mtk_ddp_comp *comp);
+	void (*ultra_src_sel)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
 };
 
 struct compress_info {

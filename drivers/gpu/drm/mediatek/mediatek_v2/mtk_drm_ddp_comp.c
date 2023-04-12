@@ -2024,18 +2024,6 @@ void mt6985_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		if (node && priv->side_config_regs)
 			writel_relaxed(0x01, priv->side_config_regs +  0x184);
 
-		/* 0xF0: only config on OVLSYS(HARD CODE) */
-		if (priv->ovlsys0_regs) {
-			v = (readl(priv->ovlsys0_regs + MMSYS_MISC)
-				& (~0x3FFFC));
-			v |= 0x28000;
-			writel_relaxed(v, priv->ovlsys0_regs + MMSYS_MISC);
-		}
-		if (priv->ovlsys1_regs) {
-			v = (readl(priv->ovlsys1_regs + MMSYS_MISC)
-				& (~0x3FFFC));
-			writel_relaxed(v, priv->ovlsys1_regs + MMSYS_MISC);
-		}
 	} else {
 		/* 0xF4/0xF8: only config on DISPSYS(HARD CODE) */
 		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
@@ -2047,15 +2035,6 @@ void mt6985_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 				MMSYS_SODI_REQ_MASK, MT6985_SODI_REQ_VAL, ~0);
 			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa +
 				MMSYS_EMI_REQ_CTL, 0, ~0);
-		}
-		/* 0xF0: only config on OVLSYS(HARD CODE) */
-		if (priv->ovlsys0_regs_pa) {
-			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
-				MMSYS_MISC, 0x28000, 0x3FFFC);
-		}
-		if (priv->ovlsys1_regs_pa) {
-			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
-				MMSYS_MISC, 0x0, 0x3FFFC);
 		}
 	}
 }

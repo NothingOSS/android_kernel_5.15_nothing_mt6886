@@ -707,6 +707,85 @@ bool is_right_ovl_comp_MT6985(struct mtk_ddp_comp *comp)
 	}
 }
 
+/* following ULTRA_SEL define combine ULTRA and PREULTRA bitfield in fact */
+#define MT6985_FLD_OVL0_2L_RDMA_ULTRA_SEL	REG_FLD_MSB_LSB(5, 2)
+#define MT6985_FLD_OVL1_2L_RDMA_ULTRA_SEL	REG_FLD_MSB_LSB(9, 6)
+#define MT6985_FLD_OVL2_2L_RDMA_ULTRA_SEL	REG_FLD_MSB_LSB(13, 10)
+#define MT6985_FLD_OVL3_2L_RDMA_ULTRA_SEL	REG_FLD_MSB_LSB(17, 14)
+#define MT6985_DISP0_DSI_BUFFER		((0x0 << 2) | 0x0)
+#define MT6985_DISP1_DSI_BUFFER		((0x1 << 2) | 0x1)
+#define MT6985_DISP0_DP_BUFFER		((0x2 << 2) | 0x2)
+#define MT6985_DEFAULT_BUFFER		((0x3 << 2) | 0x3)
+static void mtk_ovl_ultra_src_sel_MT6985(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_ddp_comp *output_comp;
+	resource_size_t mmsys_reg = 0;
+	unsigned int i_value = 0, i_mask = 0, value, mask;
+
+
+	if (unlikely(ovl == NULL)) {
+		DDPPR_ERR("%s invalid ovl\n", __func__);
+		return;
+	}
+
+	if (unlikely(ovl->data == NULL)) {
+		DDPPR_ERR("%s invalid ovl->data\n", __func__);
+		return;
+	}
+	if (unlikely(ovl->data->mmsys_mapping == NULL)) {
+		DDPPR_ERR("%s invalid ovl->data->mmsys_mapping\n", __func__);
+		return;
+	}
+	mtk_crtc = comp->mtk_crtc;
+	if (unlikely(mtk_crtc == NULL)) {
+		DDPPR_ERR("%s invalid mtk_crtc\n", __func__);
+		return;
+	}
+	crtc = &mtk_crtc->base;
+
+	output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
+	if (output_comp) {
+		if (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
+			i_value = (comp->id == DDP_COMPONENT_DSI0) ?
+				MT6985_DISP0_DSI_BUFFER : MT6985_DISP1_DSI_BUFFER;
+		else if (mtk_ddp_comp_get_type(output_comp->id) == MTK_DP_INTF)
+			i_value = MT6985_DISP0_DP_BUFFER;
+		else
+			i_value = MT6985_DEFAULT_BUFFER;
+	}
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+	case DDP_COMPONENT_OVL4_2L:
+		i_mask = MT6985_FLD_OVL0_2L_RDMA_ULTRA_SEL;
+		break;
+	case DDP_COMPONENT_OVL1_2L:
+	case DDP_COMPONENT_OVL5_2L:
+		i_mask = MT6985_FLD_OVL1_2L_RDMA_ULTRA_SEL;
+		break;
+	case DDP_COMPONENT_OVL2_2L:
+	case DDP_COMPONENT_OVL6_2L:
+		i_mask = MT6985_FLD_OVL2_2L_RDMA_ULTRA_SEL;
+		break;
+	case DDP_COMPONENT_OVL3_2L:
+	case DDP_COMPONENT_OVL7_2L:
+		i_mask = MT6985_FLD_OVL3_2L_RDMA_ULTRA_SEL;
+		break;
+	default:
+		DDPPR_ERR("%s:%d invalid OVL comp %u\n", __func__, __LINE__, comp->id);
+		break;
+	}
+
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, i_value, i_mask);
+	mmsys_reg = ovl->data->mmsys_mapping(comp);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, mmsys_reg + MMSYS_MISC, value, mask);
+}
+
 int mtk_ovl_aid_bit(struct mtk_ddp_comp *comp, bool is_ext, int id)
 {
 	if (is_ext)
@@ -1025,6 +1104,9 @@ static void mtk_ovl_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
 		       value, mask);
+
+	if (ovl->data->ultra_src_sel)
+		ovl->data->ultra_src_sel(comp, handle);
 
 	/* Enable feedback real BW consumed from OVL */
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -4869,6 +4951,7 @@ static const struct mtk_disp_ovl_data mt6985_ovl_driver_data = {
 	.source_bpc = 10,
 	.support_pq_selfloop = true, /* pq in out self loop */
 	.is_right_ovl_comp = &is_right_ovl_comp_MT6985,
+	.ultra_src_sel = &mtk_ovl_ultra_src_sel_MT6985,
 };
 
 static const struct compress_info compr_info_mt6895  = {
