@@ -14,6 +14,7 @@
 #include <linux/delay.h>
 #include <linux/time.h>
 #include <linux/sched.h>
+#include <linux/string.h>
 #include <uapi/linux/sched/types.h>
 
 #ifndef DRM_CMDQ_DISABLE
@@ -522,8 +523,10 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 	switch (event) {
 	case LED_BRIGHTNESS_CHANGED:
 		if (!is_led_need_aal(led_conf->connector_id)) {
-			AALFLOW_LOG("connector id %d no need aal\n", led_conf->connector_id);
-			led_conf->aal_enable = 0;
+			AALFLOW_LOG("%s connector id %d no need aal\n", led_conf->cdev.name,
+					led_conf->connector_id);
+			if (!strcmp("lcd-backlight1", led_conf->cdev.name))
+				led_conf->aal_enable = 0;
 			break;
 		}
 		if (m_new_pq_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] &&

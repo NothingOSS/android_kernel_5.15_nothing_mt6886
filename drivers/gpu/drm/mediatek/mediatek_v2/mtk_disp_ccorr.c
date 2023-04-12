@@ -9,6 +9,7 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/string.h>
 
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
@@ -1081,8 +1082,10 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 	switch (event) {
 	case LED_BRIGHTNESS_CHANGED:
 		if (!is_led_need_ccorr(led_conf->connector_id)) {
-			DDPINFO("connector id %d no need aal\n", led_conf->connector_id);
-			led_conf->aal_enable = 0;
+			DDPINFO("%s connector id %d no need aal\n", led_conf->cdev.name,
+					led_conf->connector_id);
+			if (!strcmp("lcd-backlight1", led_conf->cdev.name))
+				led_conf->aal_enable = 0;
 			break;
 		}
 		trans_level = led_conf->cdev.brightness;
