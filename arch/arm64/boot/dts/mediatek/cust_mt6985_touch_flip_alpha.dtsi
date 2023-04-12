@@ -114,7 +114,7 @@
 		interrupts = <117 0x2008>;
 
 		/* Power Config */
-		vdd2v8-supply  = <&mt6373_vmch>;
+		vdd2v8-supply  = <&mt6373_vmch_eint_high>;
 		vdd2v8-volt = <3000000>;
 		vcc1v8-supply  = <&mt6363_vio18>;
 		vcc1v8-volt = <1800000>;
