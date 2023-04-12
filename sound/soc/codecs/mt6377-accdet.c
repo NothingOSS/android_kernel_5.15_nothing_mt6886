@@ -26,27 +26,27 @@
 /* global variables definition */
 #define REGISTER_VAL(x)	(x - 1)
 #define HAS_CAP(_c, _x)	(((_c) & (_x)) == (_x))
-#define ACCDET_PMIC_EINT_IRQ		BIT(0)
-#define ACCDET_AP_GPIO_EINT		BIT(1)
+#define ACCDET_PMIC_EINT_IRQ		  BIT(0)
+#define ACCDET_AP_GPIO_EINT		  BIT(1)
 
-#define ACCDET_PMIC_EINT0		BIT(2)
-#define ACCDET_PMIC_EINT1		BIT(3)
-#define ACCDET_PMIC_BI_EINT		BIT(4)
+#define ACCDET_PMIC_EINT0		  BIT(2)
+#define ACCDET_PMIC_EINT1		  BIT(3)
+#define ACCDET_PMIC_BI_EINT		  BIT(4)
 
-#define ACCDET_PMIC_GPIO_TRIG_EINT	BIT(5)
-#define ACCDET_PMIC_INVERTER_TRIG_EINT	BIT(6)
-#define ACCDET_PMIC_RSV_EINT		BIT(7)
+#define ACCDET_PMIC_GPIO_TRIG_EINT	  BIT(5)
+#define ACCDET_PMIC_INVERTER_TRIG_EINT	  BIT(6)
+#define ACCDET_PMIC_NO_INVERTER_TRIG_EINT BIT(7)
 
-#define ACCDET_THREE_KEY		BIT(8)
-#define ACCDET_FOUR_KEY			BIT(9)
-#define ACCDET_TRI_KEY_CDD		BIT(10)
-#define ACCDET_RSV_KEY			BIT(11)
+#define ACCDET_THREE_KEY		  BIT(8)
+#define ACCDET_FOUR_KEY			  BIT(9)
+#define ACCDET_TRI_KEY_CDD		  BIT(10)
+#define ACCDET_RSV_KEY			  BIT(11)
 
-#define ACCDET_ANALOG_FASTDISCHARGE	BIT(12)
-#define ACCDET_DIGITAL_FASTDISCHARGE	BIT(13)
-#define ACCDET_AD_FASTDISCHRAGE		BIT(14)
+#define ACCDET_ANALOG_FASTDISCHARGE	  BIT(12)
+#define ACCDET_DIGITAL_FASTDISCHARGE	  BIT(13)
+#define ACCDET_AD_FASTDISCHRAGE		  BIT(14)
 
-#define ACCDET_MOISTURE_DETECTED	BIT(15)
+#define ACCDET_MOISTURE_DETECTED	  BIT(15)
 
 #define RET_LT_5K			(-1)
 #define RET_GT_5K			(0)
@@ -2184,6 +2184,7 @@ static inline int ext_eint_setup(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct device_node *node = pdev->dev.of_node;
+	struct irq_data *irq_data;
 
 	if (!node)
 		return -ENODEV;
@@ -2219,7 +2220,11 @@ static inline int ext_eint_setup(struct platform_device *pdev)
 		return accdet->gpioirq;
 	}
 
-	accdet->accdet_eint_type = irqd_get_trigger_type(irq_get_irq_data(accdet->gpioirq));
+	irq_data = irq_get_irq_data(accdet->gpioirq);
+	if (!irq_data)
+		dev_info(&pdev->dev, "irq_data is null\n");
+	else
+		accdet->accdet_eint_type = irqd_get_trigger_type(irq_data);
 
 	/* Enable interrupt when acccet init done */
 	irq_set_status_flags(accdet->gpioirq, IRQ_NOAUTOEN);
@@ -2373,6 +2378,8 @@ static int accdet_get_dts_data(void)
 		accdet->data->caps |= ACCDET_PMIC_GPIO_TRIG_EINT;
 	else if (tmp == 1)
 		accdet->data->caps |= ACCDET_PMIC_INVERTER_TRIG_EINT;
+	else if (tmp == 2)
+		accdet->data->caps |= ACCDET_PMIC_NO_INVERTER_TRIG_EINT;
 
 	ret = of_property_read_u32(node,
 			"headset-key-mode", &tmp);
@@ -2790,6 +2797,12 @@ static void accdet_init_once(void)
 		accdet_write(ACCDET_DA_STABLE_ADDR, 0x1);
 		/* disable eint/inverter/sw_en */
 		accdet_write(ACCDET_SW_EN_ADDR, 0x0);
+	}
+	if (HAS_CAP(accdet->data->caps, ACCDET_PMIC_NO_INVERTER_TRIG_EINT)) {
+		/* disable inverter HWMODE */
+		accdet_write(ACCDET_EINT_HWMODE_EN_ADDR, 0x0);
+		/* sw enable EINT0 */
+		accdet_write(ACCDET_EINT0_INVERTER_SW_EN_ADDR, 0x4);
 	}
 }
 
