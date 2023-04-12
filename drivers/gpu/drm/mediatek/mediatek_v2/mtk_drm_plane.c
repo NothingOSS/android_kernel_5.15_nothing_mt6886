@@ -339,6 +339,11 @@ static int mtk_plane_atomic_check(struct drm_plane *plane,
 				mtk_drm_crtc_avail_disp_mode(new_plane_state->crtc,
 					mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
+			if (IS_ERR_OR_NULL(mode)) {
+				DDPPR_ERR("%s invalid disp mode %u\n",
+					__func__, mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+				return 0;
+			}
 			DDPDBG("%s++ from %u to %u\n", __func__,
 					old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 					mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);

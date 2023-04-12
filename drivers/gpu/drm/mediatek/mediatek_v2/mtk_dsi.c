@@ -3677,8 +3677,13 @@ static int mtk_dsi_wait_cmd_frame_done(struct mtk_dsi *dsi,
 	struct cmdq_pkt *handle;
 	bool new_doze_state = mtk_dsi_doze_state(dsi);
 
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPPR_ERR("%s invalid mtk_crtc\n", __func__);
+		return 0;
+	}
+
 	/* Waiting CLIENT_DSI_CFG thread done */
-	if (mtk_crtc && mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]) {
+	if (mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]) {
 		mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
 				mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
 		cmdq_pkt_flush(handle);
@@ -8402,13 +8407,21 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 	unsigned long long bw_base;
 	struct drm_display_mode *mode
 		= mtk_drm_crtc_avail_disp_mode(&mtk_crtc->base, mode_idx);
-	int vrefresh = drm_mode_vrefresh(mode);
+	int vrefresh;
 	unsigned int compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
 	unsigned int data_rate = mtk_dsi_default_rate(dsi);
 	u32 bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
 	struct mtk_panel_ext *panel_ext = mtk_crtc->panel_ext;
 	u32 ps_wc = 0;
 	struct total_tile_overhead to_info;
+
+	if (IS_ERR_OR_NULL(mode)) {
+		DDPPR_ERR("%s crtc%u invalid display_mode %u\n",
+			__func__, drm_crtc_index(&mtk_crtc->base), mode_idx);
+		return 0;
+	}
+
+	vrefresh = drm_mode_vrefresh(mode);
 	if (is_bdg_supported())
 		data_rate = data_rate * bdg_rxtx_ratio / 100;
 

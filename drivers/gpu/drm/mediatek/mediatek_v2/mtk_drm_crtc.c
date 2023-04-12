@@ -4190,6 +4190,11 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 	/* Update mode & adjusted_mode in CRTC */
 	mode = mtk_drm_crtc_avail_disp_mode(crtc,
 		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+	if (IS_ERR_OR_NULL(mode)) {
+		DDPPR_ERR("%s crtc%u invalid disp_mode %u\n", __func__,
+			drm_crtc_index(crtc), new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+		return;
+	}
 
 	copy_drm_disp_mode(mode, &new_state->mode);
 	new_state->mode.hskew = mode->hskew;
@@ -9843,6 +9848,11 @@ static void mtk_drm_crtc_fix_conn_mode(struct drm_crtc *crtc, struct drm_display
 	/* Update mode & adjusted_mode in CRTC */
 	mode = mtk_drm_crtc_avail_disp_mode(crtc,
 		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+	if (IS_ERR_OR_NULL(mode)) {
+		DDPPR_ERR("%s crtc%u invalid disp_mode %u\n", __func__,
+			drm_crtc_index(crtc), mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+		return;
+	}
 
 	copy_drm_disp_mode(mode, &crtc->state->mode);
 	crtc->state->mode.hskew = mode->hskew;
