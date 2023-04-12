@@ -224,8 +224,10 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	struct drm_display_mode *mode;
 	unsigned int bw = 0;
 
-	dev_crtc = crtc;
-	mtk_crtc = to_mtk_crtc(dev_crtc);
+	/* dev_crtc is for crtc0(primary display) only */
+	if (drm_crtc_index(crtc) == 0)
+		dev_crtc = crtc;
+	mtk_crtc = to_mtk_crtc(crtc);
 	mode = &crtc->state->adjusted_mode;
 
 	bw = _layering_get_frame_bw(crtc, mode);
@@ -301,8 +303,11 @@ int mtk_disp_hrt_cond_init(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_drm_private *priv;
 
-	dev_crtc = crtc;
-	mtk_crtc = to_mtk_crtc(dev_crtc);
+	/* dev_crtc is for crtc0(primary display) only */
+	if (drm_crtc_index(crtc) == 0)
+		dev_crtc = crtc;
+
+	mtk_crtc = to_mtk_crtc(crtc);
 
 	if (IS_ERR_OR_NULL(mtk_crtc)) {
 		DDPPR_ERR("%s:mtk_crtc is NULL\n", __func__);
