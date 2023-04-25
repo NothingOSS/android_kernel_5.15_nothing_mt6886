@@ -171,6 +171,9 @@
 #define DSI_HSA_WC 0x50
 #define DSI_HBP_WC 0x54
 #define DSI_HFP_WC 0x58
+#define FLD_HFP_HS_EN BIT(31)
+#define FLD_DSI_HFP_WC 0x7FFF
+#define FLD_HS_VB_PS_WC 0x7FFF0000
 #define DSI_BLLP_WC 0x5C
 
 #define DSI_CMDQ_SIZE 0x60
@@ -710,6 +713,9 @@ CONFIG_REG:
 		hs_prpr = hs_prpr >= 6 ? hs_prpr : 6; //hs_prpr must be more than 6
 		da_hs_exit = (da_hs_exit % 2) ? da_hs_exit : da_hs_exit + 1; //must be odd
 	}
+
+	dsi->data_phy_cycle = hs_prpr + hs_zero + da_hs_exit + lpx + 2;
+
 	value = REG_FLD_VAL(FLD_LPX, lpx)
 		| REG_FLD_VAL(FLD_HS_PREP, hs_prpr)
 		| REG_FLD_VAL(FLD_HS_ZERO, hs_zero)
@@ -1557,6 +1563,12 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	writel(val, dsi->regs + DSI_PSCTRL);
 
 	writel(size, dsi->regs + DSI_SIZE_CON);
+
+	if (dsi->data_phy_cycle && dsi->lanes) {
+		val = ps_wc - dsi->data_phy_cycle * dsi->lanes;
+		/* FLD HS_VB_PS_WC is bit16~30 */
+		mtk_dsi_mask(dsi, DSI_HFP_WC, FLD_HS_VB_PS_WC, val << 16);
+	}
 }
 
 static void mtk_dsi_rxtx_control(struct mtk_dsi *dsi)
@@ -2054,6 +2066,7 @@ static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
 {
 	struct videomode *vm = &dsi->vm;
 	unsigned int vact = vm->vactive;
+	struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
 
 	writel(dsi->vsa, dsi->regs + DSI_VSA_NL);
 	writel(dsi->vbp, dsi->regs + DSI_VBP_NL);
@@ -2067,7 +2080,11 @@ static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
 
 	writel(dsi->hsa_byte, dsi->regs + DSI_HSA_WC);
 	writel(dsi->hbp_byte, dsi->regs + DSI_HBP_WC);
-	writel(dsi->hfp_byte, dsi->regs + DSI_HFP_WC);
+	mtk_dsi_mask(dsi, DSI_HFP_WC, FLD_DSI_HFP_WC, dsi->hfp_byte);
+	if (ext && ext->params && ext->params->vdo_per_frame_lp_enable)
+		mtk_dsi_mask(dsi, DSI_HFP_WC, FLD_HFP_HS_EN, FLD_HFP_HS_EN);
+	else
+		mtk_dsi_mask(dsi, DSI_HFP_WC, FLD_HFP_HS_EN, 0);
 }
 
 #ifdef DSI_SELF_PATTERN
@@ -5107,7 +5124,7 @@ int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_ddp_write_relaxed(comp, value, DSI_VACT_NL, handle);
 		break;
 	case DSI_HFP:
-		mtk_ddp_write_relaxed(comp, value, DSI_HFP_WC, handle);
+		mtk_ddp_write_mask(comp, value, DSI_HFP_WC, FLD_DSI_HFP_WC, handle);
 		break;
 	case DSI_HSA:
 		mtk_ddp_write_relaxed(comp, value, DSI_HSA_WC, handle);
@@ -10941,6 +10958,7 @@ u32 PanelMaster_get_dsi_timing(struct mtk_dsi *dsi, enum MIPI_SETTING_TYPE type)
 		u32 tmp_hfp;
 
 		tmp_hfp = readl(dsi->regs + DSI_HFP_WC);
+		tmp_hfp &= FLD_DSI_HFP_WC;
 		dsi_val = (tmp_hfp + 12) / fbconfig_dsiTmpBufBpp;
 		return dsi_val;
 	}
@@ -11175,7 +11193,7 @@ int PanelMaster_DSI_set_timing(struct mtk_dsi *dsi, struct MIPI_TIMING timing)
 	{
 		timing.value = timing.value * fbconfig_dsiTmpBufBpp - 12;
 		timing.value = ALIGN_TO(timing.value, 4);
-		writel(timing.value, dsi->regs + DSI_HFP_WC);
+		mtk_dsi_mask(dsi, DSI_HFP_WC, FLD_DSI_HFP_WC, timing.value);
 		break;
 	}
 	case MIPI_HBP:
