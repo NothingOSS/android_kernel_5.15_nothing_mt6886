@@ -10535,6 +10535,12 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		DDPPR_ERR("%s:%u invalid crtc\n", __func__, __LINE__);
 		goto end;
 	}
+
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPPR_ERR("%s:%u invalid priv\n", __func__, __LINE__);
+		goto end;
+	}
+
 	CRTC_MMP_EVENT_START((int) crtc_id, disable,
 			mtk_crtc->enabled, 0);
 
@@ -10545,7 +10551,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	if (output_comp)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
 				&en);
-	if (priv && crtc_id < MAX_CRTC && priv->usage[crtc_id] == DISP_OPENING &&
+	if (crtc_id < MAX_CRTC && priv->usage[crtc_id] == DISP_OPENING &&
 			output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_WDMA) {
 		;/* no goto end when display WDMA output in OPENING state */
 	} else if (!mtk_crtc->enabled) {
@@ -10622,7 +10628,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 			comp->fb = NULL;
 	}
 
-	if (priv && priv->mml_ctx && mml_drm_ctx_idle(priv->mml_ctx)) {
+	if (priv->mml_ctx && mml_drm_ctx_idle(priv->mml_ctx)) {
 		mml_drm_put_context(priv->mml_ctx);
 		priv->mml_ctx = NULL;
 	}
