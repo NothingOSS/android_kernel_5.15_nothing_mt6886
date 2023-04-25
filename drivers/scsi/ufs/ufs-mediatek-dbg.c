@@ -1114,7 +1114,7 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 		dev_info(hba->dev, "skip blocktag off\n");
 	} else if (op == UFSDBG_CMD_IRQ_SET) {
 		tok = strsep(&cur, " ");
-		if (kstrtoul(tok, 16, &op2))
+		if (!tok || kstrtoul(tok, 16, &op2))
 			return -EINVAL;
 		ret = write_irq_affinity(tok);
 		if (!ret)
