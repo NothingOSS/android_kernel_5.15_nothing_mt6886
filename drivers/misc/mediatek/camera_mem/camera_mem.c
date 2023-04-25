@@ -264,7 +264,7 @@ static void cam_mem_mmu_put_dma_buffer(struct ION_BUFFER *mmu)
 
 static void cam_mem_unmap_all(void)
 {
-	int i = 0;
+	unsigned int i = 0;
 	struct ION_BUFFER_LIST *tmp; /* for delete the mapped node */
 	struct list_head *pos, *q;
 	struct ION_BUFFER pIonBuf = {NULL, NULL, NULL, 0};
@@ -396,7 +396,7 @@ static void dumpAllBufferList(void)
 {
 	struct ION_BUFFER_LIST *entry;
 	struct list_head *pos;
-	int i = 0, j = 0;
+	unsigned int i = 0, j = 0;
 	unsigned long long total_size = 0;
 
 	LOG_NOTICE(" idx memID        pa     aligned-size   refCnt       user         timestamp\n");
@@ -1005,7 +1005,7 @@ static int cam_mem_buf_list_read(struct seq_file *m, void *v)
 {
 	struct ION_BUFFER_LIST *entry;
 	struct list_head *pos;
-	int i = 0, j = 0;
+	unsigned int i = 0, j = 0;
 	unsigned long long total_size = 0;
 
 	seq_puts(m, " idx memID        pa     aligned-size   refCnt       user        timestamp\n");
