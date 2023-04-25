@@ -12,7 +12,7 @@
 struct cpu_ppc_policy {
 	unsigned int            cpu;
 	struct cpufreq_policy   *policy;
-	struct freq_qos_request qos_req;
+	struct freq_qos_request *qos_req;
 	struct list_head        cpu_ppc_list;
 };
 

@@ -57,7 +57,7 @@ static void mtk_ppc_limit_cpu(unsigned int limit)
 		else
 			frequency = FREQ_QOS_MAX_DEFAULT_VALUE;
 
-		freq_qos_update_request(&ppc_policy->qos_req, frequency);
+		freq_qos_update_request(ppc_policy->qos_req, frequency);
 		i++;
 	}
 }
@@ -111,7 +111,7 @@ static ssize_t mt_ppc_debug_proc_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	unsigned int len = 0;
 	int debug = 0;
 
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
@@ -146,7 +146,7 @@ static ssize_t mt_p_active_proc_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[32];
-	int len = 0;
+	unsigned int len = 0;
 	int input = 0;
 
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
@@ -247,8 +247,9 @@ static int ppc_probe(struct platform_device *pdev)
 {
 	struct cpufreq_policy *policy;
 	struct cpu_ppc_policy *ppc_policy;
+	struct freq_qos_request *req;
 	unsigned int i;
-	int cpu, ret;
+	int cpu, ret = 0;
 
 	mt_ppc_create_procfs();
 
@@ -272,19 +273,27 @@ static int ppc_probe(struct platform_device *pdev)
 			if (!i) {
 				pr_info("%s: CPUFreq table not found or has no valid entries\n",
 					 __func__);
+				kfree(ppc_policy);
 				return -ENODEV;
 			}
-
+			req = kzalloc(sizeof(struct freq_qos_request), GFP_KERNEL);
+			if (!req) {
+				kfree(ppc_policy);
+				return -ENODEV;
+			}
+			ppc_policy->qos_req = req;
 			ppc_policy->policy = policy;
 			ppc_policy->cpu = cpu;
 
 			ret = freq_qos_add_request(&policy->constraints,
-				&ppc_policy->qos_req, FREQ_QOS_MAX,
+				ppc_policy->qos_req, FREQ_QOS_MAX,
 				FREQ_QOS_MAX_DEFAULT_VALUE);
 
 			if (ret < 0) {
 				pr_notice("%s: Fail to add freq constraint (%d)\n",
 					__func__, ret);
+				kfree(ppc_policy);
+				kfree(req);
 				return ret;
 			}
 			list_add_tail(&ppc_policy->cpu_ppc_list, &ppc_policy_list);
