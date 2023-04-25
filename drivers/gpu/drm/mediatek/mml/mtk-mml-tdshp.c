@@ -779,7 +779,7 @@ static void tdshp_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
 	void __iomem *base = comp->base;
-	u32 value[11];
+	u32 value[12];
 	u32 shadow_ctrl;
 
 	mml_err("tdshp component %u dump:", comp->id);
@@ -808,6 +808,11 @@ static void tdshp_debug_dump(struct mml_comp *comp)
 	mml_err("TDSHP_INPUT_SIZE %#010x TDSHP_OUTPUT_OFFSET %#010x TDSHP_OUTPUT_SIZE %#010x",
 		value[7], value[8], value[9]);
 	mml_err("TDSHP_BLANK_WIDTH %#010x", value[10]);
+
+	if (tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM] != REG_NOT_SUPPORT) {
+		value[11] = readl(base + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM]);
+		mml_err("TDSHP_REGION_PQ_PARAM %#010x", value[11]);
+	}
 }
 
 static const struct mml_comp_debug_ops tdshp_debug_ops = {
