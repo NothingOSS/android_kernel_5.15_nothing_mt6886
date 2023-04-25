@@ -155,7 +155,8 @@ int mtk_drm_ioctl_get_chist_caps(struct drm_device *dev, void *data,
 								: crtc->mode.hdisplay;
 		caps_info->lcm_height = g_frame_height[index] ? g_frame_height[index]
 								: crtc->mode.vdisplay;
-	}
+	} else
+		return -1;
 
 	DDPINFO("%s chist id:%d, w:%d,h:%d\n", __func__, caps_info->device_id,
 		caps_info->lcm_width, caps_info->lcm_height);
