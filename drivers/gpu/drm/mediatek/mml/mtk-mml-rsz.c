@@ -15,6 +15,7 @@
 #include "mtk-mml-driver.h"
 #include "mtk-mml-dle-adaptor.h"
 #include "mtk-mml-pq-core.h"
+#include "mtk-mml-rsz-fw.h"
 
 #include "tile_driver.h"
 #include "mtk-mml-tile.h"
@@ -82,6 +83,9 @@
 
 #define RSZ_WAIT_TIMEOUT_MS 5000
 
+int mml_rsz_fw_comb = 1;
+module_param(mml_rsz_fw_comb, int, 0644);
+
 struct rsz_data {
 	u32 tile_width;
 	bool add_ddp;
@@ -145,6 +149,7 @@ struct mml_comp_rsz {
 struct rsz_frame_data {
 	bool relay_mode:1;
 	bool use121filter:1;
+	struct rsz_fw_out fw_out;
 };
 
 static inline struct rsz_frame_data *rsz_frm_data(struct mml_comp_config *ccfg)
@@ -183,15 +188,23 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_data *src = &cfg->info.src;
-	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_dest *dest =
+		&cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_size *frame_out =
+		&cfg->frame_out[ccfg->node->out_idx];
 	struct rsz_frame_data *rsz_frm;
 	struct mml_comp_rsz *rsz = comp_to_rsz(comp);
 	s32 ret = 0;
+	struct rsz_fw_in fw_in;
 
 	mml_trace_ex_begin("%s", __func__);
 
 	rsz_frm = kzalloc(sizeof(*rsz_frm), GFP_KERNEL);
 	ccfg->data = rsz_frm;
+	if (!rsz_frm) {
+		mml_trace_ex_end();
+		return -ENOMEM;
+	}
 	if (!rsz->data->aal_crop && dest->pq_config.en_dre)
 		rsz_frm->relay_mode = false;
 	else
@@ -199,9 +212,29 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 	/* C42 conversion: drop if source is YUV422 or YUV420 */
 	rsz_frm->use121filter = !MML_FMT_H_SUBSAMPLE(src->format);
 
-	mml_pq_msg("%s pipe_id[%d] engine_id[%d]", __func__, ccfg->pipe, comp->id);
-	if (!rsz_frm->relay_mode)
-		ret = mml_pq_set_tile_init(task);
+	if (!rsz_frm->relay_mode) {
+		if (mml_rsz_fw_comb) {
+			fw_in.in_width = dest->crop.r.width;
+			fw_in.in_height = dest->crop.r.height;
+			fw_in.out_width = frame_out->width;
+			fw_in.out_height = frame_out->height;
+			fw_in.crop = dest->crop;
+
+			if (MML_FMT_10BIT(src->format) ||
+			    MML_FMT_10BIT(dest->data.format))
+				fw_in.power_saving = false;
+			else
+				fw_in.power_saving = true;
+
+			fw_in.use121filter = rsz_frm->use121filter;
+
+			rsz_fw(&fw_in, &rsz_frm->fw_out, dest->pq_config.en_ur);
+		} else {
+			mml_pq_msg("%s pipe_id[%d] engine_id[%d]", __func__,
+				ccfg->pipe, comp->id);
+			ret = mml_pq_set_tile_init(task);
+		}
+	}
 
 	mml_trace_ex_end();
 	return ret;
@@ -267,12 +300,31 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	u32 in_crop_w, in_crop_h;
 
 	mml_trace_ex_begin("%s", __func__);
-	mml_pq_msg("%s pipe_id[%d] engine_id[%d]", __func__, ccfg->pipe, comp->id);
 
 	data->rsz.crop = dest->crop;
 	if (!rsz_frm->relay_mode) {
 		data->rsz.use_121filter = rsz_frm->use121filter;
-		prepare_tile_data(&data->rsz, task, ccfg);
+		if (mml_rsz_fw_comb) {
+			data->rsz.coeff_step_x = rsz_frm->fw_out.hori_step;
+			data->rsz.coeff_step_y = rsz_frm->fw_out.vert_step;
+			data->rsz.precision_x = rsz_frm->fw_out.precision_x;
+			data->rsz.precision_y = rsz_frm->fw_out.precision_y;
+			data->rsz.crop.r.left = rsz_frm->fw_out.hori_int_ofst;
+			data->rsz.crop.x_sub_px = rsz_frm->fw_out.hori_sub_ofst;
+			data->rsz.crop.r.top = rsz_frm->fw_out.vert_int_ofst;
+			data->rsz.crop.y_sub_px = rsz_frm->fw_out.vert_sub_ofst;
+			data->rsz.hor_scale = rsz_frm->fw_out.hori_scale;
+			data->rsz.hor_algo = rsz_frm->fw_out.hori_algo;
+			data->rsz.ver_scale = rsz_frm->fw_out.vert_scale;
+			data->rsz.ver_algo = rsz_frm->fw_out.vert_algo;
+			data->rsz.ver_first = rsz_frm->fw_out.vert_first;
+			data->rsz.ver_cubic_trunc =
+				rsz_frm->fw_out.vert_cubic_trunc;
+		} else {
+			mml_pq_msg("%s pipe_id[%d] engine_id[%d]", __func__,
+				ccfg->pipe, comp->id);
+			prepare_tile_data(&data->rsz, task, ccfg);
+		}
 	}
 	data->rsz.max_width = rsz->data->tile_width;
 	data->rsz.crop_aal_tile_loss =
@@ -359,28 +411,68 @@ static s32 rsz_config_frame(struct mml_comp *comp, struct mml_task *task,
 		return 0;
 	}
 
-	result = get_tile_init_result(task);
-	if (result) {
-		s32 i;
-		struct mml_pq_reg *regs = result->rsz_regs[ccfg->node->out_idx];
+	if (mml_rsz_fw_comb) {
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_CONTROL,
+			       rsz_frm->fw_out.etc_ctrl, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_SWITCH_MAX_MIN_1,
+			       rsz_frm->fw_out.etc_switch_max_min1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_SWITCH_MAX_MIN_2,
+			       rsz_frm->fw_out.etc_switch_max_min2, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_RING,
+			       rsz_frm->fw_out.etc_ring, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_RING_GAINCON_1,
+			       rsz_frm->fw_out.etc_ring_gaincon1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_RING_GAINCON_2,
+			       rsz_frm->fw_out.etc_ring_gaincon2, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_RING_GAINCON_3,
+			       rsz_frm->fw_out.etc_ring_gaincon3, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_SIM_PROT_GAINCON_1,
+			       rsz_frm->fw_out.etc_sim_port_gaincon1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_SIM_PROT_GAINCON_2,
+			       rsz_frm->fw_out.etc_sim_port_gaincon2, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_SIM_PROT_GAINCON_3,
+			       rsz_frm->fw_out.etc_sim_port_gaincon3, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_BLEND,
+			       rsz_frm->fw_out.etc_blend, U32_MAX);
 
-		/* TODO: use different regs */
-		mml_msg("%s:config rsz regs, count: %d", __func__,
-			result->rsz_reg_cnt[ccfg->node->out_idx]);
-		for (i = 0; i < result->rsz_reg_cnt[ccfg->node->out_idx]; i++) {
-			cmdq_pkt_write(pkt, NULL, base_pa + regs[i].offset,
-				regs[i].value, regs[i].mask);
-			mml_msg("[rsz][config][%x] = %#x mask(%#x)",
-				regs[i].offset, regs[i].value, regs[i].mask);
-		}
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CON_1,
+			       rsz_frm->fw_out.con1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_HOR_COEFF_STEP,
+			       rsz_frm->fw_out.hori_step, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_VER_COEFF_STEP,
+			       rsz_frm->fw_out.vert_step, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_TAP_ADAPT,
+			       rsz_frm->fw_out.tap_adapt, U32_MAX);
 	} else {
-		mml_err("%s: not get result from user lib", __func__);
+		result = get_tile_init_result(task);
+		if (result) {
+			s32 i;
+			struct mml_pq_reg *regs =
+				result->rsz_regs[ccfg->node->out_idx];
+
+			/* TODO: use different regs */
+			mml_msg("%s:config rsz regs, count: %d", __func__,
+				result->rsz_reg_cnt[ccfg->node->out_idx]);
+			for (i = 0;
+			     i < result->rsz_reg_cnt[ccfg->node->out_idx];
+			     i++) {
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + regs[i].offset,
+					regs[i].value, regs[i].mask);
+				mml_msg("[rsz][config][%x] = %#x mask(%#x)",
+					regs[i].offset, regs[i].value,
+					regs[i].mask);
+			}
+		} else {
+			mml_err("%s: not get result from user lib", __func__);
+		}
+
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CON_1,
+			rsz_frm->use121filter << 26, 0x04000000);
+
+		mml_pq_put_tile_init_result(task);
 	}
 
-	cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CON_1,
-		       rsz_frm->use121filter << 26, 0x04000000);
-
-	mml_pq_put_tile_init_result(task);
 	mml_msg("%s is end", __func__);
 	return 0;
 }
@@ -398,28 +490,20 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 
-	u32 drs_lclip_en;
-	u32 drs_padding_dis;
-	u32 urs_clip_en;
+	bool drs_lclip_en;
+	bool drs_padding_dis;
+	bool urs_clip_en;
 	u32 rsz_input_w;
 	u32 rsz_input_h;
 	u32 rsz_output_w;
 	u32 rsz_output_h;
 
 	mml_msg("%s idx[%d]", __func__, idx);
-	mml_pq_msg("%s pipe_id[%d] engine_id[%d]", __func__, ccfg->pipe, comp->id);
 
-	if (!(tile->in.xe & 0x1))
-		/* Odd coordinate, should pad 1 column */
-		drs_padding_dis = 0;
-	else
-		/* Even coordinate, no padding required */
-		drs_padding_dis = 1;
+	/* Odd coordinate, should pad 1 column */
+	drs_padding_dis = tile->in.xe & 0x1;
 
-	if (rsz_frm->use121filter && tile->in.xs)
-		drs_lclip_en = 1;
-	else
-		drs_lclip_en = 0;
+	drs_lclip_en = rsz_frm->use121filter && tile->in.xs;
 
 	rsz_input_w = tile->in.xe - tile->in.xs + 1;
 	rsz_input_h = tile->in.ye - tile->in.ys + 1;
@@ -429,20 +513,27 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 	/* YUV422 to YUV444 upsampler */
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
 		if (tile->out.xe >= dest->data.height - 1)
-			urs_clip_en = 0;
+			urs_clip_en = false;
 		else
-			urs_clip_en = 1;
+			urs_clip_en = true;
 	} else {
 		if (tile->out.xe >= dest->data.width - 1)
-			urs_clip_en = 0;
+			urs_clip_en = false;
 		else
-			urs_clip_en = 1;
+			urs_clip_en = true;
 	}
 
-	cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CON_2,
-		       (drs_lclip_en << 11) +
-		       (drs_padding_dis << 12) +
-		       (urs_clip_en << 13), 0x00003800);
+	if (mml_rsz_fw_comb)
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CON_2,
+			       (rsz_frm->fw_out.con2 & (~0x00003800)) +
+			       (drs_lclip_en << 11) +
+			       (drs_padding_dis << 12) +
+			       (urs_clip_en << 13), U32_MAX);
+	else
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CON_2,
+			       (drs_lclip_en << 11) +
+			       (drs_padding_dis << 12) +
+			       (urs_clip_en << 13), 0x00003800);
 
 	cmdq_pkt_write(pkt, NULL, base_pa + RSZ_INPUT_IMAGE,
 		       (rsz_input_h << 16) + rsz_input_w, U32_MAX);
