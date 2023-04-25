@@ -76,6 +76,7 @@ static unsigned int g_chist_relay_value[CHIST_NUM];
 
 static bool debug_dump_hist;
 static bool need_restore;
+static bool need_reconfig[CHIST_NUM];
 
 unsigned int g_left_pipe_overhead[CHIST_NUM];
 unsigned int g_right_pipe_overhead[CHIST_NUM];
@@ -141,55 +142,39 @@ static unsigned int g_frame_height[CHIST_NUM];
 int mtk_drm_ioctl_get_chist_caps(struct drm_device *dev, void *data,
 	struct drm_file *file_priv)
 {
-//	struct mtk_drm_private *private = dev->dev_private;
-//	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_CHIST0];
 	struct drm_mtk_chist_caps *caps_info = data;
-//	unsigned int i = 0, index = 0;
 	struct drm_crtc *crtc;
-	u32 width = 0, height = 0;
-
+	//device_id:low 16bit=module_id, high 16bit=crtc_id
+	unsigned int index = caps_info->device_id & 0xffff;
+	int i = 0;
 	crtc = list_first_entry(&(dev)->mode_config.crtc_list,
-		typeof(*crtc), head);
+			typeof(*crtc), head);
 
-	mtk_drm_crtc_get_panel_original_size(crtc, &width, &height);
-	if (width == 0 || height == 0) {
-		DDPFUNC("panel original size error(%dx%d).\n", width, height);
-		width = crtc->mode.hdisplay;
-		height = crtc->mode.vdisplay;
+	if (index < CHIST_NUM) {
+		caps_info->lcm_width = g_frame_width[index] ? g_frame_width[index]
+								: crtc->mode.hdisplay;
+		caps_info->lcm_height = g_frame_height[index] ? g_frame_height[index]
+								: crtc->mode.vdisplay;
 	}
-
 
 	DDPINFO("%s chist id:%d, w:%d,h:%d\n", __func__, caps_info->device_id,
 		caps_info->lcm_width, caps_info->lcm_height);
-#ifdef IF_ZERO
-	if (comp == NULL) {
-		DDPFUNC("%s null pointer!\n", __func__);
-		return -1;
-	}
-	// just call from pqservice, device_id:low 16bit=module_id, high 16bit=panel_id
-	if (comp_to_chist(comp)->data->module_count > 1 && (caps_info->device_id & 0xffff))
-		index = 1;
-
-	// for rsz
-	if (index) {
-		caps_info->lcm_width = crtc->mode.hdisplay;
-		caps_info->lcm_height = crtc->mode.vdisplay;
-	} else {
-		caps_info->lcm_width = width;
-		caps_info->lcm_height = height;
-	}
 
 	caps_info->support_color = DISP_CHIST_COLOR_FORMAT;
 	for (; i < DISP_CHIST_CHANNEL_COUNT; i++) {
+		unsigned long flags = 0;
+
+		spin_lock_irqsave(&g_chist_global_lock, flags);
 		memcpy(&(caps_info->chist_config[i]),
 			&g_chist_config[index][i], sizeof(g_chist_config[index][i]));
+		spin_unlock_irqrestore(&g_chist_global_lock, flags);
 		// pqservice use channel 0, 1, 2, 3, if has one chist
 		if (index == 0 && i >= DISP_CHIST_HWC_CHANNEL_INDEX)
 			caps_info->chist_config[i].channel_id = DISP_CHIST_CHANNEL_COUNT;
 		else
 			caps_info->chist_config[i].channel_id = i;
 	}
-#endif
+
 	DDPINFO("%s --\n", __func__);
 	return 0;
 }
@@ -202,6 +187,7 @@ int mtk_drm_ioctl_set_chist_config(struct drm_device *dev, void *data,
 	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_CHIST0];
 	struct drm_crtc *crtc = private->crtc[0];
 	int i = 0;
+	int index = 0;
 
 	if (comp == NULL) {
 		DDPPR_ERR("%s, null pointer!\n", __func__);
@@ -237,7 +223,10 @@ int mtk_drm_ioctl_set_chist_config(struct drm_device *dev, void *data,
 			config->config_channel_count = DISP_CHIST_HWC_CHANNEL_INDEX;
 #endif
 	}
-	present_fence[index_of_chist(comp->id)] = 0;
+	index = index_of_chist(comp->id);
+	present_fence[index] = 0;
+	need_reconfig[index] = false;
+	g_chist_width[index] = 0;
 	need_restore = 1;
 	DDPINFO("%s --\n", __func__);
 	return mtk_crtc_user_cmd(crtc, comp, CHIST_CONFIG, data);
@@ -277,6 +266,11 @@ static int disp_chist_copy_hist_to_user(struct drm_device *dev,
 	if (present_fence[index] == 0) {
 		hist->present_fence = 0;
 		return ret;
+	}
+	if (need_reconfig[index]) {
+		DDPINFO("%s, need reconfig chist width:%d, config width:%d!\n",
+				__func__, g_chist_width[index], g_frame_width[index]);
+		return -EAGAIN;
 	}
 	/* We assume only one thread will call this function */
 	spin_lock_irqsave(&g_chist_global_lock, flags);
@@ -397,6 +391,7 @@ int mtk_drm_ioctl_get_chist(struct drm_device *dev, void *data,
 {
 	struct drm_mtk_chist_info *hist = data;
 	int i = 0;
+	int ret = 0;
 
 	if (hist == NULL) {
 		DDPPR_ERR("%s drm_mtk_hist_info is NULL\n", __func__);
@@ -423,10 +418,10 @@ int mtk_drm_ioctl_get_chist(struct drm_device *dev, void *data,
 		}
 	}
 
-	if (disp_chist_copy_hist_to_user(dev, hist) < 0)
-		return -EFAULT;
+	ret = disp_chist_copy_hist_to_user(dev, hist);
+
 	DDPINFO("%s --\n", __func__);
-	return 0;
+	return ret;
 }
 
 static void mtk_chist_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -531,7 +526,6 @@ static void mtk_chist_channel_config(unsigned int channel,
 	DDPINFO("%s channel:%d, config->blk_height:%d, config->blk_width:%d\n", __func__,
 			channel, config->blk_height, config->blk_width);
 
-#ifdef IF_ZERO
 	// roi
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_CHIST_CH0_WIN_X_MAIN + channel * 0x10,
@@ -544,7 +538,6 @@ static void mtk_chist_channel_config(unsigned int channel,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_CHIST_CH0_BLOCK_INFO + channel * 0x10,
 		(config->blk_height << 16) | config->blk_width, ~0);
-#endif
 
 	if (channel >= DISP_CHIST_CHANNEL_COUNT)
 		return;
@@ -823,46 +816,6 @@ static void mtk_chist_dual_pipe_size(struct mtk_ddp_comp *comp,
 	}
 }
 
-static void mtk_chist_config_channel_size(struct mtk_ddp_comp *comp,
-		struct mtk_ddp_config *cfg, struct cmdq_pkt *handle, int index)
-{
-	int roi_start_x = 0, roi_end_x = 0;
-	int roi_end_y = g_frame_height[index] - 1;
-	int i = 0;
-
-	switch (comp->id) {
-	case DDP_COMPONENT_CHIST0:
-	case DDP_COMPONENT_CHIST1:
-		roi_end_x = g_pipe_width[index] - 1;
-		break;
-	case DDP_COMPONENT_CHIST2:
-	case DDP_COMPONENT_CHIST3:
-		roi_start_x = g_right_pipe_overhead[index];
-		roi_end_x = g_right_pipe_overhead[index] + g_pipe_width[index] - 1;
-		break;
-	default:
-		break;
-	}
-
-	for (; i < DISP_CHIST_CHANNEL_COUNT; i++) {
-//		if (g_chist_config[index][i].enabled) {
-		// roi
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_CHIST_CH0_WIN_X_MAIN + i * 0x10,
-			(roi_end_x << 16) | roi_start_x, ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_CHIST_CH0_WIN_Y_MAIN + i * 0x10,
-			(roi_end_y << 16), ~0);
-
-		// block
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_CHIST_CH0_BLOCK_INFO + i * 0x10,
-			(g_frame_height[index] << 16) | g_frame_width[index], ~0);
-//		}
-	}
-
-}
-
 static void mtk_chist_config(struct mtk_ddp_comp *comp,
 			     struct mtk_ddp_config *cfg,
 			     struct cmdq_pkt *handle)
@@ -913,8 +866,6 @@ static void mtk_chist_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_CHIST_SHADOW_CTRL,
 				   0x1, ~0);
-
-	mtk_chist_config_channel_size(comp, cfg, handle, index);
 
 	if (comp->id == DDP_COMPONENT_CHIST0
 		|| (comp_to_chist(comp)->data->module_count > 1
@@ -1048,6 +999,14 @@ static void mtk_get_chist(struct mtk_ddp_comp *comp)
 	priv = crtc->dev->dev_private;
 	index = index_of_chist(comp->id);
 
+	if (g_chist_width[index] == 0) {
+		g_chist_width[index] = g_frame_width[index];
+		g_chist_height[index] = g_frame_height[index];
+	} else if (g_chist_width[index] != g_frame_width[index]) {
+		need_reconfig[index] = true;
+		return;
+	}
+
 	spin_lock_irqsave(&g_chist_clock_lock, clock_flags);
 	if (atomic_read(&(g_chist_is_clock_on[index_of_chist(comp->id)])) == 0) {
 		spin_unlock_irqrestore(&g_chist_clock_lock, clock_flags);
@@ -1080,9 +1039,6 @@ static void mtk_get_chist(struct mtk_ddp_comp *comp)
 			}
 		}
 	}
-
-	g_chist_width[index] = g_frame_width[index];
-	g_chist_height[index] = g_frame_height[index];
 
 	spin_unlock_irqrestore(&g_chist_global_lock, flags);
 	spin_unlock_irqrestore(&g_chist_clock_lock, clock_flags);
