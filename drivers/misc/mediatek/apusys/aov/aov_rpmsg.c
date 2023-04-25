@@ -116,19 +116,20 @@ static int apu_tx_thread(void *data)
 
 		do {
 			ret = rpmsg_send(ctx->ept, &param, sizeof(param));
+
 			pr_debug_ratelimited("%s rpmsg_send %d ret %d\n", __func__, param, ret);
 			/* send busy, retry */
 			if (ret == -EBUSY || ret == -EAGAIN) {
 				pr_info("%s: re-send ipi(retry_cnt = %d)\n", __func__, retry_cnt);
 
 				if (ret == -EAGAIN && retry_cnt > 40)
-					usleep_range(200, 500);
+					usleep_range(500, 1000);
 				else if (ret == -EAGAIN && retry_cnt > 30)
-					usleep_range(1000, 2000);
+					usleep_range(2000, 4000);
 				else if (ret == -EAGAIN && retry_cnt > 20)
-					usleep_range(10000, 11000);
+					usleep_range(20000, 22000);
 				else
-					usleep_range(20000, 25000);
+					usleep_range(40000, 50000);
 			}
 		} while ((ret == -EBUSY || ret == -EAGAIN) && retry_cnt-- > 0);
 

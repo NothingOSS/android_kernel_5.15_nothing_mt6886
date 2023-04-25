@@ -466,7 +466,7 @@ static int apusys_aov_suspend_late(struct device *dev)
 	return 0;
 }
 
-static int apusys_aov_resume_early(struct device *dev)
+static int apusys_aov_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct apusys_aov_ctx *ctx = platform_get_drvdata(pdev);
@@ -529,7 +529,7 @@ static int apusys_aov_remove(struct platform_device *pdev)
 
 static const struct dev_pm_ops apusys_aov_pm_cb = {
 	.suspend_late = apusys_aov_suspend_late,
-	.resume_early = apusys_aov_resume_early,
+	.resume = apusys_aov_resume,
 };
 
 static const struct of_device_id apusys_aov_of_match[] = {
