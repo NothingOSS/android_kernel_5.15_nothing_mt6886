@@ -2297,7 +2297,7 @@ static void disp_aal_dre3_init(struct mtk_ddp_comp *comp)
 	spin_unlock_irqrestore(&g_aal_dre3_gain_lock, flags);
 }
 
-static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp)
+static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp, unsigned int val)
 {
 	unsigned int intsta;
 	unsigned long flags;
@@ -2306,13 +2306,13 @@ static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp)
 
 	do {
 		CRTC_MMP_EVENT_START(0, aal_dre20_rh, comp->id, 0);
-		intsta = readl(comp->regs + DISP_AAL_INTSTA);
+		intsta = val;
 		/* Only process end of frame state */
 		if ((intsta & 0x2) == 0x0) {
-			AALERR("break\n");
+			AALERR("break! DISP_AAL_INTSTA=0x%x, intsta=0x%x\n",
+				readl(comp->regs + DISP_AAL_INTSTA), intsta);
 			break;
 		}
-
 		if (spin_trylock_irqsave(&g_aal_get_irq_lock, flags)) {
 			writel(intsta & ~0x3, comp->regs + DISP_AAL_INTSTA);
 			spin_unlock_irqrestore(&g_aal_get_irq_lock, flags);
@@ -3706,7 +3706,7 @@ void mtk_aal_regdump(void)
 	}
 }
 
-void disp_aal_on_end_of_frame(struct mtk_ddp_comp *comp)
+void disp_aal_on_end_of_frame(struct mtk_ddp_comp *comp, unsigned int val)
 {
 	//For 120Hz rotation issue
 	ktime_get_ts64(&start);
@@ -3724,7 +3724,7 @@ void disp_aal_on_end_of_frame(struct mtk_ddp_comp *comp)
 	if (g_aal_fo->mtk_dre30_support && gDre30Enabled)
 		disp_aal_dre3_irq_handle(comp);
 	else
-		disp_aal_single_pipe_hist_update(comp);
+		disp_aal_single_pipe_hist_update(comp, val);
 
 	AALIRQ_LOG("[SRAM] clean dre_config in (EOF)  comp->id = %d", comp->id);
 	if (comp->mtk_crtc->is_dual_pipe) {
@@ -3901,14 +3901,14 @@ static irqreturn_t mtk_disp_aal_irq_handler(int irq, void *dev_id)
 	if (atomic_read(&aal_data->is_clock_on) != 1)
 		AALIRQ_LOG("clock is off\n");
 	else {
-		disp_aal_on_end_of_frame(comp);
+		disp_aal_on_end_of_frame(comp, val);
 		if (mtk_crtc->is_dual_pipe) {
 			struct drm_crtc *crtc = &mtk_crtc->base;
 			struct mtk_drm_private *dev_priv = crtc->dev->dev_private;
 			struct mtk_ddp_comp *comp1 = dev_priv->ddp_comp[DDP_COMPONENT_AAL1];
 
 			if (comp1)
-				disp_aal_on_end_of_frame(comp1);
+				disp_aal_on_end_of_frame(comp1, val);
 		}
 		ret = IRQ_HANDLED;
 	}
