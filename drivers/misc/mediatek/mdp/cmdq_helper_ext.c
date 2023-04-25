@@ -3588,6 +3588,20 @@ void cmdq_core_replace_v3_instr(struct cmdqRecStruct *handle, s32 thread)
 	}
 }
 
+void cmdq_remove_handle_from_handle_active(struct cmdqRecStruct *handle)
+{
+	struct cmdqRecStruct *handle_active_node;
+
+	mutex_lock(&cmdq_handle_list_mutex);
+	list_for_each_entry(handle_active_node, &cmdq_ctx.handle_active, list_entry) {
+		if (handle_active_node == handle) {
+			list_del_init(&handle_active_node->list_entry);
+			break;
+		}
+	}
+	mutex_unlock(&cmdq_handle_list_mutex);
+}
+
 void cmdq_core_release_handle_by_file_node(void *file_node)
 {
 	struct cmdqRecStruct *handle;
