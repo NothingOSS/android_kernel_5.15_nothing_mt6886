@@ -1770,7 +1770,19 @@ static int seninf_s_stream(struct v4l2_subdev *sd, int enable)
 	}
 
 	ctx->streaming = enable;
-	notify_fsync_with_kthread_and_s_stream(ctx, 2, enable);
+	if (enable && ctx->is_aov_real_sensor) {
+		// stream on sensor immediately in aov flow
+		mutex_lock(&ctx->delay_s_sensor_mutex);
+		ctx->delay_s_sensor_flag = 1;
+		mutex_unlock(&ctx->delay_s_sensor_mutex);
+		stream_sensor(ctx, enable);
+
+		notify_fsync_listen_target_with_kthread(ctx, 2);
+	} else {
+		// stream on sensor in worker (after fsync notify)
+		// stream off works immediately
+		notify_fsync_with_kthread_and_s_stream(ctx, 2, enable);
+	}
 
 	if (core->aov_abnormal_deinit_flag) {
 		ctx->is_aov_real_sensor = 0;
