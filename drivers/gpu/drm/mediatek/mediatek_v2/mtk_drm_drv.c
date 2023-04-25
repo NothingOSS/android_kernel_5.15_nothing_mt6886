@@ -1140,24 +1140,23 @@ bool mtk_drm_lcm_is_connect(struct mtk_drm_crtc *mtk_crtc)
 static void drm_atomic_esd_chk_first_enable(struct drm_device *dev,
 				     struct drm_atomic_state *old_state)
 {
-	static bool is_first = true;
+	/* variable is_checked for CRTC first enable esd check */
+	static unsigned int is_checked[MAX_CRTC] = {0};
 	int i;
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *old_crtc_state;
 
 
-	if (is_first) {
-		for_each_old_crtc_in_state(old_state, crtc, old_crtc_state, i) {
-			struct mtk_drm_crtc *mtk_crtc = crtc ? to_mtk_crtc(crtc) : NULL;
+	for_each_old_crtc_in_state(old_state, crtc, old_crtc_state, i) {
+		struct mtk_drm_crtc *mtk_crtc = crtc ? to_mtk_crtc(crtc) : NULL;
+		unsigned int crtc_idx = crtc ? drm_crtc_index(crtc) : 0;
 
-			if (drm_crtc_index(crtc) == 0) {
-				if  (mtk_drm_lcm_is_connect(mtk_crtc))
-					mtk_disp_esd_check_switch(crtc, true);
-				break;
-			}
+		if (crtc && crtc_idx < MAX_CRTC && is_checked[crtc_idx] == 0 &&
+				mtk_crtc && mtk_crtc->enabled) {
+			if  (mtk_drm_is_enable_from_lk(crtc) && mtk_drm_lcm_is_connect(mtk_crtc))
+				mtk_disp_esd_check_switch(crtc, true);
+			is_checked[crtc_idx] = 1;
 		}
-
-		is_first = false;
 	}
 }
 
