@@ -268,10 +268,10 @@ static ssize_t mt_p_active_proc_write
 	if (kstrtoint(desc, 10, &input) == 0) {
 		if (input == 0 && g_p_active != 0) {
 			g_p_active = 0;
-			mtk_ppc_arbitrate_and_set_limit(PPC_P_ACTIVE, g_p_active);
+			//mtk_ppc_arbitrate_and_set_limit(PPC_P_ACTIVE, g_p_active);
 		} else if (input == 1 && g_p_active == 0) {
 			g_p_active = 1;
-			mtk_ppc_arbitrate_and_set_limit(PPC_P_ACTIVE, g_p_active);
+			//mtk_ppc_arbitrate_and_set_limit(PPC_P_ACTIVE, g_p_active);
 		}
 	}
 
@@ -364,6 +364,7 @@ static int ppc_probe(struct platform_device *pdev)
 	mt_ppc_create_procfs();
 
 	ppc_enable = get_segment_id(pdev);
+	ppc_enable = 0;
 	if (!ppc_enable) {
 		pr_info("ppc disable due to segment\n");
 		return 0;
