@@ -2647,6 +2647,8 @@ static int mtk_iommu_probe(struct platform_device *pdev)
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		return -EINVAL;
 	data->base = devm_ioremap_resource(dev, res);
 	if (IS_ERR(data->base))
 		return PTR_ERR(data->base);
@@ -3623,7 +3625,7 @@ static const struct mtk_iommu_plat_data mt6985_data_disp = {
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
 			  SKIP_CFG_PORT | IOVA_34_EN | PGTABLE_PA_35_EN |
-			  HAS_BCLK | HAS_SMI_SUB_COMM | SAME_SUBSYS | IOMMU_MAU_EN,
+			  HAS_BCLK | HAS_SMI_SUB_COMM | SAME_SUBSYS,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= DISP_IOMMU,
@@ -3640,7 +3642,7 @@ static const struct mtk_iommu_plat_data mt6985_data_mdp = {
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
 			  SKIP_CFG_PORT | IOVA_34_EN | PGTABLE_PA_35_EN |
-			  HAS_BCLK | HAS_SMI_SUB_COMM | SAME_SUBSYS | IOMMU_MAU_EN,
+			  HAS_BCLK | HAS_SMI_SUB_COMM | SAME_SUBSYS,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= MDP_IOMMU,
@@ -3655,7 +3657,7 @@ static const struct mtk_iommu_plat_data mt6985_data_mdp = {
 static const struct mtk_iommu_plat_data mt6985_data_apu0 = {
 	.m4u_plat	= M4U_MT6985,
 	.flags          = TLB_SYNC_EN | IOMMU_SEC_EN | PGTABLE_PA_35_EN |
-			  GET_DOM_ID_LEGACY | IOVA_34_EN | LINK_WITH_APU | IOMMU_MAU_EN |
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | LINK_WITH_APU |
 			  PM_OPS_SKIP,
 	.hw_list        = &apu_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
@@ -3671,7 +3673,7 @@ static const struct mtk_iommu_plat_data mt6985_data_apu0 = {
 static const struct mtk_iommu_plat_data mt6985_data_apu1 = {
 	.m4u_plat	= M4U_MT6985,
 	.flags          = TLB_SYNC_EN | IOMMU_SEC_EN | PGTABLE_PA_35_EN |
-			  GET_DOM_ID_LEGACY | IOVA_34_EN | LINK_WITH_APU | IOMMU_MAU_EN |
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | LINK_WITH_APU |
 			  PM_OPS_SKIP,
 	.hw_list        = &apu_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
