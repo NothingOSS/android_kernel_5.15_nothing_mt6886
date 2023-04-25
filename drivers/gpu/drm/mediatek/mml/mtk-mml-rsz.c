@@ -223,7 +223,7 @@ static s32 prepare_tile_data(struct rsz_tile_data *data, struct mml_task *task,
 	if (!ret) {
 		result = get_tile_init_result(task);
 		if (result && ccfg->node->out_idx < result->rsz_param_cnt) {
-			mml_log("%s read rsz param index: %d job_id[%d]",
+			mml_msg("%s read rsz param index: %d job_id[%d]",
 				__func__, ccfg->node->out_idx, task->job.jobid);
 			init_param = &(result->rsz_param[ccfg->node->out_idx]);
 			data->coeff_step_x = init_param->coeff_step_x;

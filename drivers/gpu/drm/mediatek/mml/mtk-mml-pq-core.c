@@ -1101,7 +1101,7 @@ static void handle_tile_init_result(struct mml_pq_chan *chan,
 	s32 ret;
 
 	mml_pq_trace_ex_begin("%s", __func__);
-	mml_pq_log("%s called, %d", __func__, job->result_job_id);
+	mml_pq_msg("%s called, %d", __func__, job->result_job_id);
 	ret = find_sub_task(chan, job->result_job_id, &sub_task);
 	if (unlikely(ret)) {
 		mml_pq_err("finish tile sub_task failed!: %d id: %d", ret,
