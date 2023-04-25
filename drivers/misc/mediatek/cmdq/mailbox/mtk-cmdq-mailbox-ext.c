@@ -172,6 +172,11 @@ int cmdq_hw_trace_set(const char *val, const struct kernel_param *kp)
 	if (ret)
 		return ret;
 
+	if (!cmdq_util_check_hw_trace_work(bit.hwid)) {
+		cmdq_err("hw trace disable");
+		return -EINVAL;
+	}
+
 	cmdq_hw_trace = bit.enable ? 1 : 0;
 
 	if (bit.dump && (bit.hwid & 0x1))
