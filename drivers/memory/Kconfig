@@ -189,6 +189,15 @@ config MTK_SMI
 	  mainly help enable/disable iommu and control the power domain and
 	  clocks for each local arbiter.
 
+config MTK_SMI_DEBUG
+	tristate "enable mtk smi debug extension"
+	help
+	  This extension enables debug features for smi driver. We only default
+	  enable this in userdebug/eng load. With this extension enabled, you
+	  can use adb command to dynamically dump smi status, or do some
+	  experiments like close some smi larbs. This extension is by default
+	  disabled on user load for security concern.
+
 config DA8XX_DDRCTL
 	bool "Texas Instruments da8xx DDR2/mDDR driver"
 	depends on ARCH_DAVINCI_DA8XX || COMPILE_TEST
