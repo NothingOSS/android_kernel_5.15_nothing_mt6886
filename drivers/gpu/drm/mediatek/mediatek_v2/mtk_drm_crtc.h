@@ -317,6 +317,7 @@ enum DISP_PMQOS_SLOT {
 			1) ; (__j)--)					  \
 			for_each_if(comp)
 
+/* this macro gets current display ctx's comp with all ddp_mode */
 #define for_each_comp_in_all_crtc_mode(comp, mtk_crtc, __i, __j, p_mode)       \
 	for ((p_mode) = 0; (p_mode) < DDP_MODE_NR; (p_mode)++)                 \
 		for ((__i) = 0; (__i) < DDP_PATH_NR; (__i)++)                  \
@@ -326,6 +327,7 @@ enum DISP_PMQOS_SLOT {
 				(__j)++)                      \
 				for_each_if(comp)
 
+/* this macro gets current display ctx with specific ddp_mode's comp */
 #define for_each_comp_in_crtc_target_mode_path(comp, mtk_crtc, __i, p_mode, ddp_path)       \
 	for ((__i) = 0;                           \
 		(__i) < __mtk_crtc_path_len(mtk_crtc, p_mode, ddp_path) &&   \
@@ -333,6 +335,7 @@ enum DISP_PMQOS_SLOT {
 		(__i)++)                              \
 		for_each_if(comp)
 
+/* this macro gets all ddp_mode's comp id in constant path data */
 #define for_each_comp_id_in_path_data(comp_id, path_data, __i, __j, p_mode)    \
 	for ((p_mode) = 0; (p_mode) < DDP_MODE_NR; (p_mode)++)        \
 		for ((__i) = 0; (__i) < DDP_PATH_NR; (__i)++)             \
@@ -345,6 +348,17 @@ enum DISP_PMQOS_SLOT {
 					[__j - (path_data)->ovl_path_len[p_mode][__i]], \
 				1);                           \
 				(__j)++)
+
+/* this macro fetches specific ddp_mode and ddp_path's comp id in constant path data */
+#define for_each_comp_id_target_mode_path_in_path_data(comp_id, path_data, __j, p_mode, ddp_path) \
+	for ((__j) = 0; (__j) < ((path_data)->ovl_path_len[p_mode][ddp_path] + \
+			(path_data)->path_len[p_mode][ddp_path]) &&  \
+		((comp_id) = (__j < (path_data)->ovl_path_len[p_mode][ddp_path]) ? \
+			(path_data)->ovl_path[p_mode][ddp_path][__j] : \
+			(path_data)->path[p_mode][ddp_path] \
+			[__j - (path_data)->ovl_path_len[p_mode][ddp_path]], \
+		1);                           \
+		(__j)++)
 
 #define for_each_comp_id_in_dual_pipe(comp_id, path_data, __i, __j)    \
 	for ((__i) = 0; (__i) < DDP_SECOND_PATH; (__i)++) \

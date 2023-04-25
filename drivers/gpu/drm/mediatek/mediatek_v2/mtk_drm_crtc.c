@@ -2105,8 +2105,11 @@ void mtk_crtc_ddp_prepare(struct mtk_drm_crtc *mtk_crtc)
 	    mtk_drm_get_lcm_ext_params(crtc);
 	unsigned int comp_id;
 
-	for_each_comp_in_crtc_target_mode_path(comp, mtk_crtc, i, mtk_crtc->ddp_mode, 0)
+	for_each_comp_id_target_mode_path_in_path_data(comp_id, mtk_crtc->path_data, i,
+			 mtk_crtc->ddp_mode, 0) {
+		comp = priv->ddp_comp[comp_id];
 		mtk_ddp_comp_prepare(comp);
+	}
 
 	for (i = 0; i < ADDON_SCN_NR; i++) {
 		addon_data = mtk_addon_get_scenario_data(__func__,
@@ -2175,8 +2178,11 @@ void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc)
 	    mtk_drm_get_lcm_ext_params(crtc);
 	unsigned int comp_id;
 
-	for_each_comp_in_crtc_target_mode_path(comp, mtk_crtc, i, mtk_crtc->ddp_mode, 0)
+	for_each_comp_id_target_mode_path_in_path_data(comp_id, mtk_crtc->path_data, i,
+			 mtk_crtc->ddp_mode, 0) {
+		comp = priv->ddp_comp[comp_id];
 		mtk_ddp_comp_unprepare(comp);
+	}
 
 	for (i = 0; i < ADDON_SCN_NR; i++) {
 		addon_data = mtk_addon_get_scenario_data(__func__,
