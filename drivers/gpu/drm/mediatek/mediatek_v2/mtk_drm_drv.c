@@ -6017,6 +6017,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	spin_lock_init(&private->unreference.lock);
 	mutex_init(&private->commit.lock);
 	mutex_init(&private->lyeblob_list_mutex);
+	mutex_init(&private->path_ctrl_lock);
 
 	init_waitqueue_head(&private->repaint_data.wq);
 	INIT_LIST_HEAD(&private->repaint_data.job_queue);
