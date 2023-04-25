@@ -1073,9 +1073,12 @@ static u32 adjust_eint_analog_setting(void)
 	if (accdet_dts.eint_detect_mode == 0x4) {
 		if (HAS_CAP(accdet->data->caps,
 				ACCDET_PMIC_EINT0)) {
-			/* enable RG_EINT0CONFIGACCDET */
-			accdet_update_bit(RG_EINT0CONFIGACCDET_ADDR,
-				RG_EINT0CONFIGACCDET_SFT);
+			if (!HAS_CAP(accdet->data->caps,
+			ACCDET_PMIC_NO_INVERTER_TRIG_EINT)) {
+				/* enable RG_EINT0CONFIGACCDET */
+				accdet_update_bit(RG_EINT0CONFIGACCDET_ADDR,
+					RG_EINT0CONFIGACCDET_SFT);
+			}
 		} else if (HAS_CAP(accdet->data->caps,
 				ACCDET_PMIC_EINT1)) {
 			/* enable RG_EINT1CONFIGACCDET */
@@ -2454,10 +2457,14 @@ static void config_digital_init_by_mode(void)
 		(accdet_dts.pwm_deb.eint_pwm_width << 4 |
 		accdet_dts.pwm_deb.eint_pwm_thresh));
 	/* DA signal stable */
-	if (HAS_CAP(accdet->data->caps,
-			ACCDET_PMIC_EINT0)) {
-		accdet_write(ACCDET_DA_STABLE_ADDR,
+	if (HAS_CAP(accdet->data->caps, ACCDET_PMIC_EINT0)) {
+		if (HAS_CAP(accdet->data->caps, ACCDET_PMIC_NO_INVERTER_TRIG_EINT)) {
+			accdet_write(ACCDET_DA_STABLE_ADDR,
+				ACCDET_BYPASS_EINT0_CEN_STABLE);
+		} else {
+			accdet_write(ACCDET_DA_STABLE_ADDR,
 				ACCDET_EINT0_STABLE_VAL);
+		}
 	} else if (HAS_CAP(accdet->data->caps,
 			ACCDET_PMIC_EINT1)) {
 		accdet_write(ACCDET_DA_STABLE_ADDR,
