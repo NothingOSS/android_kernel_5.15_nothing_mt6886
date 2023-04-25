@@ -27,18 +27,10 @@ static LIST_HEAD(ppc_policy_list);
 static bool mt_ppc_debug;
 static bool ppc_enable;
 static unsigned int g_p_active;
-static DEFINE_MUTEX(ppc_mutex);
 
 enum PPC_LIMIT_SOURCE {
 	PPC_P_ACTIVE,
-	PPC_C_BOOST,
 	PPC_LIMIT_MAX
-};
-
-struct cpu_freq_thr_t cpu_freq_thr = {
-	.cluster_num = 0,
-	.cur_freq = {{0, 0}, {1, 0}, {2, 0}, {3, 0}},
-	.thr_freq = {{0, 0}, {1, 2100000}, {3, 2100000}, {3, 0}},
 };
 
 static s32 limit_freq[PPC_MAX_CLUSTER_NUM] = {1800000, 2850000, 3050000,
@@ -72,7 +64,7 @@ static void mtk_ppc_limit_cpu(unsigned int limit)
 static void mtk_ppc_limit_gpu(int limit)
 {
 #if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2)
-	gpufreq_set_limit_nolock(TARGET_DEFAULT, LIMIT_PEAK_POWER, (limit == 1) ? 981000 : 0,
+	gpufreq_set_limit(TARGET_DEFAULT, LIMIT_PEAK_POWER_AP, (limit == 1) ? 981000 : 0,
 		GPUPPM_KEEP_IDX);
 #endif
 }
@@ -103,109 +95,6 @@ static unsigned int mtk_ppc_arbitrate_and_set_limit(enum PPC_LIMIT_SOURCE source
 		mtk_ppc_limit_cpu(ppc_ctrl.cpu_limit_state);
 
 	return (ppc_ctrl.gpu_limit_state != gpu_pre_state);
-}
-
-struct tracepoints_table {
-	const char *name;
-	void *func;
-	struct tracepoint *tp;
-	bool registered;
-};
-
-static void ppc_cpu_frequency_tracer(void *ignore, unsigned int frequency, unsigned int cpu_id)
-{
-	struct cpufreq_policy *policy = NULL;
-	struct cpu_ppc_policy *ppc_policy;
-	unsigned int cpu, i, state, change;
-	int len = 0;
-	char buf[512];
-
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	u64 ts[2];
-
-	ts[0] = sched_clock();
-#endif
-
-	policy = cpufreq_cpu_get(cpu_id);
-	if (!policy)
-		return;
-
-	if (cpu_id != cpumask_first(policy->related_cpus)) {
-		cpufreq_cpu_put(policy);
-		return;
-	}
-
-	i = 0;
-	list_for_each_entry(ppc_policy, &ppc_policy_list, cpu_ppc_list) {
-		cpu = ppc_policy->policy->cpu;
-		if (cpu == cpu_id) {
-			cpu_freq_thr.cur_freq[i].freq = frequency;
-			break;
-		}
-		i++;
-	}
-
-	cpufreq_cpu_put(policy);
-
-	state = 1;
-	for (i = 0; i < cpu_freq_thr.cluster_num; i++) {
-		if (cpu_freq_thr.cur_freq[i].freq <= cpu_freq_thr.thr_freq[i].freq) {
-			state = 0;
-			break;
-		}
-	}
-
-	change = mtk_ppc_arbitrate_and_set_limit(PPC_C_BOOST, state);
-
-	if (change && mt_ppc_debug) {
-		for (i = 0; i < cpu_freq_thr.cluster_num; i++) {
-			len += snprintf(buf + len, 512, "cl[%d] cur:%d limit>%d ", i,
-				cpu_freq_thr.cur_freq[i].freq / 1000,
-				cpu_freq_thr.thr_freq[i].freq / 1000);
-		}
-
-		len += snprintf(buf + len, 512, "==>state = %d ", state);
-		pr_info("%s\n", buf);
-	}
-
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[1] = sched_clock();
-	if ((ts[1] - ts[0] > 2000000ULL) && in_hardirq()) {
-		printk_deferred("%s duration %llu, ts[0]=%llu, ts[1]=%llu\n",
-			__func__, ts[1] - ts[0], ts[0], ts[1]);
-	}
-#endif
-}
-
-struct tracepoints_table ppc_tracepoints[] = {
-	{.name = "cpu_frequency", .func = ppc_cpu_frequency_tracer},
-};
-
-#define FOR_EACH_INTEREST(i) \
-	for (i = 0; i < sizeof(ppc_tracepoints) / sizeof(struct tracepoints_table); i++)
-
-static void ppc_lookup_tracepoints(struct tracepoint *tp, void *ignore)
-{
-	int i;
-
-	FOR_EACH_INTEREST(i) {
-		if (strcmp(ppc_tracepoints[i].name, tp->name) == 0)
-			ppc_tracepoints[i].tp = tp;
-	}
-}
-
-void tracepoint_cleanup(void)
-{
-	int i;
-
-	FOR_EACH_INTEREST(i) {
-		if (ppc_tracepoints[i].registered) {
-			tracepoint_probe_unregister(
-				ppc_tracepoints[i].tp,
-				ppc_tracepoints[i].func, NULL);
-			ppc_tracepoints[i].registered = false;
-		}
-	}
 }
 
 static int mt_ppc_debug_proc_show(struct seq_file *m, void *v)
@@ -268,10 +157,10 @@ static ssize_t mt_p_active_proc_write
 	if (kstrtoint(desc, 10, &input) == 0) {
 		if (input == 0 && g_p_active != 0) {
 			g_p_active = 0;
-			//mtk_ppc_arbitrate_and_set_limit(PPC_P_ACTIVE, g_p_active);
+			mtk_ppc_arbitrate_and_set_limit(PPC_P_ACTIVE, g_p_active);
 		} else if (input == 1 && g_p_active == 0) {
 			g_p_active = 1;
-			//mtk_ppc_arbitrate_and_set_limit(PPC_P_ACTIVE, g_p_active);
+			mtk_ppc_arbitrate_and_set_limit(PPC_P_ACTIVE, g_p_active);
 		}
 	}
 
@@ -364,29 +253,10 @@ static int ppc_probe(struct platform_device *pdev)
 	mt_ppc_create_procfs();
 
 	ppc_enable = get_segment_id(pdev);
-	ppc_enable = 0;
 	if (!ppc_enable) {
 		pr_info("ppc disable due to segment\n");
 		return 0;
 	}
-
-	for_each_kernel_tracepoint(ppc_lookup_tracepoints, NULL);
-
-	FOR_EACH_INTEREST(i) {
-		if (ppc_tracepoints[i].tp == NULL) {
-			pr_info("ppc Error, %s not found\n", ppc_tracepoints[i].name);
-			tracepoint_cleanup();
-			return -1;
-		}
-	}
-
-	ret = tracepoint_probe_register(ppc_tracepoints[0].tp, ppc_tracepoints[0].func,  NULL);
-	ppc_tracepoints[0].registered = true;
-
-	if (!ret)
-		ppc_tracepoints[0].registered = true;
-	else
-		pr_info("cpu_frequency: Couldn't activate tracepoint\n");
 
 	for_each_possible_cpu(cpu) {
 		policy = cpufreq_cpu_get(cpu);
@@ -418,11 +288,8 @@ static int ppc_probe(struct platform_device *pdev)
 				return ret;
 			}
 			list_add_tail(&ppc_policy->cpu_ppc_list, &ppc_policy_list);
-			cpu_freq_thr.cluster_num++;
 		}
 	}
-
-	ppc_ctrl.cpu_freq_thr_info = &cpu_freq_thr;
 
 	return ret;
 }
