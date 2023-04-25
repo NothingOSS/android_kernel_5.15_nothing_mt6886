@@ -2109,36 +2109,26 @@ void mtk_imgsys_mod_get(struct mtk_imgsys_dev *imgsys_dev)
 	kref_get(kref);
 }
 
-static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
+static int mtk_imgsys_worker_power_on(void *data)
 {
 	int ret, i;
-#ifndef USE_KERNEL_ION_BUFFER
-	struct buf_va_info_t *buf;
-	struct dma_buf *dbuf;
-#else
-	int fd;
-#endif
-	u32 user_cnt = 0;
-	unsigned int mode;
+	struct mtk_imgsys_dev *imgsys_dev = data;
 	struct mtk_imgsys_dvfs *dvfs_info = &imgsys_dev->dvfs_info;
-
-	user_cnt = atomic_read(&imgsys_dev->imgsys_user_cnt);
-	if (user_cnt != 0)
-		dev_info(imgsys_dev->dev,
-			"%s: [ERROR] imgsys user count is not zero(%d)\n",
-			__func__, user_cnt);
-
-	atomic_set(&imgsys_dev->imgsys_user_cnt, 0);
+	dev_info(imgsys_dev->dev, "%s+", __func__);
 	mtk_imgsys_power_ctrl_ccu(imgsys_dev, 1);
 	if (IS_ERR_OR_NULL(dvfs_info->mmdvfs_clk))
-		dev_dbg(dvfs_info->dev,
+		dev_info(dvfs_info->dev,
 			"%s: [ERROR] mmdvfs_clk is null\n", __func__);
 	else {
+		IMGSYS_SYSTRACE_BEGIN("imgsys_fw-init:mmdvfs-1\n");
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_IMG);
+		IMGSYS_SYSTRACE_END();
+		IMGSYS_SYSTRACE_BEGIN("imgsys_fw-init:mmdvfs-2\n");
 		mtk_mmdvfs_enable_ccu(true, CCU_PWR_USR_IMG);
+		IMGSYS_SYSTRACE_END();
 	}
 	if (IS_ERR_OR_NULL(dvfs_info->reg))
-		dev_dbg(dvfs_info->dev,
+		dev_info(dvfs_info->dev,
 			"%s: [ERROR] reg is err or null\n", __func__);
 	else {
 		ret = regulator_enable(dvfs_info->reg);
@@ -2162,6 +2152,24 @@ static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
 		dev_info(imgsys_dev->dev,
 			"%s: imgsys_quick_onoff_enable(%d)\n",
 			__func__, imgsys_quick_onoff_enable());
+	complete(&imgsys_dev->comp);
+	dev_info(imgsys_dev->dev, "%s-", __func__);
+	return 0;
+}
+
+static int mtk_imgsys_worker_hcp_init(struct mtk_imgsys_dev *imgsys_dev)
+{
+	int ret;
+	unsigned int mode;
+#ifndef USE_KERNEL_ION_BUFFER
+	struct buf_va_info_t *buf;
+	struct dma_buf *dbuf;
+#else
+	int fd;
+#endif
+	struct img_init_info info;
+	struct resource *imgsys_resource = imgsys_dev->imgsys_resource;
+	u32 user_cnt = 0;
 
 	INIT_LIST_HEAD(&imgsys_dev->imgsys_pipe[0].pipe_job_pending_list);
 
@@ -2176,15 +2184,15 @@ static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
 			   sizeof(ipi_param), 200);
 #else
 	{
-		struct img_init_info info;
-		struct resource *imgsys_resource = imgsys_dev->imgsys_resource;
+		IMGSYS_SYSTRACE_BEGIN("imgsys_fw-init:allocate_buffer\n");
+		dev_dbg(imgsys_dev->dev, "%s+", __func__);
 
 		mtk_imgsys_hw_working_buf_pool_reinit(imgsys_dev);
 		/* ALLOCATE IMGSYS WORKING BUFFER FIRST */
 		mode = imgsys_dev->imgsys_pipe[0].init_info.is_smvr;
 		ret = mtk_hcp_allocate_working_buffer(imgsys_dev->scp_pdev, mode);
 		if (ret) {
-			dev_dbg(imgsys_dev->dev, "%s: mtk_hcp_allocate_working_buffer failed %d\n",
+			dev_info(imgsys_dev->dev, "%s: mtk_hcp_allocate_working_buffer failed %d\n",
 				__func__, ret);
 			goto err_power_off;
 		}
@@ -2210,7 +2218,7 @@ static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
 #else
 		buf = get_first_sd_buf();
 		if (!buf) {
-			pr_debug("%s: no single device buff added\n", __func__);
+			pr_info("%s: no single device buff added\n", __func__);
 		} else {
 			dbuf = (struct dma_buf *)buf->dma_buf_putkva;
 			info.hw_buf_size = dbuf->size;
@@ -2224,11 +2232,12 @@ static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
 		info.smvr_mode = imgsys_dev->imgsys_pipe[0].init_info.is_smvr;
 		ret = imgsys_send(imgsys_dev->scp_pdev, HCP_IMGSYS_INIT_ID,
 			(void *)&info, sizeof(info), 0, 1);
+
 	}
 #endif
 
 	if (ret) {
-		dev_dbg(imgsys_dev->dev, "%s: send SCP_IPI_DIP_FRAME failed %d\n",
+		dev_info(imgsys_dev->dev, "%s: send SCP_IPI_DIP_FRAME failed %d\n",
 			__func__, ret);
 		goto err_power_off;
 	}
@@ -2239,14 +2248,14 @@ static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
 			__func__, ret);
 		goto err_power_off;
 	}
-
+	IMGSYS_SYSTRACE_END();
 	imgsys_timeout_idx = 0;
 	/* calling cmdq stream on */
 	imgsys_cmdq_streamon(imgsys_dev);
 
 	imgsys_queue_init(&imgsys_dev->runnerque, imgsys_dev->dev, "imgsys-cmdq");
 	imgsys_queue_enable(&imgsys_dev->runnerque);
-	mtk_hcp_init_KernelFence();
+	//mtk_hcp_init_KernelFence();
 
 	mtk_hcp_register(imgsys_dev->scp_pdev, HCP_IMGSYS_INIT_ID,
 		imgsys_init_handler, "imgsys_init_handler", imgsys_dev);
@@ -2256,6 +2265,7 @@ static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
 		imgsys_cleartoken_handler, "imgsys_cleartoken_handler", imgsys_dev);
 	mtk_hcp_register(imgsys_dev->scp_pdev, HCP_IMGSYS_AEE_DUMP_ID,
 		imgsys_aee_handler, "imgsys_aee_handler", imgsys_dev);
+	dev_dbg(imgsys_dev->dev, "%s-", __func__);
 
 	return 0;
 
@@ -2277,9 +2287,43 @@ err_power_off:
 		dev_info(imgsys_dev->dev,
 			"%s: [ERROR] imgsys user count is not yet return to zero(%d)\n",
 			__func__, user_cnt);
-
 	return -EBUSY;
+}
 
+static int mtk_imgsys_hw_connect(struct mtk_imgsys_dev *imgsys_dev)
+{
+	u32 user_cnt = 0;
+	struct task_struct *power_task;
+	int ret = 0;
+
+	IMGSYS_SYSTRACE_BEGIN("imgsys_fw-init:\n");
+	dev_info(imgsys_dev->dev, "%s+", __func__);
+	user_cnt = atomic_read(&imgsys_dev->imgsys_user_cnt);
+	if (user_cnt != 0)
+		dev_info(imgsys_dev->dev,
+			"%s: [ERROR] imgsys user count is not zero(%d)\n",
+			__func__, user_cnt);
+
+	atomic_set(&imgsys_dev->imgsys_user_cnt, 0);
+	init_completion(&imgsys_dev->comp);
+	power_task =
+		kthread_create(mtk_imgsys_worker_power_on, (void *)imgsys_dev, "imgsys_power_on");
+	if (!IS_ERR_OR_NULL(power_task)) {
+		sched_set_normal(power_task, -20);
+		wake_up_process(power_task);
+	} else
+		mtk_imgsys_worker_power_on((void *)imgsys_dev);
+	ret = mtk_imgsys_worker_hcp_init(imgsys_dev);
+	wait_for_completion(&imgsys_dev->comp);
+
+	IMGSYS_SYSTRACE_END();
+	if (ret) {
+		dev_info(imgsys_dev->dev, "hcp init fail");
+		return ret;
+	}
+
+	dev_info(imgsys_dev->dev, "%s-", __func__);
+	return 0;
 }
 
 static void mtk_imgsys_hw_disconnect(struct mtk_imgsys_dev *imgsys_dev)
@@ -2307,7 +2351,7 @@ static void mtk_imgsys_hw_disconnect(struct mtk_imgsys_dev *imgsys_dev)
 
 	mtk_hcp_unregister(imgsys_dev->scp_pdev, HCP_DIP_INIT_ID);
 	mtk_hcp_unregister(imgsys_dev->scp_pdev, HCP_DIP_FRAME_ID);
-	mtk_hcp_uninit_KernelFence();
+	//mtk_hcp_uninit_KernelFence();
 
 	imgsys_queue_disable(&imgsys_dev->runnerque);
 
