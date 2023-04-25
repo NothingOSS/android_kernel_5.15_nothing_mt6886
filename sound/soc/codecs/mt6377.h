@@ -4952,8 +4952,10 @@
 #define ACCDET_MON_FLAG_SEL_SFT                       4
 #define ACCDET_MON_FLAG_SEL_MASK                      0xF
 #define ACCDET_MON_FLAG_SEL_MASK_SFT                  (0xF << 4)
-
-
+#define ACCDET_MVTHEN_ADDR				\
+	MT6377_AUDENC_ANA_CON29
+#define ACCDET_MVTH2SEL_ADDR				\
+	MT6377_AUDENC_ANA_CON30
 /* AUDENC_ANA_CON21 */
 #define RG_ACCDET_MODE_MODE1            (0x0007)
 #define RG_ACCDET_MODE_MODE2            (0x0087)
