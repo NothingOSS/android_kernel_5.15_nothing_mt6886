@@ -564,6 +564,12 @@ enum SLBC_STATE {
 	SLBC_CAN_ALLOC,
 };
 
+enum DISP_SMC_CMD {
+	DISP_CMD_CRTC_FIRST_ENABLE,
+	DISP_CMD_CRTC_ENABLE,
+	DISP_CMD_MAX,
+};
+
 struct mtk_crtc_path_data {
 	bool is_fake_path;
 	bool is_discrete_path;
