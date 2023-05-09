@@ -4060,6 +4060,11 @@ void cmdq_pkt_release_handle(struct cmdqRecStruct *handle)
 	struct cmdqRecStruct **pmqos_handle_list = NULL;
 	u32 handle_count;
 
+	if (!handle || !handle->pkt) {
+		CMDQ_ERR("handle->pkt is not exist\n");
+		return;
+	}
+
 	CMDQ_MSG("release handle:0x%p pkt:0x%p thread:%d engine:0x%llx\n",
 		handle, handle->pkt, handle->thread,
 		handle->res_flag_release);
