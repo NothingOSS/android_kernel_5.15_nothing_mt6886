@@ -2089,13 +2089,11 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	caws = container_of(ws, struct vdec_check_alive_work_struct, work);
 	dev = caws->dev;
 
-	mutex_lock(&dev->dev_mutex);
 #if VDEC_VCP_BACKGROUND_IDLE
 	/* vcp background idle check */
 	mutex_lock(&dev->ctx_mutex);
 	if (list_empty(&dev->ctx_list) || dev->is_codec_suspending == 1) {
 		mutex_unlock(&dev->ctx_mutex);
-		mutex_unlock(&dev->dev_mutex);
 		if (caws->ctx != NULL)
 			kfree(caws);
 		return;
@@ -2130,7 +2128,6 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 		if (caws->ctx != NULL)
 			kfree(caws);
 		mutex_unlock(&dev->dec_dvfs_mutex);
-		mutex_unlock(&dev->dev_mutex);
 		return;
 	}
 
@@ -2147,7 +2144,6 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 			if (!need_update) {
 				kfree(caws);
 				mutex_unlock(&dev->dec_dvfs_mutex);
-				mutex_unlock(&dev->dev_mutex);
 				return;
 			}
 			ctx->is_active = 1;
@@ -2159,7 +2155,6 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 			kfree(caws);
 			mutex_unlock(&ctx->vcp_active_mutex);
 			mutex_unlock(&dev->dec_dvfs_mutex);
-			mutex_unlock(&dev->dev_mutex);
 			return;
 		}
 		mutex_unlock(&ctx->vcp_active_mutex);
@@ -2216,7 +2211,6 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	}
 
 	mutex_unlock(&dev->dec_dvfs_mutex);
-	mutex_unlock(&dev->dev_mutex);
 }
 
 void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
