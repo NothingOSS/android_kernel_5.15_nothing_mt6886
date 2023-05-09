@@ -2093,8 +2093,8 @@ static u32 config_moisture_detect_2_1_1(void)
 		accdet_write(ACCDET_MVTH2SEL_ADDR, 0x6);
 	} else {
 		/* TODO check detail with DE */
-		accdet_update_bits(ACCDET_MVTH2SEL_ADDR, 7, 0x1, (eintvth & 0x1));
-		accdet_update_bits(ACCDET_MVTH2SEL_ADDR, 0, 0xf, ((eintvth >> 1) & 0xf));
+		accdet_update_bits(ACCDET_MVTHEN_ADDR, 7, 0x1, ((eintvth >> 5) & 0x1));
+		accdet_update_bits(ACCDET_MVTH2SEL_ADDR, 0, 0xf, (eintvth & 0xf));
 	}
 	return 0;
 }
