@@ -1177,9 +1177,10 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.w2_tg_size = 4000,
 			.h2_tg_size = 3000,
 		},
+		.aov_mode = 0,
 		.pdaf_cap = FALSE,
 		.imgsensor_pd_info = PARAM_UNDEFINED,
-		.ae_binning_ratio = 1,
+		.ae_binning_ratio = 2,
 		.fine_integ_line = 0,
 		.delay_frame = 2,
 		.csi_param = {
