@@ -46,6 +46,9 @@ enum mml_tdshp_reg_index {
 	TDSHP_BLANK_WIDTH,
 	/* REGION_PQ_SIZE_PARAMETER_MODE_SEGMENTATION_LENGTH */
 	TDSHP_REGION_PQ_PARAM,
+	CLASS_0_2_GAIN,
+	CLASS_3_5_GAIN,
+	CLASS_6_8_GAIN,
 	TDSHP_SHADOW_CTRL,
 	CONTOUR_HIST_00,
 	TDSHP_STATUS_00,
@@ -68,6 +71,9 @@ static const u16 tdshp_reg_table_mt6983[TDSHP_REG_MAX_COUNT] = {
 	[TDSHP_OUTPUT_SIZE] = 0x128,
 	[TDSHP_BLANK_WIDTH] = 0x12c,
 	[TDSHP_REGION_PQ_PARAM] = REG_NOT_SUPPORT,
+	[CLASS_0_2_GAIN] = REG_NOT_SUPPORT,
+	[CLASS_3_5_GAIN] = REG_NOT_SUPPORT,
+	[CLASS_6_8_GAIN] = REG_NOT_SUPPORT,
 	[TDSHP_SHADOW_CTRL] = 0x67c,
 	[CONTOUR_HIST_00] = 0x3dc,
 	[TDSHP_STATUS_00] = REG_NOT_SUPPORT
@@ -89,6 +95,9 @@ static const u16 tdshp_reg_table_mt6985[TDSHP_REG_MAX_COUNT] = {
 	[TDSHP_OUTPUT_SIZE] = 0x128,
 	[TDSHP_BLANK_WIDTH] = 0x12c,
 	[TDSHP_REGION_PQ_PARAM] = 0x680,
+	[CLASS_0_2_GAIN] = 0x708,
+	[CLASS_3_5_GAIN] = 0x70C,
+	[CLASS_6_8_GAIN] = 0x710,
 	[TDSHP_SHADOW_CTRL] = 0x724,
 	[CONTOUR_HIST_00] = 0x3dc,
 	[TDSHP_STATUS_00] = 0x644
@@ -306,6 +315,26 @@ static struct mml_pq_comp_config_result *get_tdshp_comp_config_result(
 	return task->pq_task->comp_config.result;
 }
 
+void tdshp_config_region_pq_default(struct mml_comp *comp,
+				  struct mml_task *task, struct mml_comp_config *ccfg)
+{
+	const phys_addr_t base_pa = comp->base_pa;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
+
+	// Write Luma Chroma & Regional Config
+	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
+			(1 << 18), (1 << 18));
+
+	// Write Scene-Based Black & White edges
+	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[CLASS_0_2_GAIN],
+			0, 0x3FFFFFFF);
+	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[CLASS_3_5_GAIN],
+			0, 0x3FFFFFFF);
+	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[CLASS_6_8_GAIN],
+			0, 0x3FFFFFFF);
+}
+
 static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 			      struct mml_comp_config *ccfg)
 {
@@ -357,6 +386,8 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 			tdshp_frm->config_success = false;
 			mml_pq_err("get ds param timeout: %d in %dms",
 				ret, TDSHP_WAIT_TIMEOUT_MS);
+			if ((dest->pq_config).en_region_pq)
+				tdshp_config_region_pq_default(comp, task, ccfg);
 			ret = -ETIMEDOUT;
 			goto exit;
 		}
@@ -364,6 +395,8 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		result = get_tdshp_comp_config_result(task);
 		if (!result) {
 			mml_pq_err("%s: not get result from user lib", __func__);
+			if ((dest->pq_config).en_region_pq)
+				tdshp_config_region_pq_default(comp, task, ccfg);
 			ret = -EBUSY;
 			goto exit;
 		}
