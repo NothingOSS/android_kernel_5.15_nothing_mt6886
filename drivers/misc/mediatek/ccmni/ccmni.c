@@ -61,7 +61,7 @@ long gro_flush_timer;
 
 #define DEV_OPEN                1
 #define DEV_CLOSE               0
-
+#define MAX_MTU                 3000
 static unsigned long timeout_flush_num, clear_flush_num;
 
 static u64 g_cur_dl_speed;
@@ -614,7 +614,7 @@ static int ccmni_change_mtu(struct net_device *dev, int new_mtu)
 	struct ccmni_instance *ccmni =
 		(struct ccmni_instance *)netdev_priv(dev);
 
-	if (new_mtu > CCMNI_MTU)
+	if (new_mtu > MAX_MTU)
 		return -EINVAL;
 
 	dev->mtu = new_mtu;
@@ -1084,7 +1084,7 @@ static int ccmni_init(struct ccmni_ccci_ops *ccci_info)
 		 * support for clat eBPF and tethering eBPF offload
 		 */
 		dev->type = ARPHRD_NONE;
-
+		dev->max_mtu = MAX_MTU;
 		scnprintf(dev->name, sizeof(dev->name), "%s%d", ctlb->ccci_ops->name, i);
 
 		/* init private structure of netdev */
