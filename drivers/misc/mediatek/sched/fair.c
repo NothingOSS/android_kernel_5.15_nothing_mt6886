@@ -739,7 +739,7 @@ out:
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	ts[8] = sched_clock();
 
-	if ((ts[8] - ts[0] > 500000ULL) && in_hardirq()) {
+	if ((ts[8] - ts[0] > 1000000ULL) && in_hardirq()) {
 		int i, i_prev;
 		u64 prev, curr;
 
