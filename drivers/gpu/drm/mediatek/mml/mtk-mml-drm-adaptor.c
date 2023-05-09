@@ -929,7 +929,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 
 	result = frame_buf_to_task_buf(&task->buf.src,
 			      &submit->buffer.src,
-			      "mml_rdma");
+			      "drm_mml_rdma");
 	if (result) {
 		mml_err("[drm]%s get dma buf fail", __func__);
 		goto err_buf_exit;
@@ -938,7 +938,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 	if (submit->info.dest[0].pq_config.en_region_pq) {
 		result = frame_buf_to_task_buf(&task->buf.seg_map,
 				      &submit->buffer.seg_map,
-				      "mml_rdma");
+				      "drm_mml_rdma_segmap");
 		if (result) {
 			mml_err("[drm]%s get dma buf fail", __func__);
 			goto err_buf_exit;
@@ -949,7 +949,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 	for (i = 0; i < submit->buffer.dest_cnt; i++) {
 		result = frame_buf_to_task_buf(&task->buf.dest[i],
 				      &submit->buffer.dest[i],
-				      "mml_wrot");
+				      "drm_mml_wrot");
 		if (result) {
 			mml_err("[drm]%s get dma buf fail", __func__);
 			goto err_buf_exit;
