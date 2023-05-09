@@ -749,7 +749,7 @@ static void mtk_ovl_ultra_src_sel_MT6985(struct mtk_ddp_comp *comp, struct cmdq_
 	output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
 	if (output_comp) {
 		if (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
-			i_value = (comp->id == DDP_COMPONENT_DSI0) ?
+			i_value = (output_comp->id == DDP_COMPONENT_DSI0) ?
 				MT6985_DISP0_DSI_BUFFER : MT6985_DISP1_DSI_BUFFER;
 		else if (mtk_ddp_comp_get_type(output_comp->id) == MTK_DP_INTF)
 			i_value = MT6985_DISP0_DP_BUFFER;
