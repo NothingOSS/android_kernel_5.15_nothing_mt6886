@@ -2439,8 +2439,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if ((dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
 				dsi->ddp_comp.id == DDP_COMPONENT_DSI1) &&
 				mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && mtk_crtc) {
+				unsigned long flags;
+
+				spin_lock_irqsave(&mtk_crtc->pf_time_lock, flags);
 				mtk_crtc->pf_time = ktime_get();
 				atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 1);
+				spin_unlock_irqrestore(&mtk_crtc->pf_time_lock, flags);
 				wake_up_interruptible(&(mtk_crtc->signal_irq_for_pre_fence_wq));
 			}
 

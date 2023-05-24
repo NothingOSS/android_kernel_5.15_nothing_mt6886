@@ -6562,6 +6562,7 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 	ktime_t cur_time, diff_time;
 	ktime_t start_time, wait_time;
 	bool pass = false;
+	unsigned long flags;
 
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(crtc);
 	cur_time = mtk_crtc->pf_time;
@@ -6580,6 +6581,7 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 				, atomic_read(&mtk_crtc->signal_irq_for_pre_fence)
 				, msecs_to_jiffies(1000 / vrefresh));
 
+			spin_lock_irqsave(&mtk_crtc->pf_time_lock, flags);
 			cur_time = mtk_crtc->pf_time;
 
 			if (start_time > cur_time) {
@@ -6589,8 +6591,9 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 			} else
 				pass = true;
 
-			if (!pass && cur_time == mtk_crtc->pf_time)
+			if (!pass)
 				atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 0);
+			spin_unlock_irqrestore(&mtk_crtc->pf_time_lock, flags);
 
 		} while (!pass && is_frame_mode);
 
@@ -14569,6 +14572,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mutex_init(&mtk_crtc->lock);
 	mutex_init(&mtk_crtc->cwb_lock);
 	mutex_init(&mtk_crtc->mml_ir_sram.lock);
+	spin_lock_init(&mtk_crtc->pf_time_lock);
 	mtk_crtc->config_regs = priv->config_regs;
 	mtk_crtc->config_regs_pa = priv->config_regs_pa;
 	mtk_crtc->dispsys_num = priv->dispsys_num;
