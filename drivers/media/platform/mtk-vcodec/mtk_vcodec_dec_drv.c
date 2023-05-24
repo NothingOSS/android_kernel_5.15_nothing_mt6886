@@ -294,7 +294,9 @@ static int fops_vcodec_release(struct file *file)
 
 	is_vcp_active = ctx->is_vcp_active;
 	kfree(ctx->dec_flush_buf);
+	mutex_lock(&dev->check_alive_mutex);
 	kfree(ctx);
+	mutex_unlock(&dev->check_alive_mutex);
 	if (dev->dec_cnt > 0)
 		dev->dec_cnt--;
 	mutex_unlock(&dev->dev_mutex);
@@ -540,6 +542,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	mutex_init(&dev->ipi_mutex_res);
 	mutex_init(&dev->dec_dvfs_mutex);
 	mutex_init(&dev->dec_always_on_mutex);
+	mutex_init(&dev->check_alive_mutex);
 	spin_lock_init(&dev->irqlock);
 
 	snprintf(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",

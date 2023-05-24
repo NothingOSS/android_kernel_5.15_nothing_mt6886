@@ -772,6 +772,7 @@ struct mtk_vcodec_dev {
 	struct workqueue_struct *encode_workqueue;
 	struct workqueue_struct *check_alive_workqueue;
 	struct vdec_check_alive_work_struct check_alive_work;
+	struct mutex check_alive_mutex;
 
 	int int_cond;
 	int int_type;

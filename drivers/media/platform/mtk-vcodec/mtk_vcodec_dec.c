@@ -2089,11 +2089,14 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	caws = container_of(ws, struct vdec_check_alive_work_struct, work);
 	dev = caws->dev;
 
+	mutex_lock(&dev->check_alive_mutex);
+
 #if VDEC_VCP_BACKGROUND_IDLE
 	/* vcp background idle check */
 	mutex_lock(&dev->ctx_mutex);
 	if (list_empty(&dev->ctx_list) || dev->is_codec_suspending == 1) {
 		mutex_unlock(&dev->ctx_mutex);
+		mutex_unlock(&dev->check_alive_mutex);
 		if (caws->ctx != NULL)
 			kfree(caws);
 		return;
@@ -2128,24 +2131,31 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 		if (caws->ctx != NULL)
 			kfree(caws);
 		mutex_unlock(&dev->dec_dvfs_mutex);
+		mutex_unlock(&dev->check_alive_mutex);
 		return;
 	}
 
 	if (caws->ctx != NULL) { // ctx retrigger case
 		ctx = caws->ctx;
+
+		// cur ctx should be in dvfs list, check firstly to avoid ctx UAF
+		list_for_each(item, &dev->vdec_dvfs_inst) {
+			inst = list_entry(item, struct vcodec_inst, list);
+			if (inst->ctx == ctx)
+				need_update = true;
+		}
+
+		if (!need_update) {
+			mtk_v4l2_debug(0, "[VDVFS] %s ctx [%p] is invalid, skip dvfs check",
+				__func__, ctx);
+			kfree(caws);
+			mutex_unlock(&dev->dec_dvfs_mutex);
+			mutex_unlock(&dev->check_alive_mutex);
+			return;
+		}
+
 		mutex_lock(&ctx->vcp_active_mutex);
 		if (ctx->is_vcp_active) {
-			// cur ctx should be in dvfs list
-			list_for_each(item, &dev->vdec_dvfs_inst) {
-				inst = list_entry(item, struct vcodec_inst, list);
-				if (inst->ctx == ctx)
-					need_update = true;
-			}
-			if (!need_update) {
-				kfree(caws);
-				mutex_unlock(&dev->dec_dvfs_mutex);
-				return;
-			}
 			ctx->is_active = 1;
 			mtk_vdec_dvfs_update_active_state(ctx);
 			kfree(caws);
@@ -2155,6 +2165,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 			kfree(caws);
 			mutex_unlock(&ctx->vcp_active_mutex);
 			mutex_unlock(&dev->dec_dvfs_mutex);
+			mutex_unlock(&dev->check_alive_mutex);
 			return;
 		}
 		mutex_unlock(&ctx->vcp_active_mutex);
@@ -2211,6 +2222,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	}
 
 	mutex_unlock(&dev->dec_dvfs_mutex);
+	mutex_unlock(&dev->check_alive_mutex);
 }
 
 void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
