@@ -35,6 +35,8 @@ static struct mtk_mmdvfs_clk *mtk_mmdvfs_clks;
 
 static u8 mmdvfs_pwr_opp[PWR_MMDVFS_NUM];
 static struct clk *mmdvfs_pwr_clk[PWR_MMDVFS_NUM];
+static struct clk *mmdvfs_rst_clk[MMDVFS_RST_CLK_NUM];
+static u8 mmdvfs_rst_clk_num;
 
 static phys_addr_t mmdvfs_memory_iova;
 static phys_addr_t mmdvfs_memory_pa;
@@ -835,6 +837,8 @@ static struct notifier_block mmdvfs_pm_notifier_block = {
 
 static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
+	int i, ret;
+
 	switch (action) {
 	case VCP_EVENT_READY:
 		MMDVFS_DBG("receive VCP_EVENT_READY IPI_SYNC_FUNC=%#x IPI_SYNC_DATA=%#x",
@@ -842,8 +846,17 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
 		mmdvfs_vcp_cb_ready = true;
 		break;
-	case VCP_EVENT_STOP:
 	case VCP_EVENT_SUSPEND:
+		if (mmdvfs_rst_clk_num) {
+			for (i = 0; i < mmdvfs_rst_clk_num; i++) {
+				if (!IS_ERR_OR_NULL(mmdvfs_rst_clk[i])) {
+					ret = clk_set_rate(mmdvfs_rst_clk[i], 0);
+					if (ret)
+						MMDVFS_ERR("reset clk:%d to 0 failed:%d", i, ret);
+				}
+			}
+		}
+	case VCP_EVENT_STOP:
 		mmdvfs_vcp_cb_ready = false;
 		break;
 	}
@@ -981,6 +994,8 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 	struct device_node *larbnode;
 	struct platform_device *larbdev;
 	struct clk *clk;
+	struct property *prop;
+	const char *prop_name;
 	int i, ret;
 
 	ret = of_property_count_strings(node, MMDVFS_CLK_NAMES);
@@ -1073,14 +1088,24 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(mmdvfs_pwr_opp); i++) {
-		mmdvfs_pwr_opp[i] = MAX_OPP;
+	i = 0;
+	of_property_for_each_string(node, "clock-names", prop, prop_name) {
+		clk = devm_clk_get(&pdev->dev, prop_name);
+		if (IS_ERR_OR_NULL(clk)) {
+			MMDVFS_ERR("clk:%s get failed:%d", prop_name, PTR_ERR_OR_ZERO(clk));
+			continue;
+		}
 
-		clk = of_clk_get(node, i);
-		if (IS_ERR_OR_NULL(clk))
-			MMDVFS_DBG("i:%d clk get failed:%d", i, PTR_ERR(clk));
-		else
-			mmdvfs_pwr_clk[i] = clk;
+		if (!strncmp("pwr", prop_name, 3)) {
+			if (i == ARRAY_SIZE(mmdvfs_pwr_opp)) {
+				MMDVFS_ERR("pwr clk num is wrong");
+				continue;
+			}
+			mmdvfs_pwr_opp[i] = MAX_OPP;
+			mmdvfs_pwr_clk[i++] = clk;
+		} else {
+			mmdvfs_rst_clk[mmdvfs_rst_clk_num++] = clk;
+		}
 	}
 
 	vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
