@@ -99,6 +99,10 @@ unsigned int sysctl_sched_rt_period = 1000000;
 
 __read_mostly int scheduler_running;
 
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+static	LIST_HEAD(pending_lists);
+ #endif
+
 #ifdef CONFIG_SCHED_CORE
 
 DEFINE_STATIC_KEY_FALSE(__sched_core_enabled);
@@ -2363,6 +2367,10 @@ static int migration_cpu_stop(void *data)
 	struct rq *rq = this_rq();
 	bool complete = false;
 	struct rq_flags rf;
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	struct task_struct *pending_task = NULL;
+	struct set_affinity_pending *mypending = NULL;
+#endif
 
 	/*
 	 * The original target CPU might have gone down and we might
@@ -2450,7 +2458,20 @@ out:
 	if (pending)
 		pending->stop_pending = false;
 	task_rq_unlock(rq, p, &rf);
-
+ #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	if (!complete && !list_empty(&pending_lists)){
+		printk_deferred("%s:curr task pid=%d,process:%s,migration_disable=%d,%s,%s\n",
+				__func__,p->pid,p->comm,p->migration_disabled,((pending==NULL)?"is nul":"not null"),
+				((task_rq(p) == rq)?"task_rq=rq":"task_rq!=rq"));
+		list_for_each_entry(pending_task, &pending_lists, pending_list){
+			printk_deferred("%s:pending task pid=%d,process:%s ,migration_disable=%d\n",
+					__func__,pending_task->pid,pending_task->comm,pending_task->migration_disabled);
+			mypending=pending_task->migration_pending;
+			if (mypending)
+				printk_deferred("%s:pending done:%u\n",__func__,mypending->done.done);
+		}
+	}
+ #endif
 	if (complete)
 		complete_all(&pending->done);
 
@@ -2704,6 +2725,9 @@ static int affine_move_task(struct rq *rq, struct task_struct *p, struct rq_flag
 {
 	struct set_affinity_pending my_pending = { }, *pending = NULL;
 	bool stop_pending, complete = false;
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	struct task_struct *pending_task = NULL;
+#endif
 
 	/* Can the task run on the task's current CPU? If so, we're done */
 	if (cpumask_test_cpu(task_cpu(p), &p->cpus_mask)) {
@@ -2805,6 +2829,9 @@ static int affine_move_task(struct rq *rq, struct task_struct *p, struct rq_flag
 
 		if (flags & SCA_MIGRATE_ENABLE)
 			return 0;
+ #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+		pending_task = p;
+ #endif
 	} else {
 
 		if (!is_migration_disabled(p)) {
@@ -2820,9 +2847,26 @@ static int affine_move_task(struct rq *rq, struct task_struct *p, struct rq_flag
 
 		if (complete)
 			complete_all(&pending->done);
+ #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+		if (!complete)
+			printk_deferred("%s:pid=%d,process=%s,migration_disable=%d,stop_pending,state=0x%lx,flag=0x%lx",
+					__func__,p->pid,p->comm,p->migration_disabled,
+					pending->stop_pending,p->__state,flags);
+ #endif
 	}
-
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	if (pending_task){
+		list_add_tail(&pending_task->pending_list,&pending_lists);
+		if (!pending->done.done)
+			printk_deferred("%s:pid=%d,process=%s,migration_disable=%d,pending done:%u",
+					__func__,p->pid,p->comm,p->migration_disabled,pending->done.done);
+	}
+#endif
 	wait_for_completion(&pending->done);
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	if (pending_task)
+		list_del(&pending_task->pending_list);
+#endif
 
 	if (refcount_dec_and_test(&pending->refs))
 		wake_up_var(&pending->refs); /* No UaF, just an address */
