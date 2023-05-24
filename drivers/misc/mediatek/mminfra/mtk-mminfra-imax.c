@@ -32,16 +32,19 @@ enum {
 	MDP_LARB_1,
 };
 
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
 static void __iomem *dispsys_base, *dispsys1_base;
 static void __iomem *mdpsys_base, *mdpsys1_base;
 static void __iomem *disp_larb_0_base, *disp_larb_1_base, *disp_larb_2_base, *disp_larb_3_base;
 static void __iomem *mdp_larb_0_base, *mdp_larb_1_base, *mdp_larb_2_base;
 static unsigned int mm_sram_base;
+#endif
 static unsigned int disp_larb_0_fake, disp_larb_1_fake, disp_larb_2_fake, disp_larb_3_fake;
 static unsigned int mdp_larb_0_fake, mdp_larb_1_fake, mdp_larb_2_fake;
 
 static struct device *dev;
 static struct platform_device *g_pdev;
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
 static bool is_init;
 
 static void init_mmsys(void)
@@ -377,6 +380,7 @@ static struct kernel_param_ops mminfra_imax_ops = {
 };
 module_param_cb(mminfra_imax, &mminfra_imax_ops, NULL, 0644);
 MODULE_PARM_DESC(mminfra_imax, "mminfra imax");
+#endif
 
 static int mminfra_imax_probe(struct platform_device *pdev)
 {
