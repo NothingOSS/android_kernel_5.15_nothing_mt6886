@@ -15313,7 +15313,7 @@ void mtk_disp_mutex_remove_comp(struct mtk_disp_mutex *mutex,
 			writel_relaxed(
 				MUTEX_SOF_SINGLE_MODE,
 				reg_addr1 + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
-		break;
+		fallthrough;
 	default:
 		if (ddp->data->mutex_mod[id] > 0) {
 			if (ddp->data->mutex_mod[id] <= BIT(31)) {
