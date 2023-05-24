@@ -94,9 +94,6 @@ static void ufs_mtk_mcq_print_trs(void *data, struct ufs_hba *hba, bool pr_prdt)
 	}
 }
 
-
-/* @ CL 6502432*/
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 static void ufs_mtk_mcq_add_command_trace(struct ufs_hba *hba, unsigned int tag,
 				     enum ufs_trace_str_t str_t)
 {
@@ -135,11 +132,9 @@ static void ufs_mtk_mcq_add_command_trace(struct ufs_hba *hba, unsigned int tag,
 		lba = scsi_get_lba(cmd);
 	}
 
-	intr = ufshcd_readl(hba, REG_INTERRUPT_STATUS);
 	trace_ufs_mtk_mcq_command(dev_name(hba->dev), str_t, tag,
 			doorbell, transfer_len, intr, lba, opcode, group_id);
 }
-#endif
 
 static u32 ufs_mtk_q_entry_offset(struct ufs_queue *q, union utp_q_entry *ptr)
 {
@@ -225,13 +220,7 @@ static void ufs_mtk_transfer_req_compl_handler(struct ufs_hba *hba,
 	cmd = lrbp->cmd;
 	if (cmd) {
 		trace_android_vh_ufs_compl_command(hba, lrbp);
-
-/* @ CL 6502432*/
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 		ufs_mtk_mcq_add_command_trace(hba, index, UFS_CMD_COMP);
-#else
-		ufshcd_add_command_trace(hba, index, UFS_CMD_COMP);
-#endif
 		result = retry_requests ? DID_BUS_BUSY << 16 :
 			ufshcd_transfer_rsp_status(hba, lrbp);
 		scsi_dma_unmap(cmd);
@@ -247,13 +236,7 @@ static void ufs_mtk_transfer_req_compl_handler(struct ufs_hba *hba,
 		lrbp->command_type == UTP_CMD_TYPE_UFS_STORAGE) {
 		if (hba->dev_cmd.complete) {
 			trace_android_vh_ufs_compl_command(hba, lrbp);
-
-/* @ CL 6502432*/
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-		ufs_mtk_mcq_add_command_trace(hba, index, UFS_DEV_COMP);
-#else
-		ufshcd_add_command_trace(hba, index, UFS_DEV_COMP);
-#endif
+			ufs_mtk_mcq_add_command_trace(hba, index, UFS_DEV_COMP);
 			complete(hba->dev_cmd.complete);
 			update_scaling = true;
 		}

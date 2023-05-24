@@ -603,12 +603,7 @@ static struct mod_tracepoints_table mod_interests[] = {
 };
 
 static struct tracepoints_table interests[] = {
-/* @ CL 6502432*/
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	{.name = "ufshcd_command", .func = probe_ufshcd_command, .en = TP_EN_LEGACY},
-#else
-	{.name = "ufshcd_command", .func = probe_ufshcd_command},
-#endif
 	{.name = "ufshcd_uic_command", .func = probe_ufshcd_uic_command},
 	{.name = "ufshcd_clk_gating", .func = probe_ufshcd_clk_gating},
 	{
@@ -1420,8 +1415,6 @@ int ufs_mtk_dbg_register(struct ufs_hba *hba)
 		interests[i].init = true;
 	}
 
-/* @ CL 6502432*/
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	FOR_EACH_MOD_INTEREST(i) {
 		if (mod_interests[i].tp == NULL) {
 			pr_info("Error: %s not found in modules. Check tracepoint or module load order.\n",
@@ -1437,7 +1430,6 @@ int ufs_mtk_dbg_register(struct ufs_hba *hba)
 					  NULL);
 		mod_interests[i].init = true;
 	}
-#endif
 
 	/* Create control nodes in procfs */
 	ret = ufs_mtk_dbg_init_procfs();
@@ -1469,10 +1461,7 @@ static int __init ufs_mtk_dbg_init(void)
 	mrdump_set_extra_dump(AEE_EXTRA_FILE_UFS, ufs_mtk_dbg_get_aee_buffer);
 #endif
 
-/* @ CL 6502432*/
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	register_tracepoint_module_notifier(&tp_nb);
-#endif
 	return 0;
 }
 

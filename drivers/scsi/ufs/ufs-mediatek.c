@@ -3385,6 +3385,8 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 
 	mt_irq_dump_status(hba->irq);
 
+	ufshcd_dump_regs(hba, 0, REG_INTERRUPT_STATUS, "Intr. Status (0x0):");
+
 	/* Dump ufshci register 0x 0~ 0xA0 */
 	ufshcd_dump_regs(hba, 0, UFSHCI_REG_SPACE_SIZE, "UFSHCI (0x0):");
 
