@@ -1195,13 +1195,12 @@ static void ufs_mtk_trace_vh_compl_command_vend_ss(struct ufs_hba *hba,
 }
 
 static void ufs_mtk_trace_vh_send_tm_command_vend_ss(void *data, struct ufs_hba *hba,
-			int tag, const char *str)
+			int tag, int str_t)
 {
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 
-	if (strcmp(str, "tm_complete") == 0)
+	if (str_t == UFS_TM_COMP)
 		ufsf_reset_lu(ufsf);
-
 }
 
 static void ufs_mtk_trace_vh_update_sdev_vend_ss(void *data, struct scsi_device *sdev)

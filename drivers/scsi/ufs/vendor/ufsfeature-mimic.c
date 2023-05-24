@@ -845,9 +845,9 @@ out:
 }
 
 static void ufsf_add_tm_upiu_trace(struct ufs_hba *hba, unsigned int tag,
-		const char *str)
+		enum ufs_trace_str_t str_t)
 {
-	trace_android_vh_ufs_send_tm_command(hba, tag, str);
+	trace_android_vh_ufs_send_tm_command(hba, tag, (int)str_t);
 }
 
 static int __ufsf_issue_tm_cmd(struct ufs_hba *hba,
@@ -891,7 +891,7 @@ static int __ufsf_issue_tm_cmd(struct ufs_hba *hba,
 
 	spin_unlock_irqrestore(host->host_lock, flags);
 
-	ufsf_add_tm_upiu_trace(hba, task_tag, "tm_send");
+	ufsf_add_tm_upiu_trace(hba, task_tag, UFS_TM_SEND);
 
 	/* wait until the task management command is completed */
 	err = wait_for_completion_io_timeout(&wait,
@@ -902,7 +902,7 @@ static int __ufsf_issue_tm_cmd(struct ufs_hba *hba,
 		 * use-after-free.
 		 */
 		req->end_io_data = NULL;
-		ufsf_add_tm_upiu_trace(hba, task_tag, "tm_complete_err");
+		ufsf_add_tm_upiu_trace(hba, task_tag, UFS_TM_ERR);
 		dev_err(hba->dev, "%s: task management cmd 0x%.2x timed-out\n",
 				__func__, tm_function);
 		if (ufsf_clear_tm_cmd(hba, task_tag))
@@ -913,7 +913,7 @@ static int __ufsf_issue_tm_cmd(struct ufs_hba *hba,
 		err = 0;
 		memcpy(treq, hba->utmrdl_base_addr + task_tag, sizeof(*treq));
 
-		ufsf_add_tm_upiu_trace(hba, task_tag, "tm_complete");
+		ufsf_add_tm_upiu_trace(hba, task_tag, UFS_TM_COMP);
 	}
 
 	spin_lock_irqsave(hba->host->host_lock, flags);
