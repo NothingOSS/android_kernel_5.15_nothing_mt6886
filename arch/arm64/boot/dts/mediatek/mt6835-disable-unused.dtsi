@@ -390,7 +390,6 @@
 			<&topckgen_clk CLK_TOP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_AUDIO_H_SEL>,
 			<&topckgen_clk CLK_TOP_MCUPM_SEL>,
-			<&topckgen_clk CLK_TOP_MEM_SUBP_SEL>,
 			<&topckgen_clk CLK_TOP_IMG1_SEL>,
 			<&topckgen_clk CLK_TOP_IPE_SEL>,
 			<&topckgen_clk CLK_TOP_CAM_SEL>,

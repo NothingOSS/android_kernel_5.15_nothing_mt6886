@@ -14,7 +14,6 @@
 			<&topckgen_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&topckgen_clk CLK_TOP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_MCUPM_SEL>,
-			<&topckgen_clk CLK_TOP_MEM_SUBP_SEL>,
 			<&topckgen_clk CLK_TOP_NFI1X_SEL>,
 			<&infracfg_ao_clk CLK_IFRAO_CCIF5_MD>,
 			<&infracfg_ao_clk CLK_IFRAO_CCIF4_AP>,
