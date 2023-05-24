@@ -112,18 +112,18 @@ enum OVL_INPUT_FORMAT {
 	OVL_INPUT_FORMAT_UNKNOWN    = 32,
 };
 
-void mtk_module_backup(struct mtk_ddp_config *cfg)
+void mtk_module_backup(struct drm_crtc *crtc)
 {
 	char *bkup_buf, *scp_sh_mem, *module_base;
 	void __iomem *va = 0;
 	int i, size;
 
-	if (!AOD_STAT_MATCH(AOD_STAT_ENABLE) || !cfg)
+	if (!AOD_STAT_MATCH(AOD_STAT_ENABLE) || !crtc)
 		return;
 
-	CFG_DISPLAY_WIDTH = cfg->w;
-	CFG_DISPLAY_HEIGHT = cfg->h;
-	CFG_DISPLAY_VREFRESH = cfg->vrefresh;
+	CFG_DISPLAY_WIDTH = crtc->state->mode.hdisplay;
+	CFG_DISPLAY_HEIGHT = crtc->state->mode.vdisplay;
+	CFG_DISPLAY_VREFRESH = drm_mode_vrefresh(&crtc->state->mode);
 
 	scp_sh_mem = (char *)scp_get_reserve_mem_virt(SCP_AOD_MEM_ID);
 
@@ -142,6 +142,12 @@ void mtk_module_backup(struct mtk_ddp_config *cfg)
 			continue;
 
 		va = ioremap(module_list[i].base, module_list[i].size);
+
+		if (!va) {
+			DDPMSG("%s ioremap error\n", __func__);
+			return;
+		}
+
 		module_base = (char *)va;
 
 		bkup_buf = scp_sh_mem + module_list[i].offset;
