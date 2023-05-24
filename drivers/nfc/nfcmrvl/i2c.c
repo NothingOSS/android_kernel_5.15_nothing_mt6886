@@ -132,15 +132,10 @@ static int nfcmrvl_i2c_nci_send(struct nfcmrvl_private *priv,
 			ret = -EREMOTEIO;
 		} else
 			ret = 0;
-	}
-
-	if (ret) {
 		kfree_skb(skb);
-		return ret;
 	}
 
-	consume_skb(skb);
-	return 0;
+	return ret;
 }
 
 static void nfcmrvl_i2c_nci_update_config(struct nfcmrvl_private *priv,

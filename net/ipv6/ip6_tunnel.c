@@ -1446,8 +1446,8 @@ static void ip6_tnl_link_config(struct ip6_tnl *t)
 	struct net_device *tdev = NULL;
 	struct __ip6_tnl_parm *p = &t->parms;
 	struct flowi6 *fl6 = &t->fl.u.ip6;
+	unsigned int mtu;
 	int t_hlen;
-	int mtu;
 
 	memcpy(dev->dev_addr, &p->laddr, sizeof(struct in6_addr));
 	memcpy(dev->broadcast, &p->raddr, sizeof(struct in6_addr));
@@ -1494,13 +1494,12 @@ static void ip6_tnl_link_config(struct ip6_tnl *t)
 			dev->hard_header_len = tdev->hard_header_len + t_hlen;
 			mtu = min_t(unsigned int, tdev->mtu, IP6_MAX_MTU);
 
-			mtu = mtu - t_hlen;
+			dev->mtu = mtu - t_hlen;
 			if (!(t->parms.flags & IP6_TNL_F_IGN_ENCAP_LIMIT))
-				mtu -= 8;
+				dev->mtu -= 8;
 
-			if (mtu < IPV6_MIN_MTU)
-				mtu = IPV6_MIN_MTU;
-			WRITE_ONCE(dev->mtu, mtu);
+			if (dev->mtu < IPV6_MIN_MTU)
+				dev->mtu = IPV6_MIN_MTU;
 		}
 	}
 }

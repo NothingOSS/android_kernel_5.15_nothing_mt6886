@@ -379,14 +379,13 @@ int proc_dostring(struct ctl_table *table, int write,
 			ppos);
 }
 
-static void proc_skip_spaces(char **buf, size_t *size)
+static size_t proc_skip_spaces(char **buf)
 {
-	while (*size) {
-		if (!isspace(**buf))
-			break;
-		(*size)--;
-		(*buf)++;
-	}
+	size_t ret;
+	char *tmp = skip_spaces(*buf);
+	ret = tmp - *buf;
+	*buf = tmp;
+	return ret;
 }
 
 static void proc_skip_char(char **buf, size_t *size, const char v)
@@ -455,12 +454,13 @@ static int proc_get_long(char **buf, size_t *size,
 			  unsigned long *val, bool *neg,
 			  const char *perm_tr, unsigned perm_tr_len, char *tr)
 {
+	int len;
 	char *p, tmp[TMPBUFLEN];
-	ssize_t len = *size;
 
-	if (len <= 0)
+	if (!*size)
 		return -EINVAL;
 
+	len = *size;
 	if (len > TMPBUFLEN - 1)
 		len = TMPBUFLEN - 1;
 
@@ -633,7 +633,7 @@ static int __do_proc_dointvec(void *tbl_data, struct ctl_table *table,
 		bool neg;
 
 		if (write) {
-			proc_skip_spaces(&p, &left);
+			left -= proc_skip_spaces(&p);
 
 			if (!left)
 				break;
@@ -660,7 +660,7 @@ static int __do_proc_dointvec(void *tbl_data, struct ctl_table *table,
 	if (!write && !first && left && !err)
 		proc_put_char(&buffer, &left, '\n');
 	if (write && !err && left)
-		proc_skip_spaces(&p, &left);
+		left -= proc_skip_spaces(&p);
 	if (write && first)
 		return err ? : -EINVAL;
 	*lenp -= left;
@@ -702,7 +702,7 @@ static int do_proc_douintvec_w(unsigned int *tbl_data,
 	if (left > PAGE_SIZE - 1)
 		left = PAGE_SIZE - 1;
 
-	proc_skip_spaces(&p, &left);
+	left -= proc_skip_spaces(&p);
 	if (!left) {
 		err = -EINVAL;
 		goto out_free;
@@ -722,7 +722,7 @@ static int do_proc_douintvec_w(unsigned int *tbl_data,
 	}
 
 	if (!err && left)
-		proc_skip_spaces(&p, &left);
+		left -= proc_skip_spaces(&p);
 
 out_free:
 	if (err)
@@ -1259,7 +1259,7 @@ static int __do_proc_doulongvec_minmax(void *data, struct ctl_table *table,
 		if (write) {
 			bool neg;
 
-			proc_skip_spaces(&p, &left);
+			left -= proc_skip_spaces(&p);
 			if (!left)
 				break;
 
@@ -1287,7 +1287,7 @@ static int __do_proc_doulongvec_minmax(void *data, struct ctl_table *table,
 	if (!write && !first && left && !err)
 		proc_put_char(&buffer, &left, '\n');
 	if (write && !err)
-		proc_skip_spaces(&p, &left);
+		left -= proc_skip_spaces(&p);
 	if (write && first)
 		return err ? : -EINVAL;
 	*lenp -= left;

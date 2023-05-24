@@ -17,8 +17,6 @@
 /* for gfp flag names */
 #include <linux/trace_events.h>
 #include <trace/events/mmflags.h>
-#include "trace_probe.h"
-#include "trace_probe_kernel.h"
 
 #include "trace_synth.h"
 
@@ -403,7 +401,6 @@ static unsigned int trace_string(struct synth_trace_event *entry,
 {
 	unsigned int len = 0;
 	char *str_field;
-	int ret;
 
 	if (is_dynamic) {
 		u32 data_offset;
@@ -412,27 +409,19 @@ static unsigned int trace_string(struct synth_trace_event *entry,
 		data_offset += event->n_u64 * sizeof(u64);
 		data_offset += data_size;
 
-		len = kern_fetch_store_strlen((unsigned long)str_val);
+		str_field = (char *)entry + data_offset;
+
+		len = strlen(str_val) + 1;
+		strscpy(str_field, str_val, len);
 
 		data_offset |= len << 16;
 		*(u32 *)&entry->fields[*n_u64] = data_offset;
-
-		ret = kern_fetch_store_string((unsigned long)str_val, &entry->fields[*n_u64], entry);
 
 		(*n_u64)++;
 	} else {
 		str_field = (char *)&entry->fields[*n_u64];
 
-#ifdef CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE
-		if ((unsigned long)str_val < TASK_SIZE)
-			ret = strncpy_from_user_nofault(str_field, str_val, STR_VAR_LEN_MAX);
-		else
-#endif
-			ret = strncpy_from_kernel_nofault(str_field, str_val, STR_VAR_LEN_MAX);
-
-		if (ret < 0)
-			strcpy(str_field, FAULT_STRING);
-
+		strscpy(str_field, str_val, STR_VAR_LEN_MAX);
 		(*n_u64) += STR_VAR_LEN_MAX / sizeof(u64);
 	}
 
@@ -465,7 +454,7 @@ static notrace void trace_event_raw_event_synth(void *__data,
 		val_idx = var_ref_idx[field_pos];
 		str_val = (char *)(long)var_ref_vals[val_idx];
 
-		len = kern_fetch_store_strlen((unsigned long)str_val);
+		len = strlen(str_val) + 1;
 
 		fields_size += len;
 	}

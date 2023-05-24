@@ -159,8 +159,7 @@ int sk_stream_wait_memory(struct sock *sk, long *timeo_p)
 		*timeo_p = current_timeo;
 	}
 out:
-	if (!sock_flag(sk, SOCK_DEAD))
-		remove_wait_queue(sk_sleep(sk), &wait);
+	remove_wait_queue(sk_sleep(sk), &wait);
 	return err;
 
 do_error:

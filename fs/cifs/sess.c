@@ -320,7 +320,6 @@ out:
 	if (rc && chan->server)
 		cifs_put_tcp_session(chan->server, 0);
 
-	free_xid(xid);
 	return rc;
 }
 

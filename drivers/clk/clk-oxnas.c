@@ -207,7 +207,7 @@ static const struct of_device_id oxnas_stdclk_dt_ids[] = {
 
 static int oxnas_stdclk_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node, *parent_np;
+	struct device_node *np = pdev->dev.of_node;
 	const struct oxnas_stdclk_data *data;
 	const struct of_device_id *id;
 	struct regmap *regmap;
@@ -219,9 +219,7 @@ static int oxnas_stdclk_probe(struct platform_device *pdev)
 		return -ENODEV;
 	data = id->data;
 
-	parent_np = of_get_parent(np);
-	regmap = syscon_node_to_regmap(parent_np);
-	of_node_put(parent_np);
+	regmap = syscon_node_to_regmap(of_get_parent(np));
 	if (IS_ERR(regmap)) {
 		dev_err(&pdev->dev, "failed to have parent regmap\n");
 		return PTR_ERR(regmap);

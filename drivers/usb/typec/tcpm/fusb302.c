@@ -151,7 +151,7 @@ static void _fusb302_log(struct fusb302_chip *chip, const char *fmt,
 
 	if (fusb302_log_full(chip)) {
 		chip->logbuffer_head = max(chip->logbuffer_head - 1, 0);
-		strscpy(tmpbuffer, "overflow", sizeof(tmpbuffer));
+		strlcpy(tmpbuffer, "overflow", sizeof(tmpbuffer));
 	}
 
 	if (chip->logbuffer_head < 0 ||

@@ -1888,10 +1888,8 @@ static ssize_t qm_cmd_write(struct file *filp, const char __user *buffer,
 		return ret;
 
 	/* Judge if the instance is being reset. */
-	if (unlikely(atomic_read(&qm->status.flags) == QM_STOP)) {
-		ret = 0;
-		goto put_dfx_access;
-	}
+	if (unlikely(atomic_read(&qm->status.flags) == QM_STOP))
+		return 0;
 
 	if (count > QM_DBG_WRITE_LEN) {
 		ret = -ENOSPC;

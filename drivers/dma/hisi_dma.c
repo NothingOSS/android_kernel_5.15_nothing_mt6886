@@ -180,8 +180,7 @@ static void hisi_dma_reset_qp_point(struct hisi_dma_dev *hdma_dev, u32 index)
 	hisi_dma_chan_write(hdma_dev->base, HISI_DMA_CQ_HEAD_PTR, index, 0);
 }
 
-static void hisi_dma_reset_or_disable_hw_chan(struct hisi_dma_chan *chan,
-					      bool disable)
+static void hisi_dma_reset_hw_chan(struct hisi_dma_chan *chan)
 {
 	struct hisi_dma_dev *hdma_dev = chan->hdma_dev;
 	u32 index = chan->qp_num, tmp;
@@ -202,11 +201,8 @@ static void hisi_dma_reset_or_disable_hw_chan(struct hisi_dma_chan *chan,
 	hisi_dma_do_reset(hdma_dev, index);
 	hisi_dma_reset_qp_point(hdma_dev, index);
 	hisi_dma_pause_dma(hdma_dev, index, false);
-
-	if (!disable) {
-		hisi_dma_enable_dma(hdma_dev, index, true);
-		hisi_dma_unmask_irq(hdma_dev, index);
-	}
+	hisi_dma_enable_dma(hdma_dev, index, true);
+	hisi_dma_unmask_irq(hdma_dev, index);
 
 	ret = readl_relaxed_poll_timeout(hdma_dev->base +
 		HISI_DMA_Q_FSM_STS + index * HISI_DMA_OFFSET, tmp,
@@ -222,7 +218,7 @@ static void hisi_dma_free_chan_resources(struct dma_chan *c)
 	struct hisi_dma_chan *chan = to_hisi_dma_chan(c);
 	struct hisi_dma_dev *hdma_dev = chan->hdma_dev;
 
-	hisi_dma_reset_or_disable_hw_chan(chan, false);
+	hisi_dma_reset_hw_chan(chan);
 	vchan_free_chan_resources(&chan->vc);
 
 	memset(chan->sq, 0, sizeof(struct hisi_dma_sqe) * hdma_dev->chan_depth);
@@ -271,6 +267,7 @@ static void hisi_dma_start_transfer(struct hisi_dma_chan *chan)
 
 	vd = vchan_next_desc(&chan->vc);
 	if (!vd) {
+		dev_err(&hdma_dev->pdev->dev, "no issued task!\n");
 		chan->desc = NULL;
 		return;
 	}
@@ -302,7 +299,7 @@ static void hisi_dma_issue_pending(struct dma_chan *c)
 
 	spin_lock_irqsave(&chan->vc.lock, flags);
 
-	if (vchan_issue_pending(&chan->vc) && !chan->desc)
+	if (vchan_issue_pending(&chan->vc))
 		hisi_dma_start_transfer(chan);
 
 	spin_unlock_irqrestore(&chan->vc.lock, flags);
@@ -397,7 +394,7 @@ static void hisi_dma_enable_qp(struct hisi_dma_dev *hdma_dev, u32 qp_index)
 
 static void hisi_dma_disable_qp(struct hisi_dma_dev *hdma_dev, u32 qp_index)
 {
-	hisi_dma_reset_or_disable_hw_chan(&hdma_dev->chan[qp_index], true);
+	hisi_dma_reset_hw_chan(&hdma_dev->chan[qp_index]);
 }
 
 static void hisi_dma_enable_qps(struct hisi_dma_dev *hdma_dev)
@@ -435,15 +432,18 @@ static irqreturn_t hisi_dma_irq(int irq, void *data)
 	desc = chan->desc;
 	cqe = chan->cq + chan->cq_head;
 	if (desc) {
-		chan->cq_head = (chan->cq_head + 1) % hdma_dev->chan_depth;
-		hisi_dma_chan_write(hdma_dev->base, HISI_DMA_CQ_HEAD_PTR,
-				    chan->qp_num, chan->cq_head);
 		if (FIELD_GET(STATUS_MASK, cqe->w0) == STATUS_SUCC) {
+			chan->cq_head = (chan->cq_head + 1) %
+					hdma_dev->chan_depth;
+			hisi_dma_chan_write(hdma_dev->base,
+					    HISI_DMA_CQ_HEAD_PTR, chan->qp_num,
+					    chan->cq_head);
 			vchan_cookie_complete(&desc->vd);
-			hisi_dma_start_transfer(chan);
 		} else {
 			dev_err(&hdma_dev->pdev->dev, "task error!\n");
 		}
+
+		chan->desc = NULL;
 	}
 
 	spin_unlock(&chan->vc.lock);

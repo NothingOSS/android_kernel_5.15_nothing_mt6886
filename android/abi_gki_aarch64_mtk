@@ -374,7 +374,6 @@
   devm_iio_channel_get
   devm_iio_channel_get_all
   devm_iio_device_alloc
-  devm_iio_triggered_buffer_setup_ext
   __devm_iio_device_register
   devm_input_allocate_device
   devm_ioremap
@@ -1420,7 +1419,6 @@
   perf_trace_run_bpf_submit
   pfn_is_map_memory
   phy_attached_info
-  phy_basic_features
   phy_connect
   phy_disconnect
   phy_do_ioctl_running
@@ -1428,7 +1426,6 @@
   phy_ethtool_nway_reset
   phy_ethtool_set_link_ksettings
   phy_exit
-  phy_gbit_features
   phy_get
   phy_init
   phy_loopback
@@ -2035,7 +2032,6 @@
   __traceiter_android_vh_check_file_open
   __traceiter_android_vh_check_mmap_file
   __traceiter_android_vh_check_uninterruptible_tasks
-  __traceiter_android_vh_cpufreq_offline
   __traceiter_android_vh_iommu_iovad_alloc_iova
   __traceiter_android_vh_iommu_iovad_free_iova
   __traceiter_android_vh_is_fpsimd_save
@@ -2113,7 +2109,6 @@
   __tracepoint_android_vh_check_file_open
   __tracepoint_android_vh_check_mmap_file
   __tracepoint_android_vh_check_uninterruptible_tasks
-  __tracepoint_android_vh_cpufreq_offline
   __tracepoint_android_vh_iommu_iovad_alloc_iova
   __tracepoint_android_vh_iommu_iovad_free_iova
   __tracepoint_android_vh_is_fpsimd_save

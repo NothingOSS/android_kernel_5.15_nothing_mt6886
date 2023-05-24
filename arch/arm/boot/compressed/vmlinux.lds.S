@@ -23,7 +23,6 @@ SECTIONS
     *(.ARM.extab*)
     *(.note.*)
     *(.rel.*)
-    *(.printk_index)
     /*
      * Discard any r/w data - this produces a link error if we have any,
      * which is required for PIC decompression.  Local data generates
@@ -58,7 +57,6 @@ SECTIONS
     *(.rodata)
     *(.rodata.*)
     *(.data.rel.ro)
-    *(.data.rel.ro.*)
   }
   .piggydata : {
     *(.piggydata)

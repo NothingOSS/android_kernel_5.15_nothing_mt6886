@@ -192,30 +192,33 @@ static int imgu_subdev_get_selection(struct v4l2_subdev *sd,
 				     struct v4l2_subdev_state *sd_state,
 				     struct v4l2_subdev_selection *sel)
 {
-	struct imgu_v4l2_subdev *imgu_sd =
-		container_of(sd, struct imgu_v4l2_subdev, subdev);
+	struct v4l2_rect *try_sel, *r;
+	struct imgu_v4l2_subdev *imgu_sd = container_of(sd,
+							struct imgu_v4l2_subdev,
+							subdev);
 
 	if (sel->pad != IMGU_NODE_IN)
 		return -EINVAL;
 
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP:
-		if (sel->which == V4L2_SUBDEV_FORMAT_TRY)
-			sel->r = *v4l2_subdev_get_try_crop(sd, sd_state,
-							   sel->pad);
-		else
-			sel->r = imgu_sd->rect.eff;
-		return 0;
+		try_sel = v4l2_subdev_get_try_crop(sd, sd_state, sel->pad);
+		r = &imgu_sd->rect.eff;
+		break;
 	case V4L2_SEL_TGT_COMPOSE:
-		if (sel->which == V4L2_SUBDEV_FORMAT_TRY)
-			sel->r = *v4l2_subdev_get_try_compose(sd, sd_state,
-							      sel->pad);
-		else
-			sel->r = imgu_sd->rect.bds;
-		return 0;
+		try_sel = v4l2_subdev_get_try_compose(sd, sd_state, sel->pad);
+		r = &imgu_sd->rect.bds;
+		break;
 	default:
 		return -EINVAL;
 	}
+
+	if (sel->which == V4L2_SUBDEV_FORMAT_TRY)
+		sel->r = *try_sel;
+	else
+		sel->r = *r;
+
+	return 0;
 }
 
 static int imgu_subdev_set_selection(struct v4l2_subdev *sd,

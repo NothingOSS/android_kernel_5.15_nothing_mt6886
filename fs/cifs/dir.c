@@ -538,10 +538,8 @@ int cifs_create(struct user_namespace *mnt_userns, struct inode *inode,
 	cifs_dbg(FYI, "cifs_create parent inode = 0x%p name is: %pd and dentry = 0x%p\n",
 		 inode, direntry, direntry);
 
-	if (unlikely(cifs_forced_shutdown(CIFS_SB(inode->i_sb)))) {
-		rc = -EIO;
-		goto out_free_xid;
-	}
+	if (unlikely(cifs_forced_shutdown(CIFS_SB(inode->i_sb))))
+		return -EIO;
 
 	tlink = cifs_sb_tlink(CIFS_SB(inode->i_sb));
 	rc = PTR_ERR(tlink);

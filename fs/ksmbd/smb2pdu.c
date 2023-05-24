@@ -3803,6 +3803,11 @@ static int __query_dir(struct dir_context *ctx, const char *name, int namlen,
 	return 0;
 }
 
+static void restart_ctx(struct dir_context *ctx)
+{
+	ctx->pos = 0;
+}
+
 static int verify_info_level(int info_level)
 {
 	switch (info_level) {
@@ -3916,6 +3921,7 @@ int smb2_query_dir(struct ksmbd_work *work)
 	if (srch_flag & SMB2_REOPEN || srch_flag & SMB2_RESTART_SCANS) {
 		ksmbd_debug(SMB, "Restart directory scan\n");
 		generic_file_llseek(dir_fp->filp, 0, SEEK_SET);
+		restart_ctx(&dir_fp->readdir_data.ctx);
 	}
 
 	memset(&d_info, 0, sizeof(struct ksmbd_dir_info));
@@ -3956,15 +3962,11 @@ int smb2_query_dir(struct ksmbd_work *work)
 	set_ctx_actor(&dir_fp->readdir_data.ctx, __query_dir);
 
 	rc = iterate_dir(dir_fp->filp, &dir_fp->readdir_data.ctx);
-	/*
-	 * req->OutputBufferLength is too small to contain even one entry.
-	 * In this case, it immediately returns OutputBufferLength 0 to client.
-	 */
-	if (!d_info.out_buf_len && !d_info.num_entry)
-		goto no_buf_len;
-	if (rc > 0 || rc == -ENOSPC)
+	if (rc == 0)
+		restart_ctx(&dir_fp->readdir_data.ctx);
+	if (rc == -ENOSPC)
 		rc = 0;
-	else if (rc)
+	if (rc)
 		goto err_out;
 
 	d_info.wptr = d_info.rptr;
@@ -3986,12 +3988,10 @@ int smb2_query_dir(struct ksmbd_work *work)
 		rsp->Buffer[0] = 0;
 		inc_rfc1001_len(rsp_org, 9);
 	} else {
-no_buf_len:
 		((struct file_directory_info *)
 		((char *)rsp->Buffer + d_info.last_entry_offset))
 		->NextEntryOffset = 0;
-		if (d_info.data_count >= d_info.last_entry_off_align)
-			d_info.data_count -= d_info.last_entry_off_align;
+		d_info.data_count -= d_info.last_entry_off_align;
 
 		rsp->StructureSize = cpu_to_le16(9);
 		rsp->OutputBufferOffset = cpu_to_le16(72);
@@ -4021,8 +4021,6 @@ err_out2:
 		rsp->hdr.Status = STATUS_NO_MEMORY;
 	else if (rc == -EFAULT)
 		rsp->hdr.Status = STATUS_INVALID_INFO_CLASS;
-	else if (rc == -EIO)
-		rsp->hdr.Status = STATUS_FILE_CORRUPT_ERROR;
 	if (!rsp->hdr.Status)
 		rsp->hdr.Status = STATUS_UNEXPECTED_IO_ERROR;
 
@@ -7619,16 +7617,11 @@ int smb2_ioctl(struct ksmbd_work *work)
 			goto out;
 		}
 
-		if (in_buf_len < offsetof(struct validate_negotiate_info_req,
-					  Dialects)) {
-			ret = -EINVAL;
-			goto out;
-		}
+		if (in_buf_len < sizeof(struct validate_negotiate_info_req))
+			return -EINVAL;
 
-		if (out_buf_len < sizeof(struct validate_negotiate_info_rsp)) {
-			ret = -EINVAL;
-			goto out;
-		}
+		if (out_buf_len < sizeof(struct validate_negotiate_info_rsp))
+			return -EINVAL;
 
 		ret = fsctl_validate_negotiate_info(conn,
 			(struct validate_negotiate_info_req *)&req->Buffer[0],

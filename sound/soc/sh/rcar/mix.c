@@ -146,11 +146,7 @@ static int rsnd_mix_init(struct rsnd_mod *mod,
 			 struct rsnd_dai_stream *io,
 			 struct rsnd_priv *priv)
 {
-	int ret;
-
-	ret = rsnd_mod_power_on(mod);
-	if (ret < 0)
-		return ret;
+	rsnd_mod_power_on(mod);
 
 	rsnd_mix_activation(mod);
 

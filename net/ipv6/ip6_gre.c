@@ -1153,16 +1153,14 @@ static void ip6gre_tnl_link_config_route(struct ip6_tnl *t, int set_mtu,
 				dev->needed_headroom = dst_len;
 
 			if (set_mtu) {
-				int mtu = rt->dst.dev->mtu - t_hlen;
-
+				dev->mtu = rt->dst.dev->mtu - t_hlen;
 				if (!(t->parms.flags & IP6_TNL_F_IGN_ENCAP_LIMIT))
-					mtu -= 8;
+					dev->mtu -= 8;
 				if (dev->type == ARPHRD_ETHER)
-					mtu -= ETH_HLEN;
+					dev->mtu -= ETH_HLEN;
 
-				if (mtu < IPV6_MIN_MTU)
-					mtu = IPV6_MIN_MTU;
-				WRITE_ONCE(dev->mtu, mtu);
+				if (dev->mtu < IPV6_MIN_MTU)
+					dev->mtu = IPV6_MIN_MTU;
 			}
 		}
 		ip6_rt_put(rt);

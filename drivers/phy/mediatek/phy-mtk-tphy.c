@@ -2105,7 +2105,7 @@ static int phy_type_syscon_get(struct mtk_phy_instance *instance,
 static int phy_type_set(struct mtk_phy_instance *instance)
 {
 	int type;
-	u32 offset;
+	u32 mask;
 
 	if (!instance->type_sw)
 		return 0;
@@ -2128,9 +2128,8 @@ static int phy_type_set(struct mtk_phy_instance *instance)
 		return 0;
 	}
 
-	offset = instance->type_sw_index * BITS_PER_BYTE;
-	regmap_update_bits(instance->type_sw, instance->type_sw_reg,
-			   RG_PHY_SW_TYPE << offset, type << offset);
+	mask = RG_PHY_SW_TYPE << (instance->type_sw_index * BITS_PER_BYTE);
+	regmap_update_bits(instance->type_sw, instance->type_sw_reg, mask, type);
 
 	return 0;
 }

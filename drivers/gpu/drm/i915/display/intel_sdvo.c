@@ -2762,10 +2762,13 @@ intel_sdvo_dvi_init(struct intel_sdvo *intel_sdvo, int device)
 	if (!intel_sdvo_connector)
 		return false;
 
-	if (device == 0)
+	if (device == 0) {
+		intel_sdvo->controlled_output |= SDVO_OUTPUT_TMDS0;
 		intel_sdvo_connector->output_flag = SDVO_OUTPUT_TMDS0;
-	else if (device == 1)
+	} else if (device == 1) {
+		intel_sdvo->controlled_output |= SDVO_OUTPUT_TMDS1;
 		intel_sdvo_connector->output_flag = SDVO_OUTPUT_TMDS1;
+	}
 
 	intel_connector = &intel_sdvo_connector->base;
 	connector = &intel_connector->base;
@@ -2820,6 +2823,7 @@ intel_sdvo_tv_init(struct intel_sdvo *intel_sdvo, int type)
 	encoder->encoder_type = DRM_MODE_ENCODER_TVDAC;
 	connector->connector_type = DRM_MODE_CONNECTOR_SVIDEO;
 
+	intel_sdvo->controlled_output |= type;
 	intel_sdvo_connector->output_flag = type;
 
 	if (intel_sdvo_connector_init(intel_sdvo_connector, intel_sdvo) < 0) {
@@ -2860,10 +2864,13 @@ intel_sdvo_analog_init(struct intel_sdvo *intel_sdvo, int device)
 	encoder->encoder_type = DRM_MODE_ENCODER_DAC;
 	connector->connector_type = DRM_MODE_CONNECTOR_VGA;
 
-	if (device == 0)
+	if (device == 0) {
+		intel_sdvo->controlled_output |= SDVO_OUTPUT_RGB0;
 		intel_sdvo_connector->output_flag = SDVO_OUTPUT_RGB0;
-	else if (device == 1)
+	} else if (device == 1) {
+		intel_sdvo->controlled_output |= SDVO_OUTPUT_RGB1;
 		intel_sdvo_connector->output_flag = SDVO_OUTPUT_RGB1;
+	}
 
 	if (intel_sdvo_connector_init(intel_sdvo_connector, intel_sdvo) < 0) {
 		kfree(intel_sdvo_connector);
@@ -2893,10 +2900,13 @@ intel_sdvo_lvds_init(struct intel_sdvo *intel_sdvo, int device)
 	encoder->encoder_type = DRM_MODE_ENCODER_LVDS;
 	connector->connector_type = DRM_MODE_CONNECTOR_LVDS;
 
-	if (device == 0)
+	if (device == 0) {
+		intel_sdvo->controlled_output |= SDVO_OUTPUT_LVDS0;
 		intel_sdvo_connector->output_flag = SDVO_OUTPUT_LVDS0;
-	else if (device == 1)
+	} else if (device == 1) {
+		intel_sdvo->controlled_output |= SDVO_OUTPUT_LVDS1;
 		intel_sdvo_connector->output_flag = SDVO_OUTPUT_LVDS1;
+	}
 
 	if (intel_sdvo_connector_init(intel_sdvo_connector, intel_sdvo) < 0) {
 		kfree(intel_sdvo_connector);
@@ -2929,39 +2939,16 @@ err:
 	return false;
 }
 
-static u16 intel_sdvo_filter_output_flags(u16 flags)
-{
-	flags &= SDVO_OUTPUT_MASK;
-
-	/* SDVO requires XXX1 function may not exist unless it has XXX0 function.*/
-	if (!(flags & SDVO_OUTPUT_TMDS0))
-		flags &= ~SDVO_OUTPUT_TMDS1;
-
-	if (!(flags & SDVO_OUTPUT_RGB0))
-		flags &= ~SDVO_OUTPUT_RGB1;
-
-	if (!(flags & SDVO_OUTPUT_LVDS0))
-		flags &= ~SDVO_OUTPUT_LVDS1;
-
-	return flags;
-}
-
 static bool
 intel_sdvo_output_setup(struct intel_sdvo *intel_sdvo, u16 flags)
 {
-	struct drm_i915_private *i915 = to_i915(intel_sdvo->base.base.dev);
-
-	flags = intel_sdvo_filter_output_flags(flags);
-
-	intel_sdvo->controlled_output = flags;
-
-	intel_sdvo_select_ddc_bus(i915, intel_sdvo);
+	/* SDVO requires XXX1 function may not exist unless it has XXX0 function.*/
 
 	if (flags & SDVO_OUTPUT_TMDS0)
 		if (!intel_sdvo_dvi_init(intel_sdvo, 0))
 			return false;
 
-	if (flags & SDVO_OUTPUT_TMDS1)
+	if ((flags & SDVO_TMDS_MASK) == SDVO_TMDS_MASK)
 		if (!intel_sdvo_dvi_init(intel_sdvo, 1))
 			return false;
 
@@ -2982,7 +2969,7 @@ intel_sdvo_output_setup(struct intel_sdvo *intel_sdvo, u16 flags)
 		if (!intel_sdvo_analog_init(intel_sdvo, 0))
 			return false;
 
-	if (flags & SDVO_OUTPUT_RGB1)
+	if ((flags & SDVO_RGB_MASK) == SDVO_RGB_MASK)
 		if (!intel_sdvo_analog_init(intel_sdvo, 1))
 			return false;
 
@@ -2990,13 +2977,14 @@ intel_sdvo_output_setup(struct intel_sdvo *intel_sdvo, u16 flags)
 		if (!intel_sdvo_lvds_init(intel_sdvo, 0))
 			return false;
 
-	if (flags & SDVO_OUTPUT_LVDS1)
+	if ((flags & SDVO_LVDS_MASK) == SDVO_LVDS_MASK)
 		if (!intel_sdvo_lvds_init(intel_sdvo, 1))
 			return false;
 
-	if (flags == 0) {
+	if ((flags & SDVO_OUTPUT_MASK) == 0) {
 		unsigned char bytes[2];
 
+		intel_sdvo->controlled_output = 0;
 		memcpy(bytes, &intel_sdvo->caps.output_flags, 2);
 		DRM_DEBUG_KMS("%s: Unknown SDVO output type (0x%02x%02x)\n",
 			      SDVO_NAME(intel_sdvo),
@@ -3407,6 +3395,8 @@ bool intel_sdvo_init(struct drm_i915_private *dev_priv,
 	 * cloning for SDVO encoders.
 	 */
 	intel_sdvo->base.cloneable = 0;
+
+	intel_sdvo_select_ddc_bus(dev_priv, intel_sdvo);
 
 	/* Set the input timing to the screen. Assume always input 0. */
 	if (!intel_sdvo_set_target_input(intel_sdvo))

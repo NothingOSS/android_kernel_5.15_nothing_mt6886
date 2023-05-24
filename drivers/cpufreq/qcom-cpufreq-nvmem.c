@@ -215,7 +215,6 @@ static int qcom_cpufreq_krait_name_version(struct device *cpu_dev,
 	int speed = 0, pvs = 0, pvs_ver = 0;
 	u8 *speedbin;
 	size_t len;
-	int ret = 0;
 
 	speedbin = nvmem_cell_read(speedbin_nvmem, &len);
 
@@ -233,8 +232,7 @@ static int qcom_cpufreq_krait_name_version(struct device *cpu_dev,
 		break;
 	default:
 		dev_err(cpu_dev, "Unable to read nvmem data. Defaulting to 0!\n");
-		ret = -ENODEV;
-		goto len_error;
+		return -ENODEV;
 	}
 
 	snprintf(*pvs_name, sizeof("speedXX-pvsXX-vXX"), "speed%d-pvs%d-v%d",
@@ -242,9 +240,8 @@ static int qcom_cpufreq_krait_name_version(struct device *cpu_dev,
 
 	drv->versions = (1 << speed);
 
-len_error:
 	kfree(speedbin);
-	return ret;
+	return 0;
 }
 
 static const struct qcom_cpufreq_match_data match_data_kryo = {
@@ -267,8 +264,7 @@ static int qcom_cpufreq_probe(struct platform_device *pdev)
 	struct nvmem_cell *speedbin_nvmem;
 	struct device_node *np;
 	struct device *cpu_dev;
-	char pvs_name_buffer[] = "speedXX-pvsXX-vXX";
-	char *pvs_name = pvs_name_buffer;
+	char *pvs_name = "speedXX-pvsXX-vXX";
 	unsigned cpu;
 	const struct of_device_id *match;
 	int ret;

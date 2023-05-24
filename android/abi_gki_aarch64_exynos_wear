@@ -17,7 +17,6 @@
   amba_driver_register
   amba_driver_unregister
   android_debug_symbol
-  android_kmalloc_64_create
   android_rvh_probe_register
   anon_inode_getfd
   anon_inode_getfile
@@ -213,7 +212,6 @@
   del_timer
   del_timer_sync
   destroy_workqueue
-  dev_alloc_name
   __dev_change_net_namespace
   dev_close
   _dev_crit
@@ -320,7 +318,6 @@
   dev_pm_qos_add_request
   dev_pm_qos_remove_request
   dev_pm_qos_update_request
-  dev_queue_xmit
   devres_add
   __devres_alloc_node
   dev_set_name
@@ -405,8 +402,6 @@
   down_trylock
   down_write
   d_path
-  dql_completed
-  dql_reset
   driver_find
   driver_find_device
   driver_register
@@ -416,7 +411,6 @@
   enable_irq
   enable_percpu_irq
   end_buffer_read_sync
-  ether_setup
   eth_platform_get_mac_address
   ethtool_op_get_link
   ethtool_op_get_ts_info
@@ -436,7 +430,6 @@
   flush_delayed_work
   flush_work
   flush_workqueue
-  for_each_kernel_tracepoint
   fput
   free_irq
   free_netdev
@@ -530,8 +523,6 @@
   iio_device_free
   __iio_device_register
   iio_device_unregister
-  in4_pton
-  in6_pton
   inc_zone_page_state
   inet_csk_get_port
   init_dummy_netdev
@@ -586,7 +577,6 @@
   iommu_unregister_device_fault_handler
   __ioremap
   iounmap
-  ip_send_check
   iput
   irq_create_mapping_affinity
   __irq_domain_add
@@ -631,7 +621,6 @@
   __kfifo_alloc
   __kfifo_free
   __kfifo_in
-  __kfifo_out
   __kfifo_to_user
   kfree
   kfree_const
@@ -696,17 +685,11 @@
   kvfree
   kvfree_call_rcu
   kvmalloc_node
-  linkwatch_fire_event
   __list_add_valid
   __list_del_entry_valid
   list_sort
-  __local_bh_enable_ip
   __lock_buffer
   __lock_page
-  log_post_read_mmio
-  log_post_write_mmio
-  log_read_mmio
-  log_write_mmio
   loops_per_jiffy
   match_string
   memchr
@@ -762,9 +745,7 @@
   mutex_trylock
   mutex_unlock
   napi_complete_done
-  napi_disable
   napi_enable
-  napi_gro_flush
   napi_gro_receive
   __napi_schedule
   napi_schedule_prep
@@ -772,27 +753,21 @@
   netdev_err
   netdev_info
   netdev_warn
-  netif_carrier_off
   netif_carrier_on
   netif_napi_add
-  __netif_napi_del
   netif_receive_skb
   netif_rx_ni
-  netif_schedule_queue
-  netif_tx_stop_all_queues
   netif_tx_wake_queue
   netlink_broadcast
   netlink_register_notifier
   netlink_unicast
   netlink_unregister_notifier
   net_ns_type_operations
-  net_ratelimit
   nla_find
   nla_memcpy
   __nla_parse
   nla_put
   nla_put_64bit
-  nla_put_nohdr
   nla_reserve
   __nla_validate
   no_llseek
@@ -957,7 +932,6 @@
   prepare_to_wait_event
   print_hex_dump
   _printk
-  __printk_ratelimit
   proc_create
   proc_create_data
   proc_create_seq_private
@@ -985,10 +959,8 @@
   raw_notifier_chain_register
   raw_notifier_chain_unregister
   _raw_read_lock
-  _raw_read_lock_bh
   _raw_read_lock_irqsave
   _raw_read_unlock
-  _raw_read_unlock_bh
   _raw_read_unlock_irqrestore
   _raw_spin_lock
   _raw_spin_lock_bh
@@ -1002,11 +974,9 @@
   _raw_spin_unlock_irq
   _raw_spin_unlock_irqrestore
   _raw_write_lock
-  _raw_write_lock_bh
   _raw_write_lock_irqsave
   _raw_write_trylock
   _raw_write_unlock
-  _raw_write_unlock_bh
   _raw_write_unlock_irqrestore
   rb_erase
   rb_first
@@ -1030,9 +1000,6 @@
   __register_chrdev
   register_console
   register_die_notifier
-  register_inet6addr_notifier
-  register_inetaddr_notifier
-  register_kretprobe
   register_netdev
   register_netdevice
   register_netdevice_notifier
@@ -1081,7 +1048,6 @@
   rfkill_resume_polling
   rfkill_set_hw_state_reason
   rfkill_unregister
-  rps_needed
   rtc_class_close
   rtc_class_open
   rtc_read_time
@@ -1147,7 +1113,6 @@
   single_release
   skb_add_rx_frag
   skb_clone
-  skb_copy
   skb_copy_bits
   skb_copy_expand
   skb_dequeue
@@ -1158,12 +1123,10 @@
   skb_queue_head
   skb_queue_purge
   skb_queue_tail
-  skb_realloc_headroom
   skb_trim
   smp_call_function
   smp_call_function_many
   smp_call_function_single
-  smp_call_function_single_async
   smp_call_on_cpu
   snd_device_free
   snd_dma_alloc_pages
@@ -1244,7 +1207,6 @@
   soc_device_register
   __sock_create
   sock_release
-  softnet_data
   sort
   __spi_alloc_controller
   spi_controller_resume
@@ -1287,7 +1249,6 @@
   strncpy
   strnlen
   strpbrk
-  strrchr
   strscpy
   strsep
   strspn
@@ -1305,7 +1266,6 @@
   synchronize_rcu
   syscon_regmap_lookup_by_phandle
   sysctl_sched_features
-  sysfb_disable
   sysfs_add_file_to_group
   sysfs_create_bin_file
   sysfs_create_file_ns
@@ -1517,9 +1477,6 @@
   unregister_blkdev
   __unregister_chrdev
   unregister_chrdev_region
-  unregister_inet6addr_notifier
-  unregister_inetaddr_notifier
-  unregister_kretprobe
   unregister_netdev
   unregister_netdevice_notifier
   unregister_netdevice_queue
@@ -1657,7 +1614,6 @@
   wait_for_completion_killable
   wait_for_completion_timeout
   __wait_on_buffer
-  wait_on_page_bit
   __wake_up
   wake_up_if_idle
   __wake_up_locked_key

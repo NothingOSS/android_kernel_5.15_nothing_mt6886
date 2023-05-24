@@ -251,16 +251,14 @@ static int of_dra7_atl_clk_probe(struct platform_device *pdev)
 		if (rc) {
 			pr_err("%s: failed to lookup atl clock %d\n", __func__,
 			       i);
-			ret = -EINVAL;
-			goto pm_put;
+			return -EINVAL;
 		}
 
 		clk = of_clk_get_from_provider(&clkspec);
 		if (IS_ERR(clk)) {
 			pr_err("%s: failed to get atl clock %d from provider\n",
 			       __func__, i);
-			ret = PTR_ERR(clk);
-			goto pm_put;
+			return PTR_ERR(clk);
 		}
 
 		cdesc = to_atl_desc(__clk_get_hw(clk));
@@ -293,9 +291,8 @@ static int of_dra7_atl_clk_probe(struct platform_device *pdev)
 		if (cdesc->enabled)
 			atl_clk_enable(__clk_get_hw(clk));
 	}
-
-pm_put:
 	pm_runtime_put_sync(cinfo->dev);
+
 	return ret;
 }
 

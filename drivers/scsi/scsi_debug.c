@@ -7132,12 +7132,8 @@ static int sdebug_add_host_helper(int per_host_idx)
 	dev_set_name(&sdbg_host->dev, "adapter%d", sdebug_num_hosts);
 
 	error = device_register(&sdbg_host->dev);
-	if (error) {
-		spin_lock(&sdebug_host_list_lock);
-		list_del(&sdbg_host->host_list);
-		spin_unlock(&sdebug_host_list_lock);
+	if (error)
 		goto clean;
-	}
 
 	++sdebug_num_hosts;
 	return 0;

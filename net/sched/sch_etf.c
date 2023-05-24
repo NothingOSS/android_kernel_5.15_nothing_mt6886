@@ -445,6 +445,9 @@ static void etf_reset(struct Qdisc *sch)
 	timesortedlist_clear(sch);
 	__qdisc_reset_queue(&sch->q);
 
+	sch->qstats.backlog = 0;
+	sch->q.qlen = 0;
+
 	q->last = 0;
 }
 

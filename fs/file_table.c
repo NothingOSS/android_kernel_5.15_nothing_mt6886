@@ -284,7 +284,12 @@ static void __fput(struct file *file)
 	}
 	fops_put(file->f_op);
 	put_pid(file->f_owner.pid);
-	put_file_access(file);
+	if ((mode & (FMODE_READ | FMODE_WRITE)) == FMODE_READ)
+		i_readcount_dec(inode);
+	if (mode & FMODE_WRITER) {
+		put_write_access(inode);
+		__mnt_drop_write(mnt);
+	}
 	dput(dentry);
 	if (unlikely(mode & FMODE_NEED_UNMOUNT))
 		dissolve_on_fput(mnt);

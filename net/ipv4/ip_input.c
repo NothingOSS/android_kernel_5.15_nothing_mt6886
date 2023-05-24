@@ -310,13 +310,14 @@ static bool ip_can_use_hint(const struct sk_buff *skb, const struct iphdr *iph,
 	       ip_hdr(hint)->tos == iph->tos;
 }
 
-int tcp_v4_early_demux(struct sk_buff *skb);
-int udp_v4_early_demux(struct sk_buff *skb);
+INDIRECT_CALLABLE_DECLARE(int udp_v4_early_demux(struct sk_buff *));
+INDIRECT_CALLABLE_DECLARE(int tcp_v4_early_demux(struct sk_buff *));
 static int ip_rcv_finish_core(struct net *net, struct sock *sk,
 			      struct sk_buff *skb, struct net_device *dev,
 			      const struct sk_buff *hint)
 {
 	const struct iphdr *iph = ip_hdr(skb);
+	int (*edemux)(struct sk_buff *skb);
 	int err, drop_reason;
 	struct rtable *rt;
 
@@ -329,29 +330,21 @@ static int ip_rcv_finish_core(struct net *net, struct sock *sk,
 			goto drop_error;
 	}
 
-	if (READ_ONCE(net->ipv4.sysctl_ip_early_demux) &&
+	if (net->ipv4.sysctl_ip_early_demux &&
 	    !skb_dst(skb) &&
 	    !skb->sk &&
 	    !ip_is_fragment(iph)) {
-		switch (iph->protocol) {
-		case IPPROTO_TCP:
-			if (READ_ONCE(net->ipv4.sysctl_tcp_early_demux)) {
-				tcp_v4_early_demux(skb);
+		const struct net_protocol *ipprot;
+		int protocol = iph->protocol;
 
-				/* must reload iph, skb->head might have changed */
-				iph = ip_hdr(skb);
-			}
-			break;
-		case IPPROTO_UDP:
-			if (READ_ONCE(net->ipv4.sysctl_udp_early_demux)) {
-				err = udp_v4_early_demux(skb);
-				if (unlikely(err))
-					goto drop_error;
-
-				/* must reload iph, skb->head might have changed */
-				iph = ip_hdr(skb);
-			}
-			break;
+		ipprot = rcu_dereference(inet_protos[protocol]);
+		if (ipprot && (edemux = READ_ONCE(ipprot->early_demux))) {
+			err = INDIRECT_CALL_2(edemux, tcp_v4_early_demux,
+					      udp_v4_early_demux, skb);
+			if (unlikely(err))
+				goto drop_error;
+			/* must reload iph, skb->head might have changed */
+			iph = ip_hdr(skb);
 		}
 	}
 

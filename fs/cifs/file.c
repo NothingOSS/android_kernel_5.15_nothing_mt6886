@@ -1806,13 +1806,11 @@ int cifs_flock(struct file *file, int cmd, struct file_lock *fl)
 	struct cifsFileInfo *cfile;
 	__u32 type;
 
+	rc = -EACCES;
 	xid = get_xid();
 
-	if (!(fl->fl_flags & FL_FLOCK)) {
-		rc = -ENOLCK;
-		free_xid(xid);
-		return rc;
-	}
+	if (!(fl->fl_flags & FL_FLOCK))
+		return -ENOLCK;
 
 	cfile = (struct cifsFileInfo *)file->private_data;
 	tcon = tlink_tcon(cfile->tlink);
@@ -1831,9 +1829,8 @@ int cifs_flock(struct file *file, int cmd, struct file_lock *fl)
 		 * if no lock or unlock then nothing to do since we do not
 		 * know what it is
 		 */
-		rc = -EOPNOTSUPP;
 		free_xid(xid);
-		return rc;
+		return -EOPNOTSUPP;
 	}
 
 	rc = cifs_setlk(file, fl, type, wait_flag, posix_lck, lock, unlock,
@@ -4016,15 +4013,6 @@ static ssize_t __cifs_readv(
 			return rc;
 		}
 		len = ctx->len;
-	}
-
-	if (direct) {
-		rc = filemap_write_and_wait_range(file->f_inode->i_mapping,
-						  offset, offset + len - 1);
-		if (rc) {
-			kref_put(&ctx->refcount, cifs_aio_ctx_release);
-			return -EAGAIN;
-		}
 	}
 
 	/* grab a lock here due to read response handlers can access ctx */

@@ -1053,6 +1053,7 @@ cbq_reset(struct Qdisc *sch)
 			cl->cpriority = cl->priority;
 		}
 	}
+	sch->q.qlen = 0;
 }
 
 

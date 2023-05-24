@@ -882,13 +882,15 @@ void __init walk_central_bus(void)
 			&root);
 }
 
-static __init void print_parisc_device(struct parisc_device *dev)
+static void print_parisc_device(struct parisc_device *dev)
 {
-	static int count __initdata;
+	char hw_path[64];
+	static int count;
 
-	pr_info("%d. %s at %pap { type:%d, hv:%#x, sv:%#x, rev:%#x }",
-		++count, dev->name, &(dev->hpa.start), dev->id.hw_type,
-		dev->id.hversion, dev->id.sversion, dev->id.hversion_rev);
+	print_pa_hwpath(dev, hw_path);
+	pr_info("%d. %s at %pap [%s] { %d, 0x%x, 0x%.3x, 0x%.5x }",
+		++count, dev->name, &(dev->hpa.start), hw_path, dev->id.hw_type,
+		dev->id.hversion_rev, dev->id.hversion, dev->id.sversion);
 
 	if (dev->num_addrs) {
 		int k;
@@ -1077,7 +1079,7 @@ static __init int qemu_print_iodc_data(struct device *lin_dev, void *data)
 
 
 
-static __init int print_one_device(struct device * dev, void * data)
+static int print_one_device(struct device * dev, void * data)
 {
 	struct parisc_device * pdev = to_parisc_device(dev);
 

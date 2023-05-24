@@ -759,7 +759,6 @@ static void xen_load_idt(const struct desc_ptr *desc)
 {
 	static DEFINE_SPINLOCK(lock);
 	static struct trap_info traps[257];
-	static const struct trap_info zero = { };
 	unsigned out;
 
 	trace_xen_cpu_load_idt(desc);
@@ -769,7 +768,7 @@ static void xen_load_idt(const struct desc_ptr *desc)
 	memcpy(this_cpu_ptr(&idt_desc), desc, sizeof(idt_desc));
 
 	out = xen_convert_trap_info(desc, traps, false);
-	traps[out] = zero;
+	memset(&traps[out], 0, sizeof(traps[0]));
 
 	xen_mc_flush();
 	if (HYPERVISOR_set_trap_table(traps))

@@ -310,7 +310,7 @@ err_unreg_dev:
 	return ERR_PTR(err);
 
 err_free_dev:
-	put_device(&dev->dev);
+	kfree(dev);
 
 	return ERR_PTR(err);
 }

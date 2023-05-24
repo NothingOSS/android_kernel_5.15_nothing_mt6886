@@ -185,27 +185,21 @@ static inline int
 ieee802154_sockaddr_check_size(struct sockaddr_ieee802154 *daddr, int len)
 {
 	struct ieee802154_addr_sa *sa;
-	int ret = 0;
 
 	sa = &daddr->addr;
 	if (len < IEEE802154_MIN_NAMELEN)
 		return -EINVAL;
 	switch (sa->addr_type) {
-	case IEEE802154_ADDR_NONE:
-		break;
 	case IEEE802154_ADDR_SHORT:
 		if (len < IEEE802154_NAMELEN_SHORT)
-			ret = -EINVAL;
+			return -EINVAL;
 		break;
 	case IEEE802154_ADDR_LONG:
 		if (len < IEEE802154_NAMELEN_LONG)
-			ret = -EINVAL;
-		break;
-	default:
-		ret = -EINVAL;
+			return -EINVAL;
 		break;
 	}
-	return ret;
+	return 0;
 }
 
 static inline void ieee802154_addr_from_sa(struct ieee802154_addr *a,

@@ -792,8 +792,9 @@ static int __unset_online(struct device *dev, void *data)
 {
 	struct idset *set = data;
 	struct subchannel *sch = to_subchannel(dev);
+	struct ccw_device *cdev = sch_get_cdev(sch);
 
-	if (sch->st == SUBCHANNEL_TYPE_IO && sch->config.ena)
+	if (cdev && cdev->online)
 		idset_sch_del(set, sch->schid);
 
 	return 0;
