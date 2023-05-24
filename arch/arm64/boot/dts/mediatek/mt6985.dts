@@ -12422,8 +12422,10 @@
 		mediatek,larbs = <&smi_larb5>;
 		mediatek,dpsw-thr = <1>;
 		#clock-cells = <1>;
-		clocks = <&mmdvfs_clk CLK_MMDVFS_VCORE>, <&mmdvfs_clk CLK_MMDVFS_VMM>;
-		clock-names = "vcore", "vmm";
+		clocks = <&mmdvfs_clk CLK_MMDVFS_VCORE>, <&mmdvfs_clk CLK_MMDVFS_VMM>,
+			 <&mmdvfs_clk CLK_MMDVFS_VFMT>, <&mmdvfs_clk CLK_MMDVFS_CAM>,
+			<&mmdvfs_clk CLK_MMDVFS_IMG>;
+		clock-names = "pwr_vcore", "pwr_vmm", "rst_vfmt", "rst_cam", "rst_img";
 	};
 
 	ktf-mmdvfs-test {
