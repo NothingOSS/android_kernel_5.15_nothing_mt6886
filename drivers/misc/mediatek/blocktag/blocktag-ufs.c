@@ -152,7 +152,14 @@ __u16 mtk_btag_ufs_mictx_eval_wqd(struct mtk_btag_mictx_data *data,
 	__u64 compl = data->weighted_qd;
 	__u64 inflight = t_cur * data->q_depth - data->sum_of_inflight_start;
 	__u64 dur = t_cur - data->window_begin;
-
+	/*check dur window, return default depth if dur is 0*/
+	if (dur == 0) {
+		pr_notice("[BLOCK_TAG] %s: dur is %llu, t_cur is %llu, weighted_qd is %llu, q_depth is %llu, sum_of_inflight_start is %llu, window_begin is %llu\n",
+			       __func__, dur, t_cur, data->weighted_qd,
+			       data->q_depth, data->sum_of_inflight_start,
+			       data->window_begin);
+		return data->q_depth;
+	}
 	return DIV64_U64_ROUND_UP(compl + inflight, dur);
 }
 
