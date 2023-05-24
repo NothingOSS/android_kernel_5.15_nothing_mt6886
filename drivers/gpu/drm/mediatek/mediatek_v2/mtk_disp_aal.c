@@ -798,6 +798,8 @@ static void mtk_disp_aal_config_overhead(struct mtk_ddp_comp *comp,
 	}
 }
 
+bool g_dsi_switched;
+static bool g_aal_need_config;
 static bool debug_bypass_alg_mode;
 static void mtk_aal_config(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
@@ -823,7 +825,7 @@ static void mtk_aal_config(struct mtk_ddp_comp *comp,
 		out_width = width;
 	}
 
-	AALFLOW_LOG("(w,h)=(%d,%d)+, %d\n",
+	AALFLOW_LOG("%s, (w,h)=(%d,%d)+, %d\n", __func__,
 		width, height, g_aal_get_size_available);
 
 	g_aal_size.height = height;
@@ -914,6 +916,10 @@ static void mtk_aal_config(struct mtk_ddp_comp *comp,
 	mtk_aal_init(comp, cfg, handle);
 	//disp_aal_flip_sram(comp, handle, __func__);
 
+	if (g_dsi_switched) {
+		g_aal_need_config = true;
+		g_dsi_switched = false;
+	}
 	AALWC_LOG("AAL_CFG=0x%x  compid:%d\n",
 		readl(comp->regs + DISP_AAL_CFG), comp->id);
 }
@@ -1122,6 +1128,7 @@ static int disp_aal_copy_hist_to_user(struct DISP_AAL_HIST *hist)
 	if (g_aal_fo->mtk_dre30_support && gDre30Enabled)
 		g_aal_hist_db.dre30_hist = g_aal_init_dre30.dre30_hist_addr;
 
+	g_aal_hist_db.need_config = g_aal_need_config;
 	memcpy(hist, &g_aal_hist_db, sizeof(g_aal_hist_db));
 
 	if (g_aal_fo->mtk_dre30_support && gDre30Enabled)
@@ -1219,7 +1226,12 @@ static void disp_aal_dre3_config(struct mtk_ddp_comp *comp,
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	phys_addr_t dre3_pa = mtk_aal_dre3_pa(comp);
+	int width = init_regs->isdual ? init_regs->width / 2 : init_regs->width;
 	int dre_alg_mode = 1;
+
+	DDPMSG("%s, width:%d, height:%d\n", __func__, width, init_regs->height);
+	if (g_aal_size.width == width && g_aal_size.height == init_regs->height)
+		g_aal_need_config = false;
 
 	AALFLOW_LOG("start, bitShift: %d  compId%d\n", aal_data->data->bitShift, comp->id);
 
@@ -1260,7 +1272,7 @@ static void disp_aal_dre3_config(struct mtk_ddp_comp *comp,
 		init_regs->dre_blk_area_min, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		dre3_pa + DISP_AAL_DRE_BLOCK_INFO_07,
-		(g_aal_size.height - 1) << (aal_data->data->bitShift), ~0);
+		(init_regs->height - 1) << (aal_data->data->bitShift), ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		dre3_pa + DISP_AAL_SRAM_CFG,
 		init_regs->hist_bin_type, 0x1);

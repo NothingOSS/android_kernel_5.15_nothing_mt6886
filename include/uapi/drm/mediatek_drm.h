@@ -1662,6 +1662,9 @@ struct DISP_AAL_INITREG {
 	int dre0_act_win_x_end;
 	int dre1_act_win_x_start;
 	int dre1_act_win_x_end;
+	_Bool isdual;
+	int width;
+	int height;
 };
 
 enum rgbSeq {
@@ -1718,6 +1721,7 @@ struct DISP_AAL_HIST {
 	unsigned int tdshp0_clarity[DISP_TDSHP_CLARITY_READBACK_NUM];
 	unsigned int tdshp1_clarity[DISP_TDSHP_CLARITY_READBACK_NUM];
 	int pipeLineNum;
+	_Bool need_config;
 };
 
 struct DISP_AAL_ESS20_SPECT_PARAM {
