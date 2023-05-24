@@ -385,6 +385,7 @@ unchanged_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
 extern struct layer_compress_ratio_item
 fbt_compress_ratio_table[MAX_FRAME_RATIO_NUMBER];
 extern unsigned int ovl_win_size;
+extern int aod_scp_flag;
 
 int mtk_drm_ioctl_set_dither_param(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);

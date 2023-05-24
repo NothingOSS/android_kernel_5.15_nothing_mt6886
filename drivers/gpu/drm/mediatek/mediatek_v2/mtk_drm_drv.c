@@ -103,11 +103,11 @@ unsigned long long mutex_time_end;
 long long mutex_time_period;
 const char *mutex_locker;
 
+int aod_scp_flag;
 unsigned long long mutex_nested_time_start;
 unsigned long long mutex_nested_time_end;
 long long mutex_nested_time_period;
 const char *mutex_nested_locker;
-static int aod_scp_flag;
 static unsigned int g_disp_plat_dbg_addr;
 static unsigned int g_disp_plat_dbg_size;
 static void __iomem *g_disp_plat_dbg_buf_addr;

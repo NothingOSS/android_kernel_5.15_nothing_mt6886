@@ -10523,6 +10523,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	struct mtk_drm_private *priv = (crtc && crtc->dev) ?
 			crtc->dev->dev_private : NULL;
 	unsigned int crtc_id = (crtc) ? drm_crtc_index(crtc) : 0;
+	struct mtk_crtc_state *mtk_state;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
 #ifndef DRM_CMDQ_DISABLE
@@ -10547,7 +10548,11 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		mtk_crtc->qos_ctx->last_mmclk_req_idx += 1;
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (output_comp)
+	mtk_state = (aod_scp_flag && crtc) ? to_mtk_crtc_state(crtc->state) : NULL;
+
+	if ((output_comp) &&
+		!((aod_scp_flag) && (mtk_state) && (!crtc->state->active)
+			&& (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])))
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
 				&en);
 	if (crtc_id < MAX_CRTC && priv->usage[crtc_id] == DISP_OPENING &&
