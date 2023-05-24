@@ -423,12 +423,19 @@ int mtk_drm_ioctl_tdshp_get_size(struct drm_device *dev, void *data,
 	u32 width = 0, height = 0;
 	struct DISP_TDSHP_DISPLAY_SIZE *dst =
 			(struct DISP_TDSHP_DISPLAY_SIZE *)data;
+	struct mtk_drm_private *private = dev->dev_private;
 
 	pr_notice("%s", __func__);
 
 	crtc = list_first_entry(&(dev)->mode_config.crtc_list,
 		typeof(*crtc), head);
 
+	if (IS_ERR_OR_NULL(private)) {
+		DDPMSG("%s, invalid private\n", __func__);
+		return -EINVAL;
+	}
+
+	mutex_lock(&private->commit.lock);
 	mtk_drm_crtc_get_panel_original_size(crtc, &width, &height);
 	if (width == 0 || height == 0) {
 		DDPFUNC("panel original size error(%dx%d).\n", width, height);
@@ -440,6 +447,7 @@ int mtk_drm_ioctl_tdshp_get_size(struct drm_device *dev, void *data,
 	g_tdshp_size.lcm_height = height;
 
 	disp_tdshp_wait_size(60);
+	mutex_unlock(&private->commit.lock);
 
 	pr_notice("%s ---", __func__);
 	memcpy(dst, &g_tdshp_size, sizeof(g_tdshp_size));
