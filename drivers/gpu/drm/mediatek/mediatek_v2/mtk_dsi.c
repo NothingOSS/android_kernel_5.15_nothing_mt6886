@@ -8141,7 +8141,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			pixclk = pixclk * bubble_rate / 100;
 		}
 
-		if (to_info.is_support) {
+		if (to_info.is_support && mode->hdisplay != 0) {
 			if (mtk_crtc->scaling_ctx.scaling_en) {
 				pixclk *= (mode->hdisplay + to_info.left_overhead_scaling +
 					to_info.right_overhead_scaling) * 1000 / mode->hdisplay;
@@ -8305,7 +8305,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			pixclk = pixclk * image_time / line_time;
 		}
 
-		if (to_info.is_support) {
+		if (to_info.is_support && mode->hdisplay != 0) {
 			if (mtk_crtc->scaling_ctx.scaling_en) {
 				pixclk *= (mode->hdisplay + to_info.left_overhead_scaling +
 					to_info.right_overhead_scaling) * 1000 / mode->hdisplay;
