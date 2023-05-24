@@ -2610,7 +2610,6 @@ static void mtk_dsi_enter_ulps(struct mtk_dsi *dsi)
 
 	/* set lane num = 0 */
 	mtk_dsi_mask(dsi, DSI_TXRX_CTRL, LANE_NUM, 0);
-
 }
 
 static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi)
@@ -2618,6 +2617,7 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi)
 	int wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1;
 	unsigned int ret = 0;
 
+	dsi->ulps_wakeup_prd = wake_up_prd;
 	mtk_dsi_phy_reset(dsi);
 	/* set pre oe */
 	mtk_mipi_tx_pre_oe_config(dsi->phy, 1);
@@ -10168,6 +10168,14 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				break;
 			}
 		}
+	}
+		break;
+	case DSI_AOD_SCP_GET_DSI_PARAM:
+	{
+		unsigned int *aod_scp_wakeup_prd = (unsigned int *)params;
+
+		DDPMSG("DSI_AOD_SCP_GET_DSI_PARAM ulps_wakeup_prd %d\n", dsi->ulps_wakeup_prd);
+		*aod_scp_wakeup_prd = dsi->ulps_wakeup_prd;
 	}
 		break;
 	default:

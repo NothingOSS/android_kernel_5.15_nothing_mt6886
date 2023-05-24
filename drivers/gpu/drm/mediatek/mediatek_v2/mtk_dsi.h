@@ -80,6 +80,7 @@ struct mtk_dsi {
 	u32 data_rate;
 	u32 d_rate;
 	u32 bdg_data_rate;
+	u32 ulps_wakeup_prd;
 
 	unsigned long mode_flags;
 	enum mipi_dsi_pixel_format format;

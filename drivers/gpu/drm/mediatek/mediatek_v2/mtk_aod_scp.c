@@ -60,6 +60,7 @@ struct disp_input_config {
 
 struct disp_frame_config {
 	unsigned int interval; //ms
+	unsigned int ulps_wakeup_prd;
 	unsigned int layer_info_addr[6];
 	unsigned int digits_addr[10];
 };
@@ -74,6 +75,7 @@ struct disp_module_backup_info {
 unsigned int aod_scp_send_data;
 static struct aod_scp_ipi_receive_info aod_scp_msg;
 static int aod_state;
+static unsigned int aod_scp_ulps_wakeup_prd;
 static uint64_t dram_preloader_res_mem;
 static uint64_t dram_addr_digits;
 static struct mtk_aod_scp_cb aod_scp_cb;
@@ -112,8 +114,9 @@ enum OVL_INPUT_FORMAT {
 	OVL_INPUT_FORMAT_UNKNOWN    = 32,
 };
 
-void mtk_module_backup(struct drm_crtc *crtc)
+void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 {
+	struct disp_frame_config *frame0;
 	char *bkup_buf, *scp_sh_mem, *module_base;
 	void __iomem *va = 0;
 	int i, size;
@@ -131,6 +134,12 @@ void mtk_module_backup(struct drm_crtc *crtc)
 		DDPMSG("%s: Get shared memory fail\n", __func__);
 		return;
 	}
+
+	frame0 = (void *)scp_sh_mem;
+	frame0->ulps_wakeup_prd = ulps_wakeup_prd;
+	aod_scp_ulps_wakeup_prd = ulps_wakeup_prd;
+	DDPMSG("%s ulps_wakeup_prd %d %d\n",
+		__func__, frame0->ulps_wakeup_prd, aod_scp_ulps_wakeup_prd);
 
 	size = ARRAY_SIZE(module_list);
 
@@ -270,7 +279,8 @@ void mtk_prepare_config_map(void)
 	input[4]->dst_x		= 120 * (2 * (input[4]->layer - 1) + 1);
 	input[4]->time_digit = SECONDS;
 
-	frame0->interval = 33; //33ms
+	frame0->interval = 1000;
+	frame0->ulps_wakeup_prd = aod_scp_ulps_wakeup_prd;
 
 	/* PA for SCP. */
 	frame0->layer_info_addr[0] = scp_get_reserve_mem_phys(SCP_AOD_MEM_ID) +

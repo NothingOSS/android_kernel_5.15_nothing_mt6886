@@ -631,6 +631,9 @@ enum mtk_ddp_io_cmd {
 	DSI_PLL_SWITCH_REFERENCE_CNT_GET,
 	DSI_PLL_SWITCH_ON_OFF,
 	MDP_RDMA_FILL_FRAME,
+	/*AOD-SCP cmd start*/
+	DSI_AOD_SCP_GET_DSI_PARAM,
+	/*AOD-SCP cmd end*/
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

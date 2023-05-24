@@ -269,7 +269,7 @@ struct mtk_drm_disp_sec_cb {
 
 struct mtk_aod_scp_cb {
 	int (*send_ipi)(int value);
-	void (*module_backup)(struct drm_crtc *crtc);
+	void (*module_backup)(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd);
 };
 
 enum DISP_SEC_SIGNAL {

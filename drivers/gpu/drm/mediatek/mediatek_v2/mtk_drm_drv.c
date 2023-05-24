@@ -828,6 +828,7 @@ static void mtk_atomic_force_doze_switch(struct drm_device *dev,
 static void mtk_atomic_aod_scp_ipi(struct drm_crtc *crtc, bool prepare)
 {
 	struct mtk_crtc_state *mtk_state;
+	unsigned int ulps_wakeup_prd = 0;
 
 	if (!aod_scp_flag || !aod_scp_ipi.send_ipi || !aod_scp_ipi.module_backup ||
 		!crtc) {
@@ -844,8 +845,10 @@ static void mtk_atomic_aod_scp_ipi(struct drm_crtc *crtc, bool prepare)
 			mtk_drm_is_idle(crtc));
 
 	if (!crtc->state->active && prepare) {
-		if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
-			aod_scp_ipi.module_backup(crtc);
+		if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			ulps_wakeup_prd = mtk_drm_aod_scp_get_dsi_ulps_wakeup_prd(crtc);
+			aod_scp_ipi.module_backup(crtc, ulps_wakeup_prd);
+		}
 		aod_scp_ipi.send_ipi(mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
 	}
 }
