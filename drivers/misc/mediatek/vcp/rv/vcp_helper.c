@@ -906,16 +906,16 @@ int vcp_disable_pm_clk(enum feature_id id)
 
 		vcp_disable_irqs();
 		flush_workqueue(vcp_workqueue);
+#if VCP_LOGGER_ENABLE
+		vcp_logger_uninit();
+		flush_workqueue(vcp_logger_workqueue);
+#endif
 		vcp_ready[VCP_A_ID] = 0;
 
 		/* trigger halt isr, force vcp enter wfi */
 		writel(B_GIPC4_SETCLR_1, R_GIPC_IN_SET);
 		wait_vcp_ready_to_reboot();
 
-#if VCP_LOGGER_ENABLE
-		vcp_logger_uninit();
-		flush_workqueue(vcp_logger_workqueue);
-#endif
 #if VCP_BOOT_TIME_OUT_MONITOR
 		del_timer(&vcp_ready_timer[VCP_A_ID].tl);
 #endif
