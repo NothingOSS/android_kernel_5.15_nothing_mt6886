@@ -829,16 +829,25 @@ static void mtk_atomic_aod_scp_ipi(struct drm_crtc *crtc, bool prepare)
 {
 	struct mtk_crtc_state *mtk_state;
 
-	if (!aod_scp_flag || !aod_scp_ipi.send_ipi)
+	if (!aod_scp_flag || !aod_scp_ipi.send_ipi || !aod_scp_ipi.module_backup ||
+		!crtc) {
+		DDPMSG("%s directly recturn due to invalid parameter\n", __func__);
 		return;
+	}
 
 	mtk_state = to_mtk_crtc_state(crtc->state);
-	if (!mtk_state->doze_changed || prepare)
-		return;
 
-	DDPMSG("%s: update AOD-SCP doze state (%d), idle=%d\n", __func__,
-			mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE], mtk_drm_is_idle(crtc));
-	aod_scp_ipi.send_ipi(mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
+	DDPMSG("%s: update AOD-SCP active=%d, doze state=%d, prepare=%d, idle=%d\n", __func__,
+			crtc->state->active,
+			mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE],
+			prepare,
+			mtk_drm_is_idle(crtc));
+
+	if (!crtc->state->active && prepare) {
+		if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
+			aod_scp_ipi.module_backup(crtc);
+		aod_scp_ipi.send_ipi(mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
+	}
 }
 
 static void mtk_atomic_doze_update_dsi_state(struct drm_device *dev,
