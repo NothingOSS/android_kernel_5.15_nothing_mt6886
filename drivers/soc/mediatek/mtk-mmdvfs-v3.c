@@ -37,6 +37,7 @@ static u8 mmdvfs_pwr_opp[PWR_MMDVFS_NUM];
 static struct clk *mmdvfs_pwr_clk[PWR_MMDVFS_NUM];
 static struct clk *mmdvfs_rst_clk[MMDVFS_RST_CLK_NUM];
 static u8 mmdvfs_rst_clk_num;
+static bool mmdvfs_rst_clk_done;
 
 static phys_addr_t mmdvfs_memory_iova;
 static phys_addr_t mmdvfs_memory_pa;
@@ -75,6 +76,7 @@ enum {
 	log_ipi,
 	log_clk_ops,
 	log_adb,
+	log_rst_clk,
 };
 static int log_level;
 
@@ -85,6 +87,13 @@ void mmdvfs_call_ccu_set_fp(call_ccu fp)
 	call_ccu_fp = fp;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_call_ccu_set_fp);
+
+static RAW_NOTIFIER_HEAD(mmdvfs_fmeter_notifier_list);
+int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&mmdvfs_fmeter_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_fmeter_register_notifier);
 
 void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 {
@@ -248,7 +257,8 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	val = readl(MEM_IPI_SYNC_FUNC);
 	mutex_unlock(&mmdvfs_vcp_ipi_mutex);
 
-	while (!is_vcp_ready_ex(VCP_A_ID) || (!mmdvfs_vcp_cb_ready && func != FUNC_MMDVFS_INIT)) {
+	while (!is_vcp_ready_ex(VCP_A_ID) ||
+		(!mmdvfs_vcp_cb_ready && func != FUNC_MMDVFS_INIT) || mmdvfs_rst_clk_done) {
 		if (func == FUNC_VMM_GENPD_NOTIFY || func == FUNC_VMM_CEIL_ENABLE)
 			goto ipi_send_end;
 		if (++retry > 100) {
@@ -791,9 +801,40 @@ static inline void mmdvfs_reset_ccu(void)
 	mutex_unlock(&mmdvfs_ccu_pwr_mutex);
 }
 
+static inline void mmdvfs_reset_clk(bool enable_vcp)
+{
+	int i, ret;
+
+	if (!mmdvfs_rst_clk_num || mmdvfs_rst_clk_done)
+		return;
+
+	if (enable_vcp)
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
+	if (log_level & (1 << log_rst_clk)) {
+		MMDVFS_DBG("Before reset clk:");
+		raw_notifier_call_chain(&mmdvfs_fmeter_notifier_list, 0, NULL);
+	}
+	for (i = 0; i < mmdvfs_rst_clk_num; i++) {
+		if (!IS_ERR_OR_NULL(mmdvfs_rst_clk[i])) {
+			ret = clk_set_rate(mmdvfs_rst_clk[i], 0);
+			if (ret)
+				MMDVFS_ERR("reset clk:%d to 0 failed:%d", i, ret);
+		}
+	}
+	mmdvfs_rst_clk_done = true;
+	if (log_level & (1 << log_rst_clk)) {
+		MMDVFS_DBG("After reset clk:");
+		raw_notifier_call_chain(&mmdvfs_fmeter_notifier_list, 0, NULL);
+	}
+	if (enable_vcp)
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
+}
+
 static inline void mmdvfs_reset_vcp(void)
 {
 	int i, ret;
+
+	mmdvfs_reset_clk(true);
 
 	mutex_lock(&mmdvfs_vcp_pwr_mutex);
 	for (i = 0; i < VCP_PWR_USR_NUM; i++) {
@@ -837,25 +878,16 @@ static struct notifier_block mmdvfs_pm_notifier_block = {
 
 static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
-	int i, ret;
-
 	switch (action) {
 	case VCP_EVENT_READY:
+		mmdvfs_rst_clk_done = false;
 		MMDVFS_DBG("receive VCP_EVENT_READY IPI_SYNC_FUNC=%#x IPI_SYNC_DATA=%#x",
 			readl(MEM_IPI_SYNC_FUNC), readl(MEM_IPI_SYNC_DATA));
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
 		mmdvfs_vcp_cb_ready = true;
 		break;
 	case VCP_EVENT_SUSPEND:
-		if (mmdvfs_rst_clk_num) {
-			for (i = 0; i < mmdvfs_rst_clk_num; i++) {
-				if (!IS_ERR_OR_NULL(mmdvfs_rst_clk[i])) {
-					ret = clk_set_rate(mmdvfs_rst_clk[i], 0);
-					if (ret)
-						MMDVFS_ERR("reset clk:%d to 0 failed:%d", i, ret);
-				}
-			}
-		}
+		mmdvfs_reset_clk(false);
 		mmdvfs_vcp_cb_ready = false;
 		break;
 	case VCP_EVENT_STOP:

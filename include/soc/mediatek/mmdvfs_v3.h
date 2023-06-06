@@ -24,6 +24,7 @@ enum {
 	VCP_PWR_USR_MMDVFS_FORCE,
 	VCP_PWR_USR_MMDVFS_VOTE,
 	VCP_PWR_USR_MMDVFS_CCU,
+	VCP_PWR_USR_MMDVFS_RST,
 	VCP_PWR_USR_MMQOS,
 	VCP_PWR_USR_CAM,
 	VCP_PWR_USR_IMG,
@@ -53,6 +54,7 @@ int mtk_mmdvfs_set_avs(const u8 idx, const u32 aging, const u32 fresh);
 
 int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp);
 int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp);
+int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb);
 
 void mmdvfs_set_lp_mode(bool lp_mode);
 void mmdvfs_call_ccu_set_fp(call_ccu fp);
@@ -67,6 +69,7 @@ static inline int mtk_mmdvfs_set_avs(const u8 idx, const u32 aging, const u32 fr
 
 static inline int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp) { return 0; }
 static inline int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp) { return 0; }
+static inline int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb) { return 0; }
 
 static inline void mmdvfs_set_lp_mode(bool lp_mode) { return; }
 static inline void mmdvfs_call_ccu_set_fp(call_ccu fp) {return; }
