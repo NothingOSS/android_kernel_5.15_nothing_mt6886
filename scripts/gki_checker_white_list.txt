@@ -63,6 +63,7 @@ f include/linux/dev_printk.h
 f include/linux/dynamic_debug.h
 f include/linux/printk.h
 f include/linux/remoteproc.h
+f include/linux/sched.h
 f include/linux/stop_machine.h
 f include/media/media-entity.h
 f include/trace/events/block.h
