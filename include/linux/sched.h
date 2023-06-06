@@ -743,10 +743,6 @@ struct task_struct {
 	struct thread_info		thread_info;
 #endif
 	unsigned int			__state;
- #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	/* debug cgroup lock     */
-	struct list_head		pending_list;
- #endif
 
 #ifdef CONFIG_PREEMPT_RT
 	/* saved state for "spinlock sleepers" */
