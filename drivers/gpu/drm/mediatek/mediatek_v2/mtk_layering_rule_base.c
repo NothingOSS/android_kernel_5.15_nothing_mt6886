@@ -3659,6 +3659,18 @@ static int check_cross_pipe_rpo(
 		   param[1].out_len,
 		   param[1].out_x);
 
+	if (int_offset[0] < -1 || int_offset[1] < -1) {
+		DDPINFO("HRT %s: skip due to offset[%d][%d]\n",
+			__func__, int_offset[0], int_offset[1]);
+		return -1;
+	}
+
+	if (tile_out_len[1] >= dst_w) {
+		DDPINFO("HRT %s: skip due to out_len[%d] larger than dst_w[%d]\n",
+			__func__, tile_out_len[1], dst_w);
+		return -1;
+	}
+
 	if (param[1].in_len == param[1].out_len) {
 		DDPDBG("skip_pipe1_no_scale\n");
 		return -1;
