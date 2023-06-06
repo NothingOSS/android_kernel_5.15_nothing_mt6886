@@ -1264,6 +1264,7 @@ void ufs_mtk_mcq_disable_irq(struct ufs_hba *hba)
 		irq = hba_priv->mcq_intr_info[q_index].intr;
 		disable_irq(irq);
 	}
+	hba_priv->is_mcq_intr_enabled = false;
 }
 
 void ufs_mtk_mcq_enable_irq(struct ufs_hba *hba)
@@ -1280,11 +1281,15 @@ void ufs_mtk_mcq_enable_irq(struct ufs_hba *hba)
 	if (hba_priv->mcq_nr_intr == 0)
 		return;
 
+	if (hba_priv->is_mcq_intr_enabled == true)
+		ufs_mtk_mcq_print_evt_hist(hba);
+
 	for (cpu = 0; cpu < nr; cpu++) {
 		q_index = map->mq_map[cpu];
 		irq = hba_priv->mcq_intr_info[q_index].intr;
 		enable_irq(irq);
 	}
+	hba_priv->is_mcq_intr_enabled = true;
 }
 
 int ufs_mtk_mcq_memory_alloc(struct ufs_hba *hba)

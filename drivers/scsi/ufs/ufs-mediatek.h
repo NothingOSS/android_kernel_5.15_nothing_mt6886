@@ -386,6 +386,7 @@ struct ufs_hba_private {
 	unsigned long outstanding_mcq_reqs[BITMAP_TAGS_LEN];
 
 	bool is_mcq_enabled;
+	bool is_mcq_intr_enabled;
 };
 
 int ufs_mtk_mcq_alloc_priv(struct ufs_hba *hba);

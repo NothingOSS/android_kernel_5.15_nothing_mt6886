@@ -476,17 +476,6 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 		writel(val, host->mphy_base + 0xA904);
 		val = val & (~0x02);
 		writel(val, host->mphy_base + 0xA904);
-
-		/* check status is already clear */
-		if (readl(host->mphy_base + 0xA808) ||
-			readl(host->mphy_base + 0xA908)) {
-
-			pr_info("%s: [%d] clear fail 0x%x 0x%x\n",
-				__func__, __LINE__,
-				readl(host->mphy_base + 0xA808),
-				readl(host->mphy_base + 0xA908)
-				);
-		}
 	} else {
 		cmd_hist[ptr].cmd.clk_gating.arg1 = 0;
 		cmd_hist[ptr].cmd.clk_gating.arg2 = 0;
