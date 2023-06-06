@@ -1269,9 +1269,10 @@ void mtk_cam_qos_mraw_bw_calc(struct mtk_cam_ctx *ctx,
 			sd_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 			sd_fmt.pad = PAD_SRC_RAW0;
 			v4l2_subdev_call(ctx->seninf, pad, get_fmt, NULL, &sd_fmt);
-			dev_info(cam->dev, "[%s] FPS:%lu/%lu:%lu, W/H:%lu/%lu, VB:%lu\n",
-				__func__, fi.interval.denominator, fi.interval.numerator,
-				fps, sd_fmt.format.width, sd_fmt.format.height, vblank);
+			if (unlikely(debug_mmqos))
+				dev_info(cam->dev, "[%s] FPS:%lu/%lu:%lu, W/H:%lu/%lu, VB:%lu\n",
+				  __func__, fi.interval.denominator, fi.interval.numerator,
+				  fps, sd_fmt.format.width, sd_fmt.format.height, vblank);
 		}
 		for (j = MTKCAM_IPI_MRAW_META_STATS_CFG; j < MTKCAM_IPI_MRAW_ID_MAX; j++) {
 			if (ctx->mraw_pipe[i]->enabled_dmas & (1 << j))
