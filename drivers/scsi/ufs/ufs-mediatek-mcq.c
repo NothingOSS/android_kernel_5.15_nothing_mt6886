@@ -386,12 +386,7 @@ static void ufs_mtk_mcq_send_hw_cmd(struct ufs_hba *hba, unsigned int task_tag)
 
 	trace_android_vh_ufs_send_command(hba, lrbp);
 
-/* @ CL 6502432*/
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	ufs_mtk_mcq_add_command_trace(hba, task_tag, UFS_CMD_SEND);
-#else
-	ufshcd_add_command_trace(hba, task_tag, UFS_CMD_SEND);
-#endif
 	ufshcd_clk_scaling_start_busy(hba);
 
 	spin_lock_irqsave(&sq_ptr->q_lock, flags);
