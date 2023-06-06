@@ -916,6 +916,12 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		addon_data = mtk_addon_get_scenario_data(__func__, crtc,
 					state->lye_state.scn[crtc_id]);
 		mtk_drm_crtc_addon_analysis(crtc, addon_data);
+
+		if (mtk_crtc->is_dual_pipe) {
+			addon_data = mtk_addon_get_scenario_data_dual
+				(__func__, crtc, state->lye_state.scn[crtc_id]);
+			mtk_drm_crtc_addon_analysis(crtc, addon_data);
+		}
 	}
 
 	if (priv->side_ovlsys_dev)
