@@ -24,6 +24,7 @@
 #include "apu_mbox.h"
 #include "apu_ipi_config.h"
 #include "apu_excep.h"
+#include "apu_regdump.h"
 
 static struct lock_class_key ipi_lock_key[APU_IPI_MAX];
 
@@ -35,6 +36,40 @@ unsigned int temp_buf[APU_SHARE_BUFFER_SIZE / 4];
 static struct mutex affin_lock;
 static unsigned int affin_depth;
 static struct mtk_apu *g_apu;
+
+static inline void dump_mbox0_reg(struct mtk_apu *apu)
+{
+	struct device *dev = apu->dev;
+	unsigned int i, val;
+
+	/* mbox0_in mbox0_out mbox0_dummy */
+	for (i = 0; i < 8; i++) {
+		val = ioread32(apu->apu_mbox + i * APU_MBOX_SLOT_SIZE);
+		dev_info(dev, "m0_in 0x%x (0x%x)\n", i * APU_MBOX_SLOT_SIZE, val);
+	}
+
+	for (i = 0; i < 8; i++) {
+		val = ioread32(apu->apu_mbox + 0x20 + i * APU_MBOX_SLOT_SIZE);
+		dev_info(dev, "m0_out 0x%x (0x%x)\n", 0x20 + i * APU_MBOX_SLOT_SIZE, val);
+	}
+
+	for (i = 0; i < 4; i++) {
+		val = ioread32(apu->apu_mbox + 0x40 + i * APU_MBOX_SLOT_SIZE);
+		dev_info(dev, "m0_dummy 0x%x (0x%x)\n", 0x40 + i * APU_MBOX_SLOT_SIZE,  val);
+	}
+
+	dev_info(dev, "m0_wkup_cfg 0x80 (0x%x)\n", ioread32(apu->apu_mbox + 0x80));
+	dev_info(dev, "m0_func_cfg 0xB0 (0x%x)\n", ioread32(apu->apu_mbox + 0xB0));
+	dev_info(dev, "m0_ibox_irq 0xC0 (0x%x)\n", ioread32(apu->apu_mbox + 0xC0));
+	dev_info(dev, "m0_obox_irq 0xC4 (0x%x)\n", ioread32(apu->apu_mbox + 0xC4));
+	dev_info(dev, "m0_err_irq 0xC8 (0x%x)\n", ioread32(apu->apu_mbox + 0xC8));
+	dev_info(dev, "m0_ibox_mask 0xD0 (0x%x)\n", ioread32(apu->apu_mbox + 0xD0));
+	dev_info(dev, "m0_ibox_pri_mask 0xD4 (0x%x)\n", ioread32(apu->apu_mbox + 0xD4));
+	dev_info(dev, "m0_obox_mask 0xD8 (0x%x)\n", ioread32(apu->apu_mbox + 0xD8));
+	dev_info(dev, "m0_err_mask 0xDC (0x%x)\n", ioread32(apu->apu_mbox + 0xDC));
+	dev_info(dev, "m0_domain_cfg 0xE0 (0x%x)\n", ioread32(apu->apu_mbox + 0xE0));
+	dev_info(dev, "m0_err_record 0xF0 (0x%x)\n", ioread32(apu->apu_mbox + 0xF0));
+}
 
 static inline void dump_msg_buf(struct mtk_apu *apu, void *data, uint32_t len)
 {
@@ -385,10 +420,8 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 	int ret;
 
 	status = ioread32(apu->apu_mbox + 0xc4);
-	if (status != ((1 << APU_MBOX_HDR_SLOTS) - 1)) {
-		dev_info(dev, "abnormal isr call(0x%x), skip\n", status);
-		return IRQ_HANDLED;
-	}
+	if (status != ((1 << APU_MBOX_HDR_SLOTS) - 1))
+		dev_info(dev, "WARN abnormal isr call(0x%x)\n", status);
 
 	apu_mbox_read_outbox(apu, &apu->hdr);
 	id = apu->hdr.id;
@@ -410,6 +443,8 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 			rx_serial_no, apu->hdr.serial_no);
 		/* correct the serial no. */
 		rx_serial_no = apu->hdr.serial_no;
+		apu_regdump();
+		dump_mbox0_reg(apu);
 		apusys_rv_aee_warn("APUSYS_RV", "IPI rx_serial_no unmatch");
 	}
 	rx_serial_no++;
@@ -424,10 +459,14 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 
 	calc_csum = calculate_csum(temp_buf, len);
 	if (calc_csum != apu->hdr.csum) {
-		dev_info(dev, "csum error: recv=0x%08x, calc=0x%08x\n",
+		dev_info(dev, "csum error: recv=0x%08x, calc=0x%08x, skip\n",
 			apu->hdr.csum, calc_csum);
 		dump_msg_buf(apu, temp_buf, apu->hdr.len);
+		apu_regdump();
+		dump_mbox0_reg(apu);
 		apusys_rv_aee_warn("APUSYS_RV", "IPI rx csum error");
+		/* csum error data not valid */
+		return IRQ_HANDLED;
 	}
 
 	/* excute top handler if exist */
