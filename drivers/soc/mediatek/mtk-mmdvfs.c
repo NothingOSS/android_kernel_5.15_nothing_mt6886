@@ -63,6 +63,7 @@ struct mmdvfs_drv_data {
 	u32 voltages[MAX_OPP_NUM];
 	u32 num_voltages;
 	struct mutex lp_mutex;
+	struct mutex dbg_mutex;
 	bool lp_mode;
 	u32 last_opp_level;
 };
@@ -420,12 +421,26 @@ int mmdvfs_dbg_clk_set(int step, bool is_force)
 		return -EINVAL;
 	}
 
+	mutex_lock(&drv_data->dbg_mutex);
 	if (is_force) {
+		if (dbg_data->vote_step >= 0) {
+			pr_notice("%s: vote_step is in process, skip force_step (v:%d,f:%d)\n",
+				__func__, dbg_data->vote_step, step);
+			mutex_unlock(&drv_data->dbg_mutex);
+			return 0;
+		}
 		last_force_step = dbg_data->force_step;
 		dbg_data->force_step = step;
 	} else {
+		if (dbg_data->force_step >= 0) {
+			pr_notice("%s: force_step is in process, skip vote_step (v:%d,f:%d)\n",
+				__func__, step, dbg_data->force_step);
+			mutex_unlock(&drv_data->dbg_mutex);
+			return 0;
+		}
 		dbg_data->vote_step = step;
 	}
+	mutex_unlock(&drv_data->dbg_mutex);
 
 	if (step < 0) {
 		if (is_force && !dbg_data->is_notifier_registered) {
@@ -744,6 +759,7 @@ static int mmdvfs_probe(struct platform_device *pdev)
 		num_lp_clksrc++;
 	}
 	mutex_init(&drv_data->lp_mutex);
+	mutex_init(&drv_data->dbg_mutex);
 	drv_data->last_opp_level = MAX_OPP_NUM;
 	mmdvfs_dbg = kzalloc(sizeof(*mmdvfs_dbg), GFP_KERNEL);
 	if (!mmdvfs_dbg)
