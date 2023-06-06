@@ -6,6 +6,8 @@
 #define CLUSTER_MAX 10
 #define TOUCH_TIMEOUT_MS 100
 #define TOUCH_FSTB_ACTIVE_MS 100
+#define TOUCH_UP 0
+#define TOUCH_DOWN 1
 
 extern int (*fpsgo_get_fstb_active_fp)(long long time_diff);
 extern void (*touch_boost_get_cmd_fp)(int *cmd, int *enable,

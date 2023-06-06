@@ -740,7 +740,7 @@ static void dbs_input_event(struct input_handle *handle, unsigned int type,
 	if (!enable)
 		return;
 
-	if ((type == EV_KEY) && (code == BTN_TOUCH)) {
+	if ((type == EV_KEY) && (code == BTN_TOUCH) && (value == TOUCH_DOWN)) {
 		pr_debug("input cb, type:%d, code:%d, value:%d\n",
 				type, code, value);
 		spin_lock_irqsave(&ktchboost.touch_lock, flags);
