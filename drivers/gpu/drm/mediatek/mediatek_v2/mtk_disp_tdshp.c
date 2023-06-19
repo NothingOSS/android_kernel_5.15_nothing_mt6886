@@ -591,9 +591,12 @@ static void mtk_disp_tdshp_config(struct mtk_ddp_comp *comp,
 	// for Display Clarity
 	if (g_disp_clarity_support) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_00, (0x1 << 31), (0x1 << 31));
+			comp->regs_pa + DISP_TDSHP_00, 0x1 << 31, 0x1 << 31);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_CFG, (0x1F << 12), (0x1F << 12));
+			comp->regs_pa + DISP_TDSHP_CFG, 0x1F << 12, 0x1F << 12);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_CFG, 0, 0x1 << 12);
 	}
 
 	g_tdshp_size.height = cfg->h;
