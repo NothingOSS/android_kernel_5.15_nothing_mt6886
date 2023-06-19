@@ -82,7 +82,7 @@ extern void mt_irq_dump_status(unsigned int irq);
 #define REBOOT_FLAG_OFS 11
 
 /* Delay to change RGU timeout in ms */
-#define CHG_TMO_DLY_SEC		8L
+#define CHG_TMO_DLY_SEC		9L
 #define CHG_TMO_EN		0
 
 #define RGU_GET_S2IDLE	0x12
