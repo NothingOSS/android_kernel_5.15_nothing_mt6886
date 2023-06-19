@@ -916,6 +916,10 @@ int mtk_aie_vidioc_qbuf(struct file *file, void *priv,
 		if (!fd->map_count) {
 
 			fd->dmabuf = dma_buf_get(buf->m.planes[buf->length-1].m.fd);
+			if (!fd->dmabuf) {
+				dev_info(fd->dev, "%s, dma buf get failed\n", __func__);
+				return -ENOMEM;
+			}
 			dma_buf_begin_cpu_access(fd->dmabuf, DMA_BIDIRECTIONAL);
 
 			ret = (u64)dma_buf_vmap(fd->dmabuf, &fd->map);
