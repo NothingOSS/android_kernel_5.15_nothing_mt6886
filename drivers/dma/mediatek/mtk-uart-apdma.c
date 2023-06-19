@@ -138,7 +138,7 @@ struct mtk_chan {
 	void __iomem *base;
 	unsigned int irq;
 	unsigned int is_hub_port;
-	unsigned int chan_desc_count;
+	int chan_desc_count;
 
 	unsigned int irq_wg;
 	unsigned int rx_status;
@@ -454,7 +454,6 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 
 	if (c->chan_desc_count <= 0) {
 		pr_info("[WARN] %s, c->chan_desc_count[%d]\n", __func__, c->chan_desc_count);
-		return;
 	}
 
 	wpt = mtk_uart_apdma_read(c, VFF_ADDR);
