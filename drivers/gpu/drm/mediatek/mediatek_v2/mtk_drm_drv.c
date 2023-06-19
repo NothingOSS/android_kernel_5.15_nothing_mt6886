@@ -1334,7 +1334,6 @@ static bool _mtk_atomic_mml_plane(struct drm_device *dev,
 		goto err_copy_submit;
 
 	submit_kernel->update = false;
-	submit_kernel->info.mode = MML_MODE_RACING;
 
 	for (i = 0; i < MML_MAX_OUTPUTS; ++i) {
 		for (j = 0; j < MML_MAX_PLANES; ++j) {
@@ -1372,6 +1371,54 @@ static bool _mtk_atomic_mml_plane(struct drm_device *dev,
 			submit_kernel->buffer.src.dmabuf[0],
 			submit_kernel->info.src.format);
 	DDPINFO("plane=%d\n", submit_kernel->buffer.src.cnt);
+	crtc_state->mml_dst_roi.x = mtk_plane_state->base.dst.x1;
+	crtc_state->mml_dst_roi.y = mtk_plane_state->base.dst.y1;
+	crtc_state->mml_dst_roi.width = submit_pq->info.dest[0].compose.width;
+	crtc_state->mml_dst_roi.height = submit_pq->info.dest[0].compose.height;
+
+	if (mtk_crtc->is_dual_pipe) {
+		const int x = crtc_state->mml_dst_roi.x;
+		const int y = crtc_state->mml_dst_roi.y;
+		const int w = crtc_state->mml_dst_roi.width;
+		const int h = crtc_state->mml_dst_roi.height;
+		struct mtk_ddp_comp *output_comp = NULL;
+		int panel_w = -1, mid_line = -1;
+		unsigned int to_left = 0, to_right = 0;
+
+		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (output_comp && drm_crtc_index(mtk_plane_state->crtc) == 0)
+			panel_w = mtk_ddp_comp_io_cmd(output_comp, NULL,
+						      DSI_GET_VIRTUAL_WIDTH, NULL);
+		mid_line = panel_w / 2;
+
+		if (mtk_crtc->tile_overhead.is_support) {
+			to_left = mtk_crtc->tile_overhead.left_overhead;
+			to_right = mtk_crtc->tile_overhead.right_overhead;
+			DDPINFO("%s: tile_overhead L:%d R:%d\n", __func__, to_left, to_right);
+		}
+
+		crtc_state->mml_dst_roi_dual[0] = crtc_state->mml_dst_roi;
+		if ((x + w) > (mid_line + to_left))
+			crtc_state->mml_dst_roi_dual[0].width = mid_line + to_left - x;
+		else
+			crtc_state->mml_dst_roi_dual[0].width += to_left;
+
+		crtc_state->mml_dst_roi_dual[1].x = mid_line - to_right;
+		crtc_state->mml_dst_roi_dual[1].y = y;
+		crtc_state->mml_dst_roi_dual[1].height = h;
+		crtc_state->mml_dst_roi_dual[1].width = to_right;
+		if ((x + w) > mid_line)
+			crtc_state->mml_dst_roi_dual[1].width += x + w - mid_line;
+
+		memcpy(&submit_kernel->dl_out[0], &crtc_state->mml_dst_roi_dual[0],
+		       sizeof(struct mml_rect));
+		memcpy(&submit_kernel->dl_out[1], &crtc_state->mml_dst_roi_dual[1],
+		       sizeof(struct mml_rect));
+	} else {
+		crtc_state->mml_dst_roi_dual[0] = crtc_state->mml_dst_roi;
+		memcpy(&submit_kernel->dl_out[0], &crtc_state->mml_dst_roi_dual[0],
+		       sizeof(struct mml_rect));
+	}
 
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
 	if (ret)
@@ -1386,13 +1433,8 @@ static bool _mtk_atomic_mml_plane(struct drm_device *dev,
 	mtk_crtc->mml_cfg = submit_kernel;
 	mtk_crtc->mml_cfg_pq = submit_pq;
 
-	mtk_plane_state->mml_mode = MML_MODE_RACING;
+	mtk_plane_state->mml_mode = submit_kernel->info.mode;
 	mtk_plane_state->mml_cfg = mtk_crtc->mml_cfg_pq;
-
-	crtc_state->mml_dst_roi.x = mtk_plane_state->base.dst.x1;
-	crtc_state->mml_dst_roi.y = mtk_plane_state->base.dst.y1;
-	crtc_state->mml_dst_roi.width = submit_pq->info.dest[0].compose.width;
-	crtc_state->mml_dst_roi.height = submit_pq->info.dest[0].compose.height;
 
 	return true;
 

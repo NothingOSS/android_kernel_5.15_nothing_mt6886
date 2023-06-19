@@ -2326,61 +2326,14 @@ static void calc_mml_config(struct drm_crtc *crtc,
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	int x = -1, y = -1, w = -1, h = -1, mid_line = -1;
-	struct total_tile_overhead to_info;
 
-	x = crtc_state->mml_dst_roi.x;
-	y = crtc_state->mml_dst_roi.y;
-	w = crtc_state->mml_dst_roi.width;
-	h = crtc_state->mml_dst_roi.height;
-
-	CRTC_MMP_EVENT_START(0, mml_dbg, x, w);
-
-	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
-	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
-			to_info.is_support, to_info.left_in_width, to_info.right_in_width);
-
-	addon_config->addon_mml_config.mml_dst_roi[0].x = x;
-	addon_config->addon_mml_config.mml_dst_roi[0].y = y;
-	addon_config->addon_mml_config.mml_dst_roi[0].width
-		= w + (to_info.is_support ? to_info.left_overhead : 0);
-	addon_config->addon_mml_config.mml_dst_roi[0].height = h;
-
-	if (mtk_crtc->is_dual_pipe) {
-		struct mtk_ddp_comp *output_comp = NULL;
-		int panel_w = -1;
-
-		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (output_comp &&
-			drm_crtc_index(crtc) == 0) {
-			panel_w = mtk_ddp_comp_io_cmd(
-				output_comp, NULL,
-				DSI_GET_VIRTUAL_WIDTH, NULL);
-		}
-		mid_line = panel_w/2;
-
-		if ((x + w) > mid_line + (to_info.is_support ? to_info.left_overhead : 0))
-			addon_config->addon_mml_config.mml_dst_roi[0].width =
-				mid_line + (to_info.is_support ? to_info.left_overhead : 0) - x;
-
-		addon_config->addon_mml_config.mml_dst_roi[1].x
-			= mid_line - (to_info.is_support ? to_info.right_overhead : 0);
-		addon_config->addon_mml_config.mml_dst_roi[1].y = y;
-		addon_config->addon_mml_config.mml_dst_roi[1].width
-			= (((x + w) > mid_line) ? (x + w) - mid_line : 0)
-			+ (to_info.is_support ? to_info.right_overhead : 0);
-		addon_config->addon_mml_config.mml_dst_roi[1].height = h;
-	}
-
+	addon_config->addon_mml_config.mml_dst_roi[0] = crtc_state->mml_dst_roi_dual[0];
+	addon_config->addon_mml_config.mml_dst_roi[1] = crtc_state->mml_dst_roi_dual[1];
 	comp = priv->ddp_comp[DDP_COMPONENT_MML_MML0];
-	mtk_ddp_comp_mml_calc_cfg(comp, addon_config);
+	if (addon_config->addon_mml_config.submit.info.mode != MML_MODE_DIRECT_LINK)
+		mtk_ddp_comp_mml_calc_cfg(comp, addon_config);
 
-	CRTC_MMP_EVENT_END(0, mml_dbg, addon_config->addon_mml_config.mml_dst_roi[1].x,
-			   addon_config->addon_mml_config.mml_dst_roi[1].width);
-
-	if (mtk_crtc->is_dual_pipe)
-		addon_config->addon_mml_config.mml_dst_roi[1].x -=
-			(mid_line - (to_info.is_support ? to_info.right_overhead : 0));
+	addon_config->addon_mml_config.mml_dst_roi[1].x = 0; // -= (mid_line - to_right)
 
 	crtc_state->mml_src_roi[0] = addon_config->addon_mml_config.mml_src_roi[0];
 	crtc_state->mml_dst_roi_dual[0] = addon_config->addon_mml_config.mml_dst_roi[0];
