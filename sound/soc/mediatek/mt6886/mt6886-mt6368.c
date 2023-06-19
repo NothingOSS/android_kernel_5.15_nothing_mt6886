@@ -118,14 +118,14 @@ static int mt6886_compress_info_get(struct snd_kcontrol *kcontrol,
 					 __func__,
 					 (compr->direction) ? "Capture" : "Playback");
 				compr_info.dir = compr->direction;
-			}
-			for_each_card_prelinks(card, i, dai_link) {
-				if (i == compr_info.device) {
-					pr_debug("device = %d, dai_link->name: %s\n",
-						 i, dai_link->stream_name);
-					strscpy(compr_info.id, dai_link->stream_name,
-						sizeof(compr_info.id));
-					break;
+				for_each_card_prelinks(card, i, dai_link) {
+					if (i == compr_info.device) {
+						pr_debug("device = %d, dai_link->name: %s\n",
+							 i, dai_link->stream_name);
+						strscpy(compr_info.id, dai_link->stream_name,
+							sizeof(compr_info.id));
+						break;
+					}
 				}
 			}
 			break;
