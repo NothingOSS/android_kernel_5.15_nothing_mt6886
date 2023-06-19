@@ -774,6 +774,7 @@ static int md_start_platform(struct ccci_modem *md)
 	if (ret != 0) {
 		/* BROM */
 		CCCI_ERROR_LOG(0, TAG, "BROM Failed\n");
+		md_cd_dump_debug_register(md, true);
 	}
 
 	md_cd_power_off(md, 0);
