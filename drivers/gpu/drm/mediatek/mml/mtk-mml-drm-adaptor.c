@@ -281,10 +281,14 @@ static u32 format_drm_to_mml(u32 drm_format, u64 modifier)
 	return drm_format;
 }
 
-static bool check_frame_change(struct mml_frame_info *info,
+static bool check_frame_wo_change(struct mml_submit *submit,
 			       struct mml_frame_config *cfg)
 {
-	return !memcmp(&cfg->info, info, sizeof(*info));
+	/* Only when both of frame info and dl_out are not changed, return true,
+	 * else return false
+	 */
+	return (!memcmp(&submit->info, &cfg->info, sizeof(submit->info)) &&
+		!memcmp(&submit->dl_out[0], &cfg->dl_out[0], sizeof(submit->dl_out)));
 }
 
 static struct mml_frame_config *frame_config_find_reuse(
@@ -306,7 +310,7 @@ static struct mml_frame_config *frame_config_find_reuse(
 		if (submit->update && cfg->last_jobid == submit->job->jobid)
 			goto done;
 
-		if (check_frame_change(&submit->info, cfg))
+		if (check_frame_wo_change(submit, cfg))
 			goto done;
 
 		idx++;
@@ -393,8 +397,9 @@ static void frame_config_queue_destroy(struct kref *kref)
 
 static struct mml_frame_config *frame_config_create(
 	struct mml_drm_ctx *ctx,
-	struct mml_frame_info *info)
+	struct mml_submit *submit)
 {
+	struct mml_frame_info *info = &submit->info;
 	struct mml_frame_config *cfg = kzalloc(sizeof(*cfg), GFP_KERNEL);
 
 	if (!cfg)
@@ -411,6 +416,7 @@ static struct mml_frame_config *frame_config_create(
 	cfg->task_ops = ctx->task_ops;
 	cfg->cfg_ops = ctx->cfg_ops;
 	cfg->ctx_kt_done = ctx->kt_done;
+	memcpy(cfg->dl_out, submit->dl_out, sizeof(cfg->dl_out));
 	INIT_WORK(&cfg->work_destroy, frame_config_destroy_work);
 	kref_init(&cfg->ref);
 
@@ -867,7 +873,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 			kref_get(&cfg->ref);
 		}
 	} else {
-		cfg = frame_config_create(ctx, &submit->info);
+		cfg = frame_config_create(ctx, submit);
 		mml_msg("[drm]%s create config %p", __func__, cfg);
 		if (IS_ERR(cfg)) {
 			result = PTR_ERR(cfg);
