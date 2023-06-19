@@ -1159,15 +1159,6 @@ static void mtk_hp_enable(struct mt6377_priv *priv)
 	regmap_update_bits(priv->regmap, MT6377_AUDDEC_ANA_CON16, 0x1, 0x1);
 	usleep_range(100, 120);
 
-	/* Switch HPL MUX to audio DAC */
-	regmap_update_bits(priv->regmap, MT6377_AUDDEC_ANA_CON1,
-			RG_AUDHPLMUXINPUTSEL_VAUDP15_MASK_SFT,
-			2 << RG_AUDHPLMUXINPUTSEL_VAUDP15_SFT);
-	/* Switch HPR MUX to audio DAC */
-	regmap_update_bits(priv->regmap, MT6377_AUDDEC_ANA_CON1,
-			RG_AUDHPRMUXINPUTSEL_VAUDP15_MASK_SFT,
-			2 << RG_AUDHPRMUXINPUTSEL_VAUDP15_SFT);
-
 	if (priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK) {
 		/* Switch LOL MUX to audio DACL */
 		regmap_write(priv->regmap, MT6377_AUDDEC_ANA_CON12, 0x1b);
