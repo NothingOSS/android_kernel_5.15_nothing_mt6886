@@ -1281,8 +1281,21 @@ void ufs_mtk_mcq_enable_irq(struct ufs_hba *hba)
 	if (hba_priv->mcq_nr_intr == 0)
 		return;
 
+	/*
+	 * Racing by gate work(should turn off clock, but not) and
+	 * ufshcd_hold (turn on again).
+	 *
+	 * ufshcd_gate_work -> spin_lock_irqsave           2
+	 *                  -> active_reqs !=0             7
+	 *                  -> spin_unlock_irqrestore      8
+	 * ufshcd_hold      -> spin_lock_irqsave           1
+	 *                  -> active_reqs ++              3
+	 *                  -> cancel_delayed_work fail    4
+	 *                  -> ungate work (turn clock)    5
+	 *                  -> spin_unlock_irqrestore      6
+	 */
 	if (hba_priv->is_mcq_intr_enabled == true)
-		ufs_mtk_mcq_print_evt_hist(hba);
+		return;
 
 	for (cpu = 0; cpu < nr; cpu++) {
 		q_index = map->mq_map[cpu];
