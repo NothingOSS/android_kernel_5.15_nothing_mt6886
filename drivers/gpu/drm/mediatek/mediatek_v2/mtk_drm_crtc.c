@@ -11772,7 +11772,12 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		}
 	}
 
-	cmdq_pkt_reset_ovl(mtk_crtc_state->cmdq_handle, mtk_crtc);
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) &&
+		crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING) {
+		DDPINFO("%s %d skip reset ovl due to still opening\n", __func__, crtc_idx);
+	} else {
+		cmdq_pkt_reset_ovl(mtk_crtc_state->cmdq_handle, mtk_crtc);
+	}
 
 	/* BW monitor: Read and Save BW info */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
