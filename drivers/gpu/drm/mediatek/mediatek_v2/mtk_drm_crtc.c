@@ -11670,6 +11670,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	dma_addr_t msync_slot_addr;
 	bool msync20_status_changed = 0;
 	struct mtk_ddp_comp *output_comp;
+#ifndef DRM_CMDQ_DISABLE
+	struct cmdq_client *client;
+#endif
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
@@ -11706,6 +11709,10 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				/* top clk/CG  have been enabledprepared while DISP_OPENNING,
 				 *disable that iteration prevent unbalanced ref cnt.
 				 */
+#ifndef DRM_CMDQ_DISABLE
+				client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+				cmdq_mbox_disable(client->chan);
+#endif
 				mtk_crtc_ddp_unprepare(mtk_crtc);
 				mtk_drm_top_clk_disable_unprepare(crtc->dev);
 			}
