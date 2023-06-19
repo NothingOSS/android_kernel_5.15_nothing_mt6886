@@ -996,8 +996,13 @@ ccu_init_end:
 
 static int mtk_mmdvfs_clk_enable(const u8 clk_idx)
 {
-	if (is_vcp_suspending_ex() || !mmdvfs_is_init_done())
+	if (!mmdvfs_is_init_done())
 		return 0;
+
+	if (is_vcp_suspending_ex()) {
+		MMDVFS_DBG("vcp suspending clk_idx:%hhu", clk_idx);
+		return 0;
+	}
 
 	mmdvfs_vcp_ipi_send(FUNC_CLKMUX_ENABLE, clk_idx, true, NULL);
 	return 0;
@@ -1005,8 +1010,13 @@ static int mtk_mmdvfs_clk_enable(const u8 clk_idx)
 
 static int mtk_mmdvfs_clk_disable(const u8 clk_idx)
 {
-	if (is_vcp_suspending_ex() || !mmdvfs_is_init_done())
+	if (!mmdvfs_is_init_done())
 		return 0;
+
+	if (is_vcp_suspending_ex()) {
+		MMDVFS_DBG("vcp suspending clk_idx:%hhu", clk_idx);
+		return 0;
+	}
 
 	mmdvfs_vcp_ipi_send(FUNC_CLKMUX_ENABLE, clk_idx, false, NULL);
 	return 0;
