@@ -1199,6 +1199,7 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 #endif
 
 	cpumask_andnot(&avail_lowest_mask, lowest_mask, cpu_pause_mask);
+	cpumask_and(&avail_lowest_mask, &avail_lowest_mask, cpu_active_mask);
 	if (!ret) {
 		select_reason = LB_RT_NO_LOWEST_RQ;
 		goto out; /* No targets found */
