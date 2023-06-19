@@ -138,6 +138,7 @@ struct mtk_chan {
 	void __iomem *base;
 	unsigned int irq;
 	unsigned int is_hub_port;
+	unsigned int chan_desc_count;
 
 	unsigned int irq_wg;
 	unsigned int rx_status;
@@ -192,8 +193,12 @@ static unsigned int mtk_uart_apdma_read(struct mtk_chan *c, unsigned int reg)
 static void mtk_uart_apdma_desc_free(struct virt_dma_desc *vd)
 {
 	struct mtk_uart_apdma_desc *d = NULL;
+	struct mtk_chan *c = NULL;
+	struct virt_dma_chan *vc = to_virt_chan(vd->tx.chan);
 
+	c = container_of(vc, struct mtk_chan, vc);
 	d = container_of(vd, struct mtk_uart_apdma_desc, vd);
+	c->chan_desc_count--;
 	if (d->is_global_vd)
 		d->is_using = false;
 	else
@@ -446,6 +451,11 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	}
 	if (poll_cnt != MAX_POLLING_CNT)
 		pr_info("%s: poll_cnt[%d] is not MAX_POLLING_CNT!\n", __func__, poll_cnt);
+
+	if (c->chan_desc_count <= 0) {
+		pr_info("[WARN] %s, c->chan_desc_count[%d]\n", __func__, c->chan_desc_count);
+		return;
+	}
 
 	wpt = mtk_uart_apdma_read(c, VFF_ADDR);
 	if (wpt == ((unsigned int)d->addr)) {
@@ -895,6 +905,7 @@ static struct dma_async_tx_descriptor *mtk_uart_apdma_prep_slave_sg
 	d->avail_len = sg_dma_len(sgl);
 	d->addr = sg_dma_address(sgl);
 	c->dir = dir;
+	c->chan_desc_count++;
 
 	return vchan_tx_prep(&c->vc, &d->vd, tx_flags);
 }
