@@ -443,7 +443,6 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 			rx_serial_no, apu->hdr.serial_no);
 		/* correct the serial no. */
 		rx_serial_no = apu->hdr.serial_no;
-		apu_regdump();
 		dump_mbox0_reg(apu);
 		apusys_rv_aee_warn("APUSYS_RV", "IPI rx_serial_no unmatch");
 	}
@@ -462,7 +461,6 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 		dev_info(dev, "csum error: recv=0x%08x, calc=0x%08x, skip\n",
 			apu->hdr.csum, calc_csum);
 		dump_msg_buf(apu, temp_buf, apu->hdr.len);
-		apu_regdump();
 		dump_mbox0_reg(apu);
 		apusys_rv_aee_warn("APUSYS_RV", "IPI rx csum error");
 		/* csum error data not valid */
