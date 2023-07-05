@@ -917,7 +917,8 @@ static void mtk_aal_config(struct mtk_ddp_comp *comp,
 	//disp_aal_flip_sram(comp, handle, __func__);
 
 	if (g_dsi_switched) {
-		g_aal_need_config = true;
+		if (g_aal_fo->mtk_dre30_support)
+			g_aal_need_config = true;
 		g_dsi_switched = false;
 	}
 	AALWC_LOG("AAL_CFG=0x%x  compid:%d\n",
@@ -1226,11 +1227,10 @@ static void disp_aal_dre3_config(struct mtk_ddp_comp *comp,
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	phys_addr_t dre3_pa = mtk_aal_dre3_pa(comp);
-	int width = init_regs->isdual ? init_regs->width / 2 : init_regs->width;
 	int dre_alg_mode = 1;
 
-	DDPMSG("%s, width:%d, height:%d\n", __func__, width, init_regs->height);
-	if (g_aal_size.width == width && g_aal_size.height == init_regs->height)
+	DDPMSG("%s, width:%d, height:%d\n", __func__, init_regs->width, init_regs->height);
+	if (g_aal_size.width == init_regs->width && g_aal_size.height == init_regs->height)
 		g_aal_need_config = false;
 
 	AALFLOW_LOG("start, bitShift: %d  compId%d\n", aal_data->data->bitShift, comp->id);
