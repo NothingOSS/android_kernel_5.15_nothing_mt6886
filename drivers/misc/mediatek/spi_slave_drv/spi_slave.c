@@ -560,6 +560,8 @@ static int spi_slave_probe(struct spi_device *spi)
 	/* fix 6382 Screen still be black when lock phone and select power on key */
 	spi->mode = 0x08;
 	spi->bits_per_word = 8;
+	spi->cs_setup.unit = SPI_DELAY_UNIT_NSECS;
+	spi->cs_setup.value = 33;
 	spi->controller_data = (void *)&spislv_chip_info;
 	spislv_chip_info.tick_delay = slv_data.low_speed_tick_delay;
 
