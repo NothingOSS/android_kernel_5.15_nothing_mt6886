@@ -2441,6 +2441,7 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	u32 debug_cnt = 0;
 	u8 irq_long_times;
 	struct cmdq_client *client = pkt->cl;
+	struct cmdq_thread *thread = (struct cmdq_thread *)client->chan->con_priv;
 #endif
 
 	cmdq_log("%s pkt:%p", __func__, pkt);
@@ -2461,10 +2462,14 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 #endif
 	complete(&pkt->cmplt);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	irq_long_times = cmdq_get_irq_long_times(client->chan);
-	if (debug_end[1] - debug_end[0] >= 500000 && !irq_long_times)
-		cmdq_util_err("IRQ_LONG:%llu in user callback",
-			debug_end[1] - debug_end[0]);
+#ifdef CMDQ_SECURE_SUPPORT
+	if (!pkt->sec_data)
+#endif
+	{
+		irq_long_times = cmdq_get_irq_long_times(client->chan);
+		if (debug_end[1] - debug_end[0] >= 500000 && !irq_long_times)
+			thread->user_cb_cost += (debug_end[1] - debug_end[0]);
+	}
 #endif
 }
 #endif

@@ -1302,6 +1302,7 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++) {
 		cmdq->thread[i].irq_time = 0;
 		cmdq->thread[i].irq_task = 0;
+		cmdq->thread[i].user_cb_cost = 0;
 	}
 
 	for_each_clear_bit(bit, &irq_status, fls(CMDQ_IRQ_MASK)) {
@@ -1338,23 +1339,23 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 			struct cmdq_thread *thread = &cmdq->thread[i];
 
 			cmdq_util_err(
-				" hwid:%hu thread:%u:%d %llu:%llu:%u %llu:%llu:%u %llu:%llu:%u %llu:%llu:%u %llu:%llu:%u %llu:%llu:%u %llu:%llu:%u %llu:%llu:%u",
-				cmdq->hwid, thd_cnt, i, thread->lock_time,
-				thread->irq_time, thread->irq_task,
-				(thread + 1)->lock_time,
-				(thread + 1)->irq_time, (thread + 1)->irq_task,
-				(thread + 2)->lock_time,
-				(thread + 2)->irq_time, (thread + 2)->irq_task,
-				(thread + 3)->lock_time,
-				(thread + 3)->irq_time, (thread + 3)->irq_task,
-				(thread + 4)->lock_time,
-				(thread + 4)->irq_time, (thread + 4)->irq_task,
-				(thread + 5)->lock_time,
-				(thread + 5)->irq_time, (thread + 5)->irq_task,
-				(thread + 6)->lock_time,
-				(thread + 6)->irq_time, (thread + 6)->irq_task,
-				(thread + 7)->lock_time,
-				(thread + 7)->irq_time, (thread + 7)->irq_task);
+				" hwid:%hu thread:%u:%d %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu %llu:%llu:%u:%llu",
+				cmdq->hwid, thd_cnt, i, thread->lock_time, thread->irq_time,
+				thread->irq_task, thread->user_cb_cost,
+				(thread + 1)->lock_time, (thread + 1)->irq_time,
+				(thread + 1)->irq_task, (thread + 1)->user_cb_cost,
+				(thread + 2)->lock_time, (thread + 2)->irq_time,
+				(thread + 2)->irq_task, (thread + 2)->user_cb_cost,
+				(thread + 3)->lock_time, (thread + 3)->irq_time,
+				(thread + 3)->irq_task, (thread + 3)->user_cb_cost,
+				(thread + 4)->lock_time, (thread + 4)->irq_time,
+				(thread + 4)->irq_task, (thread + 4)->user_cb_cost,
+				(thread + 5)->lock_time, (thread + 5)->irq_time,
+				(thread + 5)->irq_task, (thread + 5)->user_cb_cost,
+				(thread + 6)->lock_time, (thread + 6)->irq_time,
+				(thread + 6)->irq_task, (thread + 6)->user_cb_cost,
+				(thread + 7)->lock_time, (thread + 7)->irq_time,
+				(thread + 7)->irq_task, (thread + 7)->user_cb_cost);
 		}
 	}
 
