@@ -268,6 +268,12 @@ static void mtk_dmdp_aal_config(struct mtk_ddp_comp *comp,
 		//cmdq_pkt_write(handle, comp->cmdq_base,
 		//	comp->regs_pa + DMDP_AAL_DRE_BLOCK_INFO_00,
 		//	(cfg->w - 1) << 16 | 0, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DMDP_AAL_DRE_ROI_00,
+			(cfg->w - 1)  << 16 | 0, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DMDP_AAL_DRE_ROI_01,
+			(cfg->h - 1) << 16 | 0, ~0);
 	}
 
 	//cmdq_pkt_write(handle, comp->cmdq_base,
