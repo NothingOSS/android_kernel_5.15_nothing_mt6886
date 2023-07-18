@@ -2930,6 +2930,7 @@ _mtk_crtc_wb_addon_module_connect(
 				} else if (dst_roi.x >= dst_w/2) {
 					/* handle dst ROI locate in right pipe */
 					dst_roi_l.x = 0;
+					dst_roi_l.width = 0;
 					dst_roi_r.x = dst_roi.x - dst_w/2;
 				} else {
 					/* handle dst ROI locate in both display pipe */
