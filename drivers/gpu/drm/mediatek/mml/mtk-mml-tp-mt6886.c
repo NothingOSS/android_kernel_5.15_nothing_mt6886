@@ -549,6 +549,11 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		MML_IR_RSZ_MIN_RATIO)
 		goto decouple;
 
+	if (!MML_FMT_COMPRESS(info->src.format)) {
+		*reason = mml_query_format;
+		goto decouple;
+	}
+
 	return MML_MODE_RACING;
 
 decouple:
