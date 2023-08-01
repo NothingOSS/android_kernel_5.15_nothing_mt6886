@@ -360,6 +360,10 @@
 #define DSI_GERNERIC_LONG_PACKET_ID 0x29
 #define DSI_GERNERIC_READ_LONG_PACKET_ID 0x14
 
+#define DSI_INPUT_DBG		0x1D4
+#define DSI_DBG_FLD_ROI_X	REG_FLD_MSB_LSB(12, 0)
+#define DSI_DBG_FLD_ROI_Y	REG_FLD_MSB_LSB(28, 16)
+
 struct phy;
 
 unsigned int data_phy_cycle;
@@ -2311,6 +2315,38 @@ void clear_dsi_underrun_event(void)
 	DDPMSG("%s, do clear underrun event\n", __func__);
 	dsi_underrun_trigger = 1;
 }
+
+void mtk_dsi_cur_pos_dump(struct mtk_ddp_comp *comp)
+{
+	void __iomem *baddr;
+	unsigned int reg_val;
+
+	if(!comp)
+		return;
+	baddr = comp->regs;
+	if (!baddr) {
+		DDPINFO("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+	reg_val = readl(DSI_INPUT_DBG + baddr);
+	DDPINFO("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
+		REG_FLD_VAL_GET(DSI_DBG_FLD_ROI_X, reg_val),
+		REG_FLD_VAL_GET(DSI_DBG_FLD_ROI_Y, reg_val));
+}
+
+void dump_cur_pos(struct mtk_drm_crtc *mtk_crtc)
+{
+	int i = 0, j = 0;
+	struct mtk_ddp_comp *comp;
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+		mtk_dump_cur_pos(comp);
+	if (mtk_crtc->is_dual_pipe) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j)
+			mtk_dump_cur_pos(comp);
+	}
+}
+
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
 	struct mtk_dsi *dsi = dev_id;
@@ -2371,6 +2407,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			unsigned long long aee_now_ts = sched_clock();
 			int trigger_aee = 0;
 			int en = 0;
+			u32 arch_timer_cnt = (u32)arch_timer_read_counter();
 
 			++underrun_cnt;
 
@@ -2382,9 +2419,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if ((dsi_underrun_trigger == 1 && priv &&
 				mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_DSI_UNDERRUN_AEE)) && trigger_aee) {
+				dump_cur_pos(mtk_crtc);
 				DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS: 0x%08x\n",
 					mtk_dump_comp_str(&dsi->ddp_comp),
-					(u32)arch_timer_read_counter());
+					arch_timer_cnt);
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 			}
 

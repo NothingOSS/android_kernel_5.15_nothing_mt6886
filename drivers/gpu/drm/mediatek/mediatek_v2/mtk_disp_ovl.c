@@ -4413,6 +4413,27 @@ static void ovl_dump_layer_info(struct mtk_ddp_comp *comp, int layer,
 	ovl_dump_layer_info_compress(comp, layer, is_ext_layer);
 }
 
+void mtk_ovl_cur_pos_dump(struct mtk_ddp_comp *comp)
+{
+	unsigned int addcon;
+	void __iomem *baddr;
+
+	if (!comp)
+		return;
+	if (comp->blank_mode)
+		return;
+	baddr = comp->regs;
+	if (!baddr) {
+		DDPINFO("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+	addcon = readl(DISP_REG_OVL_ADDCON_DBG + baddr);
+
+	DDPINFO("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
+		REG_FLD_VAL_GET(ADDCON_DBG_FLD_ROI_X, addcon),
+		REG_FLD_VAL_GET(ADDCON_DBG_FLD_ROI_Y, addcon));
+}
+
 int mtk_ovl_analysis(struct mtk_ddp_comp *comp)
 {
 	int i = 0;

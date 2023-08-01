@@ -29,6 +29,34 @@ const char *mtk_dump_comp_str_id(unsigned int id)
 	return "invalid";
 }
 
+void mtk_dump_cur_pos(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0:
+	case DDP_COMPONENT_OVL1:
+	case DDP_COMPONENT_OVL0_2L:
+	case DDP_COMPONENT_OVL1_2L:
+	case DDP_COMPONENT_OVL2_2L:
+	case DDP_COMPONENT_OVL3_2L:
+	case DDP_COMPONENT_OVL4_2L:
+	case DDP_COMPONENT_OVL5_2L:
+	case DDP_COMPONENT_OVL6_2L:
+	case DDP_COMPONENT_OVL7_2L:
+	case DDP_COMPONENT_OVL0_2L_NWCG:
+	case DDP_COMPONENT_OVL1_2L_NWCG:
+	case DDP_COMPONENT_OVL2_2L_NWCG:
+	case DDP_COMPONENT_OVL3_2L_NWCG:
+		mtk_ovl_cur_pos_dump(comp);
+		break;
+	case DDP_COMPONENT_DSI0:
+	case DDP_COMPONENT_DSI1:
+		mtk_dsi_cur_pos_dump(comp);
+		break;
+	default:
+		return;
+	}
+}
+
 int mtk_dump_reg(struct mtk_ddp_comp *comp)
 {
 	switch (comp->id) {
