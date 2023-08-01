@@ -462,6 +462,9 @@ struct mtk_tphy {
 	struct proc_dir_entry *root;
 };
 
+static void u2_phy_props_set(struct mtk_tphy *tphy,
+		struct mtk_phy_instance *instance);
+
 static ssize_t proc_sib_write(struct file *file,
 	const char __user *ubuf, size_t count, loff_t *ppos)
 {
@@ -1625,6 +1628,7 @@ static void u2_phy_instance_set_mode(struct mtk_tphy *tphy,
 		tmp = readl(u2_banks->com + U3P_U2PHYDTM1);
 		switch (mode) {
 		case PHY_MODE_USB_DEVICE:
+			u2_phy_props_set(tphy, instance);
 			tmp |= P2C_FORCE_IDDIG | P2C_RG_IDDIG;
 			break;
 		case PHY_MODE_USB_HOST:
@@ -2307,6 +2311,7 @@ static int mtk_phy_power_on(struct phy *phy)
 	if (instance->type == PHY_TYPE_USB2) {
 		u2_phy_instance_power_on(tphy, instance);
 		hs_slew_rate_calibrate(tphy, instance);
+		u2_phy_props_set(tphy, instance);
 	} else if (instance->type == PHY_TYPE_USB3) {
 		u3_phy_instance_power_on(tphy, instance);
 	} else if (instance->type == PHY_TYPE_PCIE) {
