@@ -938,21 +938,6 @@ void __gpufreq_dump_infra_status(void)
 	GPUFREQ_LOGI("[Clk] MFG_PLL: %d, MFG_SEL: 0x%x",
 		g_gpu.cur_freq, readl(TOPCK_CLK_CFG_20) & MFG_PLL_SEL_MASK);
 
-	/* 0x13FBF000 */
-	if (MFG_TOP_CFG_BASE) {
-		/* MFG_QCHANNEL_CON 0x13FBF0B4 [0] MFG_ACTIVE_SEL = 1'b1 */
-		writel((readl(MFG_QCHANNEL_CON) | BIT(0)), MFG_QCHANNEL_CON);
-		/* MFG_DEBUG_SEL 0x13FBF170 [1:0] MFG_DEBUG_TOP_SEL = 2'b11 */
-		writel((readl(MFG_DEBUG_SEL) | GENMASK(1, 0)), MFG_DEBUG_SEL);
-
-		/* MFG_DEBUG_SEL */
-		/* MFG_DEBUG_TOP */
-		GPUFREQ_LOGI("%-7s (0x%x): 0x%08x, (0x%x): 0x%08x",
-			"[MFG]",
-			(0x13FBF170), readl(MFG_DEBUG_SEL),
-			(0x13FBF178), readl(MFG_DEBUG_TOP));
-	}
-
 	/* 0x1021C000, 0x1021E000 */
 	if (NTH_EMICFG_BASE && STH_EMICFG_BASE) {
 		/* NTH_MFG_EMI1_GALS_SLV_DBG */
