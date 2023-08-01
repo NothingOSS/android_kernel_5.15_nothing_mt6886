@@ -591,7 +591,7 @@ static int mtk_hw_get_value_wrap(struct mtk_pinctrl *hw, unsigned int gpio, int 
 	mtk_hw_get_value_wrap(hw, gpio, PINCTRL_PIN_REG_DRV)
 
 ssize_t mtk_pctrl_show_one_pin(struct mtk_pinctrl *hw,
-	unsigned int gpio, char *buf, unsigned int bufLen)
+	unsigned int gpio, char *buf, unsigned int buf_len)
 {
 	int pullup = 0, pullen = 0, r1 = -1, r0 = -1, len = 0, rsel = -1;
 	int pinmux, val;
@@ -648,7 +648,7 @@ ssize_t mtk_pctrl_show_one_pin(struct mtk_pinctrl *hw,
 		pullen = 0;
 	}
 
-	len += snprintf(buf + len, bufLen - len,
+	len += snprintf(buf + len, buf_len - len,
 			"%03d: %1d%1d%1d%1d",
 			gpio,
 			pinmux,
@@ -658,32 +658,32 @@ ssize_t mtk_pctrl_show_one_pin(struct mtk_pinctrl *hw,
 
 	val = mtk_pctrl_get_driving(hw, gpio);
 	if (val >= 0)
-		len += snprintf(buf + len, bufLen - len, "%02d", val);
+		len += snprintf(buf + len, buf_len - len, "%02d", val);
 	else
-		len += snprintf(buf + len, bufLen - len, "XX");
+		len += snprintf(buf + len, buf_len - len, "XX");
 
 	val = mtk_pctrl_get_smt(hw, gpio);
 	if (val >= 0)
-		len += snprintf(buf + len, bufLen - len, "%1d", val);
+		len += snprintf(buf + len, buf_len - len, "%1d", val);
 	else
-		len += snprintf(buf + len, bufLen - len, "X");
+		len += snprintf(buf + len, buf_len - len, "X");
 
 	val = mtk_pctrl_get_ies(hw, gpio);
 	if (val >= 0)
-		len += snprintf(buf + len, bufLen - len, "%1d", val);
+		len += snprintf(buf + len, buf_len - len, "%1d", val);
 	else
-		len += snprintf(buf + len, bufLen - len, "X");
+		len += snprintf(buf + len, buf_len - len, "X");
 
 	if (pullen == -1)
-		len += snprintf(buf + len, bufLen - len, "XX");
+		len += snprintf(buf + len, buf_len - len, "XX");
 	else if (r1 != -1)
-		len += snprintf(buf + len, bufLen - len, "%1d%1d (%1d %1d)",
+		len += snprintf(buf + len, buf_len - len, "%1d%1d (%1d %1d)",
 			pullen, pullup, r1, r0);
 	else if (rsel != -1)
-		len += snprintf(buf + len, bufLen - len, "%1d%1d (rsel = %d)",
+		len += snprintf(buf + len, buf_len - len, "%1d%1d (rsel = %d)",
 			pullen, pullup, rsel);
 	else
-		len += snprintf(buf + len, bufLen - len, "%1d%1d",
+		len += snprintf(buf + len, buf_len - len, "%1d%1d",
 			pullen, pullup);
 
 	return len;
@@ -695,7 +695,7 @@ static void mtk_pctrl_dbg_show(struct pinctrl_dev *pctldev, struct seq_file *s,
 			  unsigned int gpio)
 {
 	struct mtk_pinctrl *hw = pinctrl_dev_get_drvdata(pctldev);
-	char buf[PIN_DBG_BUF_SZ];
+	char buf[PIN_DBG_BUF_SZ] = { 0 };
 
 	(void)mtk_pctrl_show_one_pin(hw, gpio, buf, PIN_DBG_BUF_SZ);
 
