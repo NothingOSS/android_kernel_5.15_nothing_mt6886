@@ -112,6 +112,7 @@ enum mml_pq_video_mode {
 	MML_PQ_AISPQ,
 	MML_PQ_AISDR2HDR,
 	MML_PQ_AIREGION,
+	MML_PQ_CCORR,
 };
 
 struct mml_pq_param {
