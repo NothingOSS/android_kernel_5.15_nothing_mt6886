@@ -171,4 +171,7 @@
 #define VCP_GCE_MMU			(vcpreg.cfg_mmu + 0x0000)
 	#define B_MMU_EN		(0x3 << 14)
 
+#define SPM_REQ_STA_6				(vcpreg.spm + 0x860)
+#define SPM_REQ_STA_7				(vcpreg.spm + 0x864)
+
 #endif

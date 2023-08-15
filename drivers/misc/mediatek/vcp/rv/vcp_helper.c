@@ -534,6 +534,7 @@ static void vcp_A_notify_ws(struct work_struct *ws)
 	struct vcp_work_struct *sws =
 		container_of(ws, struct vcp_work_struct, work);
 	unsigned int vcp_notify_flag = sws->flags;
+	uint32_t spm_req_sta_6, spm_req_sta_7;
 
 	vcp_recovery_flag[VCP_A_ID] = VCP_A_RECOVERY_OK;
 	writel(0xff, VCP_TO_SPM_REG); /* patch: clear SPM interrupt */
@@ -550,6 +551,16 @@ static void vcp_A_notify_ws(struct work_struct *ws)
 		blocking_notifier_call_chain(&vcp_A_notifier_list
 			, VCP_EVENT_READY, NULL);
 	}
+
+	// dump ddren
+	if (vcpreg.spm != NULL) {
+		spm_req_sta_6 = readl(SPM_REQ_STA_6);
+		spm_req_sta_7 = readl(SPM_REQ_STA_7);
+		if (!(spm_req_sta_6 & 0x80000000) || (spm_req_sta_7 & 0x1))
+			pr_notice("[VCP] SPM_REQ_STA_6 0x%x SPM_REQ_STA_7 0x%x\n",
+				spm_req_sta_6, spm_req_sta_7);
+	}
+
 	mutex_unlock(&vcp_A_notify_mutex);
 
 	/*clear reset status and unlock wake lock*/
@@ -2591,6 +2602,17 @@ static int vcp_device_probe(struct platform_device *pdev)
 	}
 	pr_debug("[VCP] cfg_mmu base = 0x%p\n", vcpreg.cfg_mmu);
 #endif
+
+	vcpreg.spm = NULL;
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "spm");
+	if (res != NULL) {
+		vcpreg.spm = devm_ioremap(dev, res->start, resource_size(res));
+		if (IS_ERR((void const *) vcpreg.spm)) {
+			pr_notice("[VCP] vcpreg.spm error, spm base = 0x%llx\n", vcpreg.spm);
+			vcpreg.spm = NULL;
+		}
+		pr_debug("[VCP] spm base = 0x%llx\n", vcpreg.spm);
+	}
 
 	of_property_read_u32(pdev->dev.of_node, "vcp-sramSize"
 						, &vcpreg.vcp_tcmsize);

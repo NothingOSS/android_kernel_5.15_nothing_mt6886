@@ -121,6 +121,7 @@ struct vcp_regs {
 	void __iomem *cfg_sec;
 	void __iomem *cfg_mmu;
 	void __iomem *bus_tracker;
+	void __iomem *spm;
 	int irq0;
 	int irq1;
 	unsigned int total_tcmsize;
