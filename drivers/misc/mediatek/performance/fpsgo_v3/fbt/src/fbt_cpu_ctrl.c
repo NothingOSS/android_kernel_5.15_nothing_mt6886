@@ -67,7 +67,9 @@ static int cfp_down_time;
 static int cfp_up_loading;
 static int cfp_down_loading;
 static int L_ceiling_min;
+static int B_ceiling_min;
 static int L_min_cap_enable;
+static int B_min_cap_enable;
 
 module_param(cfp_onoff, int, 0644);
 module_param(cfp_polling_ms, int, 0644);
@@ -76,7 +78,9 @@ module_param(cfp_down_time, int, 0644);
 module_param(cfp_up_loading, int, 0644);
 module_param(cfp_down_loading, int, 0644);
 module_param(L_ceiling_min, int, 0644);
+module_param(B_ceiling_min, int, 0644);
 module_param(L_min_cap_enable, int, 0644);
+module_param(B_min_cap_enable, int, 0644);
 
 static int cfp_cur_up_time;
 static int cfp_cur_down_time;
@@ -103,10 +107,11 @@ static void __cpu_ctrl_freq_systrace(int policy, int freq)
 		__cpu_ctrl_systrace(freq, "cpu_ceil_cluster_0");
 		__cpu_ctrl_systrace(L_min_cap_enable ? L_ceiling_min : -1,
 			"L_ceiling_min");
-	}
-	else if (policy == 1)
+	}else if (policy == 1) {
 		__cpu_ctrl_systrace(freq, "cpu_ceil_cluster_1");
-	else if (policy == 2)
+		__cpu_ctrl_systrace(B_min_cap_enable ? B_ceiling_min : -1,
+			"B_ceiling_min");
+	}else if (policy == 2)
 		__cpu_ctrl_systrace(freq, "cpu_ceil_cluster_2");
 }
 
@@ -471,6 +476,10 @@ int fbt_set_cpu_freq_ceiling(int num, int *freq)
 		freq[0] >= 0 && freq[0] < L_ceiling_min)
 		freq[0] = L_ceiling_min;
 
+	if (B_min_cap_enable && B_ceiling_min != 0 &&
+		freq[1] >= 0 && freq[1] < B_ceiling_min)
+		freq[1] = B_ceiling_min;
+
 	mutex_lock(&cpu_ctrl_lock);
 
 	for (i = 0; i < policy_num && i < num; i++) {
@@ -527,6 +536,15 @@ void update_userlimit_cpu_freq(int kicker, int cluster_num, struct cpu_ctrl_data
 void fbt_cpu_L_ceiling_min(int freq)
 {
 	L_ceiling_min = freq;
+}
+
+void fbt_cpu_ceiling_min(int cluster, int freq)
+{
+	if (cluster == 0) {
+		L_ceiling_min = freq;
+	}else if (cluster == 1) {
+		B_ceiling_min = freq;
+	}
 }
 
 int fbt_cpu_ctrl_get_ceil(void)
@@ -607,7 +625,9 @@ int fbt_cpu_ctrl_init(void)
 	cfp_down_loading = 80;
 
 	L_ceiling_min = 0;
+	B_ceiling_min = 0;
 	L_min_cap_enable = 1;
+	B_min_cap_enable = 1;
 
 	/* cfp request */
 	for (i = 0; i < CFP_KIR_MAX_NUM; i++) {

@@ -5949,15 +5949,17 @@ out:
 
 static void fbt_xgff_set_min_cap(unsigned int min_cap)
 {
-	int tgt_opp, tgt_freq, fbt_min_cap;
+	int cluster, tgt_opp, tgt_freq, fbt_min_cap;
 
 	if (min_cap > 1024)
 		min_cap = 1024;
 
 	fbt_min_cap = (min_cap * 100 / 1024) + 1;
-	tgt_opp = fbt_get_opp_by_normalized_cap(fbt_min_cap, 0);
-	tgt_freq = cpu_dvfs[0].power[tgt_opp];
-	fbt_cpu_L_ceiling_min(tgt_freq);
+	cluster = fbt_get_target_cluster(fbt_min_cap);
+	tgt_opp = fbt_get_opp_by_normalized_cap(fbt_min_cap, cluster);
+	tgt_freq = cpu_dvfs[cluster].power[tgt_opp];
+	//fbt_cpu_L_ceiling_min(tgt_freq);
+	fbt_cpu_ceiling_min(cluster,tgt_freq);
 }
 
 struct fbt_thread_blc *fbt_xgff_list_blc_add(int pid,
