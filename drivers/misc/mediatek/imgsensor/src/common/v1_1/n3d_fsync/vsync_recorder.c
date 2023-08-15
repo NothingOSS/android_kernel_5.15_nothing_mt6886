@@ -133,14 +133,18 @@ static int update_vs1_rec(unsigned int d_tclk)
 
 		vs2_latest_ts = records[vs2_idx].timestamps[vs2_pos];
 
-		if (records[vs1_idx].timestamps[vs1_pos] > vs2_latest_ts) {
-			records[vs1_idx].timestamps[vs1_pos] =
-				vs2_latest_ts + diff_ts;
-			/*
-			 * LOG_D("amend vs1 ts to %u\n",
-			 *   records[vs1_idx].timestamps[vs1_pos]);
-			 */
-		}
+		/*
+		 * the diff count only comeout when vs1, so it's no need to
+		 * check if vs1 irq will follow the diff irq or not
+		 */
+		//if (records[vs1_idx].timestamps[vs1_pos] > vs2_latest_ts) {
+		records[vs1_idx].timestamps[vs1_pos] =
+			vs2_latest_ts + diff_ts;
+		/*
+		 * LOG_D("amend vs1 ts to %u\n",
+		 *     records[vs1_idx].timestamps[vs1_pos]);
+		 */
+		//}
 	}
 
 	return 0;
@@ -167,12 +171,19 @@ static int update_vs2_rec(unsigned int d_tclk)
 
 		vs1_latest_ts = records[vs1_idx].timestamps[vs1_pos];
 
-		if (records[vs2_idx].timestamps[vs2_pos] > vs1_latest_ts) {
+		/*
+		 * update vs2 when vs2 record is larger than vs1
+		 * or vs2 period irq handled after diff irq
+		 * (vs2_diff_cnt_correction should already non-zero
+		 * in this case)
+		 */
+		if (vs2_diff_cnt_correction ||
+		    (records[vs2_idx].timestamps[vs2_pos] > vs1_latest_ts)) {
 			records[vs2_idx].timestamps[vs2_pos] =
 				vs1_latest_ts + diff_ts;
 			/*
 			 * LOG_D("amend vs2 ts to %u\n",
-			 *    records[vs2_idx].timestamps[vs2_pos]);
+			 *     records[vs2_idx].timestamps[vs2_pos]);
 			 */
 		} else {
 			/* Need to correction vs2 when vs2 recorded */
@@ -345,20 +356,17 @@ int query_n3d_vsync_data(struct vsync_rec *pData)
 	pData->cur_tick = max_tick + 1;
 	pData->tick_factor = 1;
 
-	LOG_D("idx 1 time[0] = %u, time[1] = %u, time[2] = %u, time[3] = %u oob_dected(%d)\n",
-	       pData->recs[0].timestamps[0],
-	       pData->recs[0].timestamps[1],
-	       pData->recs[0].timestamps[2],
-	       pData->recs[0].timestamps[3],
-	       array_oob_detected);
-
-	LOG_D("idx 2 time[0] = %u, time[1] = %u, time[2] = %u, time[3] = %u mis_trig_cnt(%u)\n",
-	       pData->recs[1].timestamps[0],
-	       pData->recs[1].timestamps[1],
-	       pData->recs[1].timestamps[2],
-	       pData->recs[1].timestamps[3],
-	       mis_trig_cnt);
-
+	LOG_D(
+		"idx 1 t = %u / %u / %u/ / %u, idx 2 t = %u / %u / %u / %u mis_trig(%u) oob(%d)\n",
+		pData->recs[0].timestamps[0],
+		pData->recs[0].timestamps[1],
+		pData->recs[0].timestamps[2],
+		pData->recs[0].timestamps[3],
+		pData->recs[1].timestamps[0],
+		pData->recs[1].timestamps[1],
+		pData->recs[1].timestamps[2],
+		pData->recs[1].timestamps[3],
+		mis_trig_cnt, array_oob_detected);
 	return 0;
 }
 
