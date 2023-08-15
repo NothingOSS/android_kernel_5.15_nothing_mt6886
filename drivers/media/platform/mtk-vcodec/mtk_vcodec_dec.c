@@ -536,7 +536,8 @@ static void mtk_vdec_init_set_frame_wq(struct mtk_vcodec_ctx *ctx)
 
 static void mtk_vdec_flush_set_frame_wq(struct mtk_vcodec_ctx *ctx)
 {
-	flush_workqueue(ctx->vdec_set_frame_wq);
+	if (ctx->vdec_set_frame_wq != NULL)
+		flush_workqueue(ctx->vdec_set_frame_wq);
 }
 
 static void mtk_vdec_deinit_set_frame_wq(struct mtk_vcodec_ctx *ctx)
@@ -547,7 +548,7 @@ static void mtk_vdec_deinit_set_frame_wq(struct mtk_vcodec_ctx *ctx)
 
 static void mtk_vdec_trigger_set_frame(struct mtk_vcodec_ctx *ctx)
 {
-	if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM && ctx->is_flushing == false)
+	if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM && ctx->is_flushing == false && ctx->vdec_set_frame_wq != NULL)
 		queue_work(ctx->vdec_set_frame_wq, &ctx->vdec_set_frame_work.work);
 }
 
