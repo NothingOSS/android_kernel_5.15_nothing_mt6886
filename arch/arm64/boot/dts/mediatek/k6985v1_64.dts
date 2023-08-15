@@ -470,7 +470,7 @@ androidboot.hardware=mt6985 \
 };
 
 &pdc {
-	pd_vbus_upper_bound = <12000000>;
+	pd-vbus-upper-bound = <9000000>;
 };
 
 #include "mediatek/cust_k6985_connfem.dtsi"

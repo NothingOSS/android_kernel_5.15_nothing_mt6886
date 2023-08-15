@@ -308,7 +308,7 @@
 	gauge = <&mtk_gauge>;
 };
 
-&pe4 {
+&pe45 {
 	gauge = <&mtk_gauge>;
 };
 

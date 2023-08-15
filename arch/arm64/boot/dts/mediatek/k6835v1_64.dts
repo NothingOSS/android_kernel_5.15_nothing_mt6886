@@ -300,7 +300,7 @@
 #include "mediatek/cust_mt6835_touch_6377_1080x2400.dtsi"
 
 &pdc {
-	pd_vbus_upper_bound = <12000000>;
+	pd-vbus-upper-bound = <9000000>;
 };
 
 &charger{
