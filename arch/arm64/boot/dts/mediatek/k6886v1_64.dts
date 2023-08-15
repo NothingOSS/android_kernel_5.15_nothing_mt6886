@@ -359,7 +359,7 @@ initcall_debug=1";
 };
 
 &pdc {
-	pd_vbus_upper_bound = <12000000>;
+	pd-vbus-upper-bound = <9000000>;
 };
 #include "mediatek/cust_k6886_connfem.dtsi"
 #include "mediatek/cust_mt6886_touch_1080x2400.dtsi"
