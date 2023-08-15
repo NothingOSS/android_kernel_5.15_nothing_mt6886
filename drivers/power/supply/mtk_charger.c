@@ -788,6 +788,36 @@ static ssize_t sw_jeita_store(struct device *dev, struct device_attribute *attr,
 static DEVICE_ATTR_RW(sw_jeita);
 /* sw jeita end*/
 
+static ssize_t sw_ovp_threshold_show(struct device *dev, struct device_attribute *attr,
+					       char *buf)
+{
+	struct mtk_charger *pinfo = dev->driver_data;
+
+	chr_err("%s: %d\n", __func__, pinfo->data.max_charger_voltage);
+	return sprintf(buf, "%d\n", pinfo->data.max_charger_voltage);
+}
+
+static ssize_t sw_ovp_threshold_store(struct device *dev, struct device_attribute *attr,
+						const char *buf, size_t size)
+{
+	struct mtk_charger *pinfo = dev->driver_data;
+	signed int temp;
+
+	if (kstrtoint(buf, 10, &temp) == 0) {
+		if (temp < 0)
+			pinfo->data.max_charger_voltage = pinfo->data.vbus_sw_ovp_voltage;
+		else
+			pinfo->data.max_charger_voltage = temp;
+		chr_err("%s: %d\n", __func__, pinfo->data.max_charger_voltage);
+
+	} else {
+		chr_err("%s: format error!\n", __func__);
+	}
+	return size;
+}
+
+static DEVICE_ATTR_RW(sw_ovp_threshold);
+
 static ssize_t chr_type_show(struct device *dev, struct device_attribute *attr,
 					       char *buf)
 {
@@ -2390,6 +2420,19 @@ static bool charger_init_algo(struct mtk_charger *info)
 	}
 	idx++;
 
+	alg = get_chg_alg_by_name("pe45");
+	info->alg[idx] = alg;
+	if (alg == NULL)
+		chr_err("get pe45 fail\n");
+	else {
+		chr_err("get pe45 success\n");
+		alg->config = info->config;
+		alg->alg_id = PE4_ID;
+		chg_alg_init_algo(alg);
+		register_chg_alg_notifier(alg, &info->chg_alg_nb);
+	}
+	idx++;
+
 	alg = get_chg_alg_by_name("pe4");
 	info->alg[idx] = alg;
 	if (alg == NULL)
@@ -2933,6 +2976,10 @@ static int mtk_charger_setup_files(struct platform_device *pdev)
 	struct mtk_charger *info = platform_get_drvdata(pdev);
 
 	ret = device_create_file(&(pdev->dev), &dev_attr_sw_jeita);
+	if (ret)
+		goto _out;
+
+	ret = device_create_file(&(pdev->dev), &dev_attr_sw_ovp_threshold);
 	if (ret)
 		goto _out;
 
