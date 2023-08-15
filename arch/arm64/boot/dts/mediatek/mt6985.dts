@@ -12980,7 +12980,8 @@
 		      <0 0x1ecff000 0 0x100>, /* mbox4 base */
 		      <0 0x1ecff100 0 0x4>, /* mbox4 set */
 		      <0 0x1ecff10c 0 0x4>, /* mbox4 clr */
-		      <0 0x1eca5030 0 0x4>; /* mbox4 init */
+		      <0 0x1eca5030 0 0x4>, /* mbox4 init */
+		      <0 0x1c001000 0 0x1000>; /* spm */
 
 		reg-names = "vcp_sram_base",
 			    "vcp_cfgreg",
@@ -13009,7 +13010,8 @@
 			    "mbox4_base",
 			    "mbox4_set",
 			    "mbox4_clr",
-			    "mbox4_init";
+			    "mbox4_init",
+			    "spm";
 
 		interrupts = <GIC_SPI 857 IRQ_TYPE_LEVEL_HIGH 0>,
 			     <GIC_SPI 858 IRQ_TYPE_LEVEL_HIGH 0>,
