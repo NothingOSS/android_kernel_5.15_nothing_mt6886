@@ -914,9 +914,8 @@ int mtk_aie_vidioc_qbuf(struct file *file, void *priv,
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) { /*IMG & data*/
 		if (!fd->map_count) {
-
 			fd->dmabuf = dma_buf_get(buf->m.planes[buf->length-1].m.fd);
-			if (!fd->dmabuf) {
+			if (IS_ERR(fd->dmabuf)) {
 				dev_info(fd->dev, "%s, dma buf get failed\n", __func__);
 				return -ENOMEM;
 			}
