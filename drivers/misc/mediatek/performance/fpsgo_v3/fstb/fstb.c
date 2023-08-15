@@ -1563,9 +1563,6 @@ static int calculate_fps_limit(struct FSTB_FRAME_INFO *iter, int target_fps)
 		ret_fps = iter->notify_target_fps;
 
 	hlist_for_each_entry(rtfiter, &fstb_render_target_fps, hlist) {
-		mtk_fstb_dprintk("%s %s %d %s %d\n",
-				__func__, iter->proc_name, iter->pid,
-				rtfiter->process_name, rtfiter->pid);
 
 		if (!strncmp(iter->proc_name, rtfiter->process_name, 16)
 				|| rtfiter->pid == iter->pid) {
