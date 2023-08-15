@@ -985,6 +985,7 @@ s32 mdp_ioctl_async_wait(unsigned long param)
 		if (status < 0) {
 			CMDQ_ERR("wait task result failed:%d handle:0x%p\n",
 				status, handle);
+			handle = NULL;
 			break;
 		}
 
@@ -1020,10 +1021,12 @@ s32 mdp_ioctl_async_wait(unsigned long param)
 			mapping_job->attaches[i], mapping_job->sgts[i]);
 
 	kfree(mapping_job);
-	CMDQ_SYSTRACE_BEGIN("%s destroy\n", __func__);
-	/* task now can release */
-	cmdq_task_destroy(handle);
-	CMDQ_SYSTRACE_END();
+	if (handle) {
+		CMDQ_SYSTRACE_BEGIN("%s destroy\n", __func__);
+		/* task now can release */
+		cmdq_task_destroy(handle);
+		CMDQ_SYSTRACE_END();
+	}
 
 done:
 	CMDQ_TRACE_FORCE_END();
