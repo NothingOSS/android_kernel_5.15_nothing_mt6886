@@ -648,6 +648,7 @@ static int mtk_scp_ultra_pcm_stop(struct snd_soc_component *component,
 		return 0;
 	}
 
+	pm_runtime_get_sync(afe->dev);
 	if (scp_ultra->usnd_state == SCP_ULTRA_STATE_START) {
 		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_STOP,
 			       true,
@@ -682,6 +683,7 @@ static int mtk_scp_ultra_pcm_stop(struct snd_soc_component *component,
 	/* Set dl&ul irq to ap */
 	set_afe_dl_irq_target(false);
 	set_afe_ul_irq_target(false);
+	pm_runtime_put_sync(afe->dev);
 	return 0;
 }
 
