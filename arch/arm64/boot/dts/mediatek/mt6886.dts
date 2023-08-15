@@ -7774,6 +7774,7 @@
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos SLAVE_LARB(35) &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "disp_hrt_qos";
+			pre-define-bw = <0xffffffff>, <0>, <0>, <0>;
 			/* define threads, see mt6886-gce.h */
 			mediatek,mailbox-gce = <&gce>;
 			mboxes = <&gce 0 0 CMDQ_THR_PRIO_4>,
@@ -7905,7 +7906,8 @@
 				"MTK_DRM_OPT_VIRTUAL_DISP",
 				"MTK_DRM_OPT_RES_SWITCH",
 				"MTK_DRM_OPT_OVL_BW_MONITOR",
-				"MTK_DRM_OPT_GPU_CACHE";
+				"MTK_DRM_OPT_GPU_CACHE",
+				"MTK_DRM_OPT_SPHRT";
 
 			helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -7960,7 +7962,8 @@
 				<1>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
 				<0>, /*MTK_DRM_OPT_RES_SWITCH*/
 				<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
-				<0>; /*MTK_DRM_OPT_GPU_CACHE*/
+				<0>, /*MTK_DRM_OPT_GPU_CACHE*/
+				<1>; /*MTK_DRM_OPT_SPHRT*/
 		};
 
 		disp_mutex0: disp_mutex@14001000 {
