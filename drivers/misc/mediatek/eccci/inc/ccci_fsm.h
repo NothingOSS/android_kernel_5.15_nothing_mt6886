@@ -24,5 +24,7 @@ extern void mdee_set_ex_time_str(unsigned int type, char *str);
 int ccci_fsm_is_normal_mdee(void);
 int ccci_fsm_increase_devapc_dump_counter(void);
 
+u8 ccci_md_get_support_microsecond_version(void);
+
 #endif /* __CCCI_FSM_H__ */
 

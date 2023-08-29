@@ -49,6 +49,24 @@ static void (*s_md_state_cb)(enum MD_STATE old_state,
 
 static void (*s_dpmaif_debug_push_data_to_stack)(void);
 
+
+/*
+ * Record the currently supported versions.
+ *    - in some case, variable need to be checked when updating the time.
+ *
+ */
+static u8 support_microsecond_version;
+
+u8 ccci_md_get_support_microsecond_version(void)
+{
+	return support_microsecond_version;
+}
+
+static void ccci_md_set_support_microsecond_version(u8 version)
+{
+	support_microsecond_version = version;
+}
+
 void ccci_set_dpmaif_debug_cb(void (*dpmaif_debug_cb)(void))
 {
 	s_dpmaif_debug_push_data_to_stack = dpmaif_debug_cb;
@@ -365,7 +383,8 @@ static unsigned int get_booting_start_id(struct ccci_modem *md)
 }
 
 static void config_ap_side_feature(struct ccci_modem *md,
-	struct md_query_ap_feature *md_feature)
+	struct md_query_ap_feature *md_feature,
+	struct md_query_ap_feature *md_feature_md)
 {
 	unsigned int udc_noncache_size = 0, udc_cache_size = 0;
 #if (MD_GENERATION >= 6297)
@@ -471,6 +490,8 @@ static void config_ap_side_feature(struct ccci_modem *md,
 		= CCCI_FEATURE_MUST_SUPPORT;
 	md_feature->feature_set[MISC_INFO_CLIB_TIME].support_mask
 		= CCCI_FEATURE_MUST_SUPPORT;
+	if (md_feature_md->feature_set[MISC_INFO_CLIB_TIME].version == HIRES_TIME_VER)
+		md_feature->feature_set[MISC_INFO_CLIB_TIME].version = HIRES_TIME_VER;
 	md_feature->feature_set[MISC_INFO_C2K].support_mask
 		= CCCI_FEATURE_MUST_SUPPORT;
 	md_feature->feature_set[MD_IMAGE_START_MEMORY].support_mask
@@ -648,6 +669,55 @@ static void ccci_smem_region_set_runtime(unsigned int id,
 	}
 }
 
+static void *ccci_md_get_time_info(struct ccci_runtime_feature *rt_feature,
+	struct ccci_clib_time_info_element *rt_time_f_element,
+	struct ccci_misc_info_element *rt_f_element)
+{
+
+	u64 system_counter = 0;
+	u64 usec = 0;
+	struct timespec64 t;
+	void *rt_element;
+
+	ktime_get_real_ts64(&t);
+
+	if (rt_feature->support_info.version == HIRES_TIME_VER) {
+		system_counter = arch_timer_read_counter();
+		memset(rt_time_f_element, 0, sizeof(struct ccci_clib_time_info_element));
+		rt_feature->data_len = sizeof(struct ccci_clib_time_info_element);
+		ccci_md_set_support_microsecond_version(HIRES_TIME_VER);
+		/*set seconds information */
+		rt_time_f_element->feature[0] = ((unsigned int *)&t.tv_sec)[0];
+		rt_time_f_element->feature[1] = ((unsigned int *)&t.tv_sec)[1];
+		/*sys_tz.tz_minuteswest; */
+		rt_time_f_element->feature[2] = current_time_zone;
+		/*not used for now */
+		rt_time_f_element->feature[3] = sys_tz.tz_dsttime;
+		/* set microseconds information */
+		usec = t.tv_nsec/NSEC_PER_USEC;
+		rt_time_f_element->feature[4] = usec & 0xFFFFFFFF;
+		rt_time_f_element->feature[5] = usec >> 32;
+		/* set AP system timer counter information */
+		rt_time_f_element->feature[6] = system_counter & 0xFFFFFFFF;
+		rt_time_f_element->feature[7] = system_counter >> 32;
+		rt_element = rt_time_f_element;
+
+	} else {
+		rt_feature->data_len = sizeof(struct ccci_misc_info_element);
+		/*set seconds information */
+		rt_f_element->feature[0] = ((unsigned int *)&t.tv_sec)[0];
+		rt_f_element->feature[1] = ((unsigned int *)&t.tv_sec)[1];
+		/*sys_tz.tz_minuteswest; */
+		rt_f_element->feature[2] = current_time_zone;
+		/*not used for now */
+		rt_f_element->feature[3] = sys_tz.tz_dsttime;
+		rt_element = rt_f_element;
+	}
+	return rt_element;
+}
+
+
+
 int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 {
 	struct ccci_modem *md = ccci_get_modem();
@@ -664,13 +734,14 @@ int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 	/*runtime feature type */
 	struct ccci_runtime_share_memory rt_shm;
 	struct ccci_misc_info_element rt_f_element;
+	struct ccci_clib_time_info_element rt_time_f_element;
+	void *rt_element;
 	struct ccci_runtime_md_mem_ap_addr rt_mem_view[4];
 
 	struct md_query_ap_feature *md_feature = NULL;
 	struct md_query_ap_feature md_feature_ap;
 	struct ccci_runtime_boot_info boot_info;
 	unsigned int random_seed = 0;
-	struct timespec64 t;
 	unsigned int c2k_flags = 0;
 	int adc_val = 0;
 
@@ -678,11 +749,11 @@ int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 		"prepare_runtime_data  AP total %u features\n",
 		MD_RUNTIME_FEATURE_ID_MAX);
 
-	memset(&md_feature_ap, 0, sizeof(struct md_query_ap_feature));
-	config_ap_side_feature(md, &md_feature_ap);
-
 	md_feature = (struct md_query_ap_feature *)(data +
 				sizeof(struct ccci_header));
+
+	memset(&md_feature_ap, 0, sizeof(struct md_query_ap_feature));
+	config_ap_side_feature(md, &md_feature_ap, md_feature);
 
 	if (md_feature->head_pattern != MD_FEATURE_QUERY_PATTERN ||
 	    md_feature->tail_pattern != MD_FEATURE_QUERY_PATTERN) {
@@ -942,20 +1013,10 @@ int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 				&rt_feature, &rt_f_element);
 				break;
 			case MISC_INFO_CLIB_TIME:
-				rt_feature.data_len =
-				sizeof(struct ccci_misc_info_element);
-				ktime_get_real_ts64(&t);
-				/*set seconds information */
-				rt_f_element.feature[0] =
-				((unsigned int *)&t.tv_sec)[0];
-				rt_f_element.feature[1] =
-				((unsigned int *)&t.tv_sec)[1];
-				/*sys_tz.tz_minuteswest; */
-				rt_f_element.feature[2] = current_time_zone;
-				/*not used for now */
-				rt_f_element.feature[3] = sys_tz.tz_dsttime;
-				append_runtime_feature(&rt_data,
-				&rt_feature, &rt_f_element);
+				rt_element = ccci_md_get_time_info(&rt_feature,
+								   &rt_time_f_element,
+								   &rt_f_element);
+				append_runtime_feature(&rt_data, &rt_feature, rt_element);
 				break;
 			case MISC_INFO_C2K:
 				rt_feature.data_len =

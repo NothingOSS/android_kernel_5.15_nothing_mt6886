@@ -9,6 +9,8 @@
 #include "mt-plat/mtk_ccci_common.h"
 #include "ap_md_mem.h"
 
+#define HIRES_TIME_VER 1
+
 enum MD_FORCE_ASSERT_TYPE {
 	MD_FORCE_ASSERT_RESERVE = 0x000,
 	MD_FORCE_ASSERT_BY_MD_NO_RESPONSE	= 0x100,
@@ -315,6 +317,10 @@ struct ccci_runtime_share_memory {
 
 struct ccci_misc_info_element {
 	u32 feature[4];
+};
+
+struct ccci_clib_time_info_element {
+	u32 feature[8];
 };
 
 struct ccci_runtime_md_mem_ap_addr {

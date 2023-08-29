@@ -73,20 +73,35 @@ EXPORT_SYMBOL(ccci_port_get_dev_name);
 int send_new_time_to_new_md(int tz)
 {
 	struct timespec64 tv;
-	unsigned int timeinfo[4];
-	char ccci_time[45];
+	unsigned int timeinfo[8];
+	char ccci_time[88];
 	int ret;
 	int index;
 	char *name = "ccci_0_202";
+	u64 usec = 0;
+	u64 sys_counter = 0;
 
+	sys_counter = arch_timer_read_counter();
 	ktime_get_real_ts64(&tv);
 	timeinfo[0] = tv.tv_sec;
 	timeinfo[1] = sizeof(tv.tv_sec) > 4 ? tv.tv_sec >> 32 : 0;
 	timeinfo[2] = tz;
 	timeinfo[3] = sys_tz.tz_dsttime;
+	if (ccci_md_get_support_microsecond_version() == HIRES_TIME_VER) {
+		usec = tv.tv_nsec/NSEC_PER_USEC;
+		timeinfo[4] = usec;
+		timeinfo[5] = usec >> 32;
+		timeinfo[6] = sys_counter;
+		timeinfo[7] = sys_counter >> 32;
+		scnprintf(ccci_time, sizeof(ccci_time),
+			  "%010u,%010u,%010u,%010u,%010u,%010u,%010u,%010u",
+			  timeinfo[0], timeinfo[1], timeinfo[2], timeinfo[3],
+			  timeinfo[4], timeinfo[5], timeinfo[6], timeinfo[7]);
+	} else {
+		scnprintf(ccci_time, sizeof(ccci_time), "%010u,%010u,%010u,%010u",
+			  timeinfo[0], timeinfo[1], timeinfo[2], timeinfo[3]);
+	}
 
-	scnprintf(ccci_time, sizeof(ccci_time), "%010u,%010u,%010u,%010u",
-			timeinfo[0], timeinfo[1], timeinfo[2], timeinfo[3]);
 	CCCI_NORMAL_LOG(0, CHAR, "CTime update: %s\n", ccci_time);
 
 	index = mtk_ccci_request_port(name);
