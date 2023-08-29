@@ -590,6 +590,10 @@ static int ged_segment_id_init(struct platform_device *pdev)
 	unsigned int *efuse_buf;
 	size_t efuse_len;
 
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+	unsigned int ged_segment_id;
+#endif
+
 	efuse_cell = nvmem_cell_get(&pdev->dev, "mt6985_efuse_segment_cell");
 	if (IS_ERR(efuse_cell)) {
 		GED_LOGE("fail to get mt6985_efuse_segment_cell (%ld)", PTR_ERR(efuse_cell));
@@ -623,6 +627,16 @@ static int ged_segment_id_init(struct platform_device *pdev)
 
 done:
 	GED_LOGI("efuse_id: 0x%x, segment_id: %d", g_ged_efuse_id, g_ged_segment_id);
+
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+	/* First priority to refer the "segment_id" that get from GPUEB */
+	ged_segment_id = ged_gpufreq_get_segment_id();
+
+	if (g_ged_segment_id != ged_segment_id)
+		g_ged_segment_id = ged_segment_id;
+
+	GED_LOGI("final segment_id: %d", g_ged_segment_id);
+#endif
 
 	return ret;
 }

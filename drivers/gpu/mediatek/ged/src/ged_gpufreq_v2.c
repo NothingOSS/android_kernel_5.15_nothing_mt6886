@@ -435,3 +435,8 @@ unsigned int ged_gpufreq_get_power_state(void)
 	return gpufreq_get_power_state();
 }
 
+unsigned int ged_gpufreq_get_segment_id(void)
+{
+	return gpufreq_get_segment_id();
+}
+
