@@ -12,6 +12,8 @@
 #include <media/videobuf2-v4l2.h>
 #include "mtk_vcodec_util.h"
 
+#define VENC_FLAG_ENCODE_TIMEOUT 0x00000002
+
 /**
  * struct mtk_video_enc_buf - Private data related to each VB2 buffer.
  * @vb: Pointer to related VB2 buffer.
