@@ -617,14 +617,13 @@ static const char * const off_pll_names[] = {
 	"mmpll",
 	"mfgpll",
 	"tvdpll",
-	"apll1",
-	"apll2",
 	"imgpll",
 	NULL
 };
 
 static const char * const notice_pll_names[] = {
-
+	"apll1",
+	"apll2",
 	NULL
 };
 
