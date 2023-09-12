@@ -120,6 +120,25 @@ static struct mml_task *task_get_idle(struct mml_frame_config *cfg)
 	return task;
 }
 
+static void frame_config_queue_destroy(struct kref *kref)
+{
+	struct mml_frame_config *cfg = container_of(kref, struct mml_frame_config, ref);
+	struct mml_dle_ctx *ctx = cfg->ctx;
+
+	queue_work(ctx->wq_destroy, &cfg->work_destroy);
+}
+
+static void task_move_to_destroy(struct kref *kref)
+{
+	struct mml_task *task = container_of(kref,
+		struct mml_task, ref);
+
+	if (task->config)
+		kref_put(&task->config->ref, frame_config_queue_destroy);
+
+	mml_core_destroy_task(task);
+}
+
 static void frame_config_destroy(struct mml_frame_config *cfg)
 {
 	struct mml_task *task, *tmp;
@@ -151,6 +170,11 @@ static void frame_config_destroy(struct mml_frame_config *cfg)
 		}
 	}
 
+	list_for_each_entry_safe(task, tmp, &cfg->done_tasks, entry) {
+		list_del_init(&task->entry);
+		kref_put(&task->ref, task_move_to_destroy);
+	}
+
 	mml_core_deinit_config(cfg);
 	kfree(container_of(cfg, struct mml_dle_frame_config, c));
 
@@ -163,14 +187,6 @@ static void frame_config_destroy_work(struct work_struct *work)
 		struct mml_frame_config, work_destroy);
 
 	frame_config_destroy(cfg);
-}
-
-static void frame_config_queue_destroy(struct kref *kref)
-{
-	struct mml_frame_config *cfg = container_of(kref, struct mml_frame_config, ref);
-	struct mml_dle_ctx *ctx = cfg->ctx;
-
-	queue_work(ctx->wq_destroy, &cfg->work_destroy);
 }
 
 static struct mml_frame_config *frame_config_create(
@@ -259,17 +275,6 @@ static void task_move_to_running(struct mml_task *task)
 		task->config->await_task_cnt,
 		task->config->run_task_cnt,
 		task->config->done_task_cnt);
-}
-
-static void task_move_to_destroy(struct kref *kref)
-{
-	struct mml_task *task = container_of(kref,
-		struct mml_task, ref);
-
-	if (task->config)
-		kref_put(&task->config->ref, frame_config_queue_destroy);
-
-	mml_core_destroy_task(task);
 }
 
 static void task_move_to_idle(struct mml_task *task)
