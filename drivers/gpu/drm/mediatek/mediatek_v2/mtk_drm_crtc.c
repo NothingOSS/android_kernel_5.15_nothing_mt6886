@@ -11762,21 +11762,20 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, 0);
 
 #ifndef DRM_CMDQ_DISABLE
-	/* reset mml ir ovl, TODO: support random ovl, not the first comp of the path */
-	if (((mtk_crtc->mml_ir_state == MML_IR_ENTERING) && (crtc_idx == 0)) ||
-	      atomic_read(&priv->need_recover)) {
-		comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, DDP_FIRST_PATH, 0);
-		mtk_ddp_comp_reset(comp, mtk_crtc_state->cmdq_handle);
-		if (mtk_crtc->is_dual_pipe) {
-			comp = mtk_crtc_get_dual_comp(crtc, DDP_FIRST_PATH, 0);
-			mtk_ddp_comp_reset(comp, mtk_crtc_state->cmdq_handle);
-		}
-	}
-
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) &&
 		crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING) {
 		DDPINFO("%s %d skip reset ovl due to still opening\n", __func__, crtc_idx);
 	} else {
+		/* reset mml ir ovl, TODO: support random ovl, not the first comp of the path */
+		if (((mtk_crtc->mml_ir_state == MML_IR_ENTERING) && (crtc_idx == 0)) ||
+			atomic_read(&priv->need_recover)) {
+			comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, DDP_FIRST_PATH, 0);
+			mtk_ddp_comp_reset(comp, mtk_crtc_state->cmdq_handle);
+			if (mtk_crtc->is_dual_pipe) {
+				comp = mtk_crtc_get_dual_comp(crtc, DDP_FIRST_PATH, 0);
+				mtk_ddp_comp_reset(comp, mtk_crtc_state->cmdq_handle);
+			}
+		}
 		cmdq_pkt_reset_ovl(mtk_crtc_state->cmdq_handle, mtk_crtc);
 	}
 

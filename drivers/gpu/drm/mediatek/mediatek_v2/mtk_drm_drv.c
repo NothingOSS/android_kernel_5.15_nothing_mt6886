@@ -5795,9 +5795,13 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	struct mml_drm_ctx *mml_ctx = NULL;
 	struct mml_drm_param disp_param = {};
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *output_comp = NULL;
 
 	if (priv->mml_ctx != NULL)
 		return priv->mml_ctx;
+
+	if (drm_crtc_index(crtc) != 0)
+		return NULL;
 
 	plat_dev = of_find_device_by_node(priv->mutex_node);
 	if (!plat_dev) {
@@ -5826,20 +5830,11 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	priv->mml_ctx = mml_ctx;
 	DDPMSG("%s 2 0x%x", __func__, priv->mml_ctx);
 
-	if (drm_crtc_index(crtc) == 0) {
-		struct mtk_ddp_comp *output_comp = NULL;
-		u32 panel_w = 0, panel_h = 0;
-		u32 pixels = 0;
-
-		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (output_comp) {
-			panel_w =
-			    mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_VIRTUAL_WIDTH, NULL);
-			panel_h =
-			    mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_VIRTUAL_HEIGH, NULL);
-		}
-
-		pixels = panel_w * panel_h;
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)) {
+		u32 panel_w = mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_VIRTUAL_WIDTH, NULL);
+		u32 panel_h = mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_VIRTUAL_HEIGH, NULL);
+		u32 pixels = panel_w * panel_h;
 		if (pixels > 0) {
 			mml_drm_set_panel_pixel(mml_ctx, pixels);
 			DDPMSG("%s set panel pixels %u\n", __func__, pixels);
