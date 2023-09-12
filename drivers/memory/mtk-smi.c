@@ -482,7 +482,7 @@ static void mtk_smi_clk_disable(const struct mtk_smi *smi)
 int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis)
 {
 	struct mtk_smi_larb *larb;
-	u32 val;
+	u32 val, i;
 
 	if (unlikely(!larbdev))
 		return -EINVAL;
@@ -493,6 +493,18 @@ int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis)
 
 	val = is_dis ? 0xffffffff : 0x0;
 	writel(val, larb->base + SMI_LARB_DISABLE_ULTRA);
+
+	if (is_dis) {
+		for (i = 0; i < 32; i++) {
+			writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(i)) | 0x8,
+				larb->base + SMI_LARB_NONSEC_CON(i));
+		}
+	} else {
+		for (i = 0; i < 32; i++) {
+			writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(i)) & 0xfffffff7,
+				larb->base + SMI_LARB_NONSEC_CON(i));
+		}
+	}
 	pr_info("[SMI]larb:%d set dis_ultra:%d\n", larb->larbid, is_dis);
 
 	return 0;
