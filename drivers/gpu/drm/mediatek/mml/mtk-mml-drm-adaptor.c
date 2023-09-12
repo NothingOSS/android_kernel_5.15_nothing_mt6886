@@ -1316,17 +1316,23 @@ static void drm_ctx_release(struct mml_drm_ctx *ctx)
 {
 	struct mml_frame_config *cfg, *tmp;
 	u32 i, j;
+	struct list_head local_list;
 
 	mml_msg("[drm]%s on ctx %p", __func__, ctx);
 
+	INIT_LIST_HEAD(&local_list);
+
+	/* clone list_head first to aviod circular lock */
 	mutex_lock(&ctx->config_mutex);
-	list_for_each_entry_safe_reverse(cfg, tmp, &ctx->configs, entry) {
+	list_splice_tail_init(&ctx->configs, &local_list);
+	mutex_unlock(&ctx->config_mutex);
+
+	list_for_each_entry_safe_reverse(cfg, tmp, &local_list, entry) {
 		/* check and remove configs/tasks in this context */
 		list_del_init(&cfg->entry);
 		frame_config_destroy(cfg);
 	}
 
-	mutex_unlock(&ctx->config_mutex);
 	destroy_workqueue(ctx->wq_destroy);
 	destroy_workqueue(ctx->wq_config[0]);
 	destroy_workqueue(ctx->wq_config[1]);
