@@ -102,8 +102,11 @@ int mdw_dev_validation(struct mdw_fpriv *mpriv, uint32_t dtype,
 	v_hnd.session = mpriv;
 	v_hnd.cmd = cmd;
 	adev = mpriv->mdev->adevs[dtype];
-	if (adev)
+	if (adev) {
+		mutex_lock(&mpriv->mdev->mctl_mtx);
 		ret = adev->send_cmd(APUSYS_CMD_VALIDATE, &v_hnd, adev);
+		mutex_unlock(&mpriv->mdev->mctl_mtx);
+	}
 
 	return ret;
 }
