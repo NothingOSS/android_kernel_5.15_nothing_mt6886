@@ -1667,9 +1667,9 @@
 					"topckgen_top_camtm_sel";
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L14_CAMSV_CQI_E0)
-				&mmqos SLAVE_COMMON(1)>,
+				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L14_CAMSV_E0_WDMA)
-				&mmqos SLAVE_COMMON(1)>;
+				&mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"l14_cqi_a",
 			"l14_imgo_a";
@@ -1716,9 +1716,9 @@
 					"topckgen_top_camtm_sel";
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L13_CAMSV_CQI_E1)
-				&mmqos SLAVE_COMMON(1)>,
+				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L13_CAMSV_E1_WDMA)
-				&mmqos SLAVE_COMMON(1)>;
+				&mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"l13_cqi_b",
 			"l13_imgo_b";
@@ -2027,11 +2027,11 @@
 					"topckgen_top_muxcamtm";
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L26_MRAW1_CQI_M1)
-				&mmqos SLAVE_COMMON(1)>,
+				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L26_MRAW1_IMGBO_M1)
-				&mmqos SLAVE_COMMON(1)>,
+				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L26_MRAW1_IMGO_M1)
-				&mmqos SLAVE_COMMON(1)>;
+				&mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"l26_cqi_m1_1",
 			"l26_imgo_m1_1",
@@ -2123,11 +2123,11 @@
 					"topckgen_top_muxcamtm";
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L26_MRAW3_CQI_M1)
-				&mmqos SLAVE_COMMON(1)>,
+				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L26_MRAW3_IMGBO_M1)
-				&mmqos SLAVE_COMMON(1)>,
+				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L26_MRAW3_IMGO_M1)
-				&mmqos SLAVE_COMMON(1)>;
+				&mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"l26_cqi_m1_3",
 			"l26_imgo_m1_3",
