@@ -480,10 +480,17 @@ int mtk_cam_seninf_get_pad_data_info(struct v4l2_subdev *sd,
 				struct mtk_seninf_pad_data_info *result)
 {
 	struct seninf_vc *pvc = NULL;
-	struct seninf_ctx *ctx = container_of(sd, struct seninf_ctx, subdev);
+	struct seninf_ctx *ctx;
 
 	if (!result)
 		return -1;
+
+	if (sd == NULL) {
+		pr_info("[%s] sd should not be Nullptr\n", __func__);
+		return -1;
+	}
+
+	ctx = container_of(sd, struct seninf_ctx, subdev);
 
 	memset(result, 0, sizeof(*result));
 	pvc = mtk_cam_seninf_get_vc_by_pad(ctx, pad);
@@ -1078,8 +1085,15 @@ void mtk_cam_seninf_release_cam_mux(struct seninf_ctx *ctx)
 int mtk_cam_seninf_get_pixelmode(struct v4l2_subdev *sd,
 				 int pad_id, int *pixelMode)
 {
-	struct seninf_ctx *ctx = container_of(sd, struct seninf_ctx, subdev);
+	struct seninf_ctx *ctx;
 	struct seninf_vc *vc;
+
+	if (sd == NULL) {
+		pr_info("[%s] sd should not be Nullptr\n", __func__);
+		return -1;
+	}
+
+	ctx = container_of(sd, struct seninf_ctx, subdev);
 
 	vc = mtk_cam_seninf_get_vc_by_pad(ctx, pad_id);
 	if (!vc) {
@@ -1095,8 +1109,15 @@ int mtk_cam_seninf_get_pixelmode(struct v4l2_subdev *sd,
 int mtk_cam_seninf_set_pixelmode(struct v4l2_subdev *sd,
 				 int pad_id, int pixelMode)
 {
-	struct seninf_ctx *ctx = container_of(sd, struct seninf_ctx, subdev);
+	struct seninf_ctx *ctx;
 	struct seninf_vc *vc;
+
+	if (sd == NULL) {
+		pr_info("[%s] sd should not be Nullptr\n", __func__);
+		return -1;
+	}
+
+	ctx = container_of(sd, struct seninf_ctx, subdev);
 
 	vc = mtk_cam_seninf_get_vc_by_pad(ctx, pad_id);
 	if (!vc) {
@@ -1376,9 +1397,16 @@ static int _mtk_cam_seninf_reset_cammux(struct seninf_ctx *ctx, int pad_id)
 int _mtk_cam_seninf_set_camtg(struct v4l2_subdev *sd, int pad_id, int camtg, int tag_id,
 			      bool from_set_camtg)
 {
-	struct seninf_ctx *ctx = container_of(sd, struct seninf_ctx, subdev);
+	struct seninf_ctx *ctx;
 	struct seninf_vc *vc;
 	int set;
+
+	if (sd == NULL) {
+		pr_info("[%s] sd should not be Nullptr\n", __func__);
+		return -EINVAL;
+	}
+
+	ctx = container_of(sd, struct seninf_ctx, subdev);
 
 	if (pad_id < PAD_SRC_RAW0 || pad_id >= PAD_MAXCNT)
 		return -EINVAL;
@@ -1412,12 +1440,20 @@ int mtk_cam_seninf_get_tag_order(struct v4l2_subdev *sd, int pad_id)
 {
 	/* seninf todo: tag order */
 	/* 0: first exposure 1: second exposure 2: last exposure */
-	struct seninf_ctx *ctx = container_of(sd, struct seninf_ctx, subdev);
-	struct seninf_vcinfo *vcinfo = &ctx->vcinfo;
+	struct seninf_ctx *ctx;
+	struct seninf_vcinfo *vcinfo;
 	struct seninf_vc *vc;
 	int ret = 0;
 	int i = 0;
 	int exposure_num = 0;
+
+	if (sd == NULL) {
+		pr_info("[%s] sd should not be Nullptr\n", __func__);
+		return -1;
+	}
+
+	ctx = container_of(sd, struct seninf_ctx, subdev);
+	vcinfo = &ctx->vcinfo;
 
 	for (i = 0; i < vcinfo->cnt; i++) {
 		vc = &vcinfo->vc[i];
@@ -2056,8 +2092,15 @@ bool has_multiple_expo_mode(struct seninf_ctx *ctx)
 
 bool is_fsync_listening_on_pd(struct v4l2_subdev *sd)
 {
-	struct seninf_ctx *ctx = container_of(sd, struct seninf_ctx, subdev);
+	struct seninf_ctx *ctx;
 	bool ret = false;
+
+	if (sd == NULL) {
+		pr_info("[%s] sd should not be Nullptr\n", __func__);
+		return false;
+	}
+
+	ctx = container_of(sd, struct seninf_ctx, subdev);
 
 	if (ctx->fsync_vsync_src_pad >= PAD_SRC_PDAF0 &&
 	    ctx->fsync_vsync_src_pad <= PAD_SRC_PDAF6)
