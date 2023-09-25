@@ -4679,7 +4679,10 @@ static int mtk_cam_media_link_setup(struct media_entity *entity,
 		memset(pipe->cfg, 0, sizeof(pipe->cfg));
 
 	if (pad == MTK_RAW_SINK && flags & MEDIA_LNK_FL_ENABLED) {
-		struct mtk_seninf_pad_data_info result;
+		struct mtk_seninf_pad_data_info result = {
+			.exp_hsize = 0,
+			.exp_vsize = 0
+		};
 
 		pipe->res_config.seninf =
 			media_entity_to_v4l2_subdev(remote->entity);
