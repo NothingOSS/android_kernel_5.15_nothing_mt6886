@@ -400,6 +400,11 @@ static long seninf_ioctl(struct file *pfile,
 			(*(unsigned int *)pbuff) >> 16, (*(unsigned int *)pbuff) & 0xFFFF);
 #endif
 		break;
+	case KDSENINFIOC_X_SET_SWITCH_TG_FOR_STAGGER:
+#ifdef _CAM_MUX_SWITCH
+		ret = Switch_Tg_For_Stagger((*(unsigned int *)pbuff) & 0xFFFF);
+#endif
+		break;
 	case KDSENINFIOC_X_SET_SENINF_CLK:
 #if SENINF_CLK_CONTROL
 		ret = seninf_sys_clk_set(&pseninf->clk,

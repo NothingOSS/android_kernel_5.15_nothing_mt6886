@@ -39,6 +39,8 @@
 /* store numbers of cam_mux for swich later */
 #define KDSENINFIOC_SET_CAM_MUX_FOR_SWITCH \
 	_IOWR(SENINFMAGIC, 110, unsigned int)
+#define KDSENINFIOC_X_SET_SWITCH_TG_FOR_STAGGER   \
+	_IOWR(SENINFMAGIC, 115, u32)
 #define KDSENINFIOC_X_SET_SENINF_CLK \
 	_IOWR(SENINFMAGIC, 130, struct ACDK_SENSOR_SENINF_CLK_STRUCT)
 #endif
