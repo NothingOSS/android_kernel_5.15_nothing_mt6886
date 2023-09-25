@@ -184,7 +184,7 @@ retry:
 	spin_lock_irqsave(&cache_lock, flags);
 	/* put into cache page list */
 	do {
-		s_page = kzalloc(sizeof(struct ssheap_page), GFP_KERNEL);
+		s_page = kzalloc(sizeof(struct ssheap_page), GFP_ATOMIC);
 		s_page->page = virt_to_page(kaddr);
 		s_page->size = SZ_2M;
 		list_add_tail(&s_page->entry, &cache_list);
@@ -225,7 +225,7 @@ static inline void free_system_mem(struct page *page, u32 size)
 	struct ssheap_page *s_page = NULL;
 
 	spin_lock_irqsave(&cache_lock, flags);
-	s_page = kzalloc(sizeof(struct ssheap_page), GFP_KERNEL);
+	s_page = kzalloc(sizeof(struct ssheap_page), GFP_ATOMIC);
 	s_page->page = page;
 	s_page->size = size;
 	list_add_tail(&s_page->entry, &cache_list);
