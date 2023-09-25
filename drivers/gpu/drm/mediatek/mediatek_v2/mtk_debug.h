@@ -107,6 +107,12 @@ enum mtk_drm_mml_dbg {
 	MMP_MML_IDLE = 0x8000,
 };
 
+enum mtk_drm_cmd_option {
+	NONBLOCKING,
+	BLOCKING,
+	BLOCKING_NOWAIT,
+};
+
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
 struct reg_dbg {
 	uint32_t addr;

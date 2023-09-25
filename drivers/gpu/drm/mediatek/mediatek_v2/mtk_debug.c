@@ -939,7 +939,7 @@ static void mtk_ddic_send_cb(struct cmdq_cb_data data)
 }
 
 int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg,
-			bool blocking)
+			int blocking)
 {
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
@@ -1051,9 +1051,24 @@ int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 	}
 
-	if (blocking) {
+	if (blocking == BLOCKING) {
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
+	} else if (blocking == BLOCKING_NOWAIT) {
+		cmdq_pkt_flush_async(cmdq_handle, NULL, NULL);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		mutex_unlock(&private->commit.lock);
+
+		DDPMSG("%s flush done\n", __func__);
+		cmdq_pkt_wait_complete(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+
+		DDPMSG("%s - %d\n", __func__, blocking);
+
+		CRTC_MMP_EVENT_END(index, ddic_send_cmd, (unsigned long)crtc,
+			blocking);
+
+		return ret;
 	} else {
 		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 		if (!cb_data) {
