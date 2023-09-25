@@ -246,8 +246,9 @@ enum DISP_PMQOS_SLOT {
 #define MAX_CRTC_DC_FB 3
 
 #define __mtk_crtc_path_len(mtk_crtc, ddp_mode, ddp_path) \
+	(((ddp_mode < DDP_MODE_NR) && (ddp_path < DDP_PATH_NR)) ? \
 	((mtk_crtc)->ddp_ctx[ddp_mode].ovl_comp_nr[ddp_path] + \
-	(mtk_crtc)->ddp_ctx[ddp_mode].ddp_comp_nr[ddp_path])
+	(mtk_crtc)->ddp_ctx[ddp_mode].ddp_comp_nr[ddp_path]) : 0)
 
 #define __mtk_crtc_dual_path_len(mtk_crtc, ddp_path) \
 	((mtk_crtc)->dual_pipe_ddp_ctx.ovl_comp_nr[ddp_path] + \

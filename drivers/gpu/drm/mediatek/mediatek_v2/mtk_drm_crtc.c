@@ -1107,10 +1107,21 @@ struct mtk_ddp_comp *mtk_crtc_get_comp(struct drm_crtc *crtc,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_ddp_ctx *ddp_ctx = mtk_crtc->ddp_ctx;
 
-	if (mode_id > DDP_MINOR) {
-		DDPPR_ERR("invalid ddp mode:%d!\n", mtk_crtc->ddp_mode);
+	if (unlikely(mode_id > DDP_MINOR)) {
+		DDPPR_ERR("invalid ddp mode:%u!\n", mtk_crtc->ddp_mode);
 		return NULL;
 	}
+
+	if (unlikely(path_id >= DDP_PATH_NR)) {
+		DDPPR_ERR("invalid path id:%u!\n", path_id);
+		return NULL;
+	}
+
+	if (unlikely(__mtk_crtc_path_len(mtk_crtc, mode_id, path_id) == 0)) {
+		DDPPR_ERR("invalid path len: mode %u, path %u!\n", mode_id, path_id);
+		return NULL;
+	}
+
 	if (ddp_ctx[mode_id].ovl_comp_nr[path_id] &&
 			comp_idx < ddp_ctx[mode_id].ovl_comp_nr[path_id])
 		return ddp_ctx[mode_id].ovl_comp[path_id][comp_idx];
