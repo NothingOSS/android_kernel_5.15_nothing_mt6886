@@ -46,4 +46,4 @@ extern int mtkfb_set_backlight_level(unsigned int level,
 		unsigned int params, unsigned int params_flag);
 extern int mtk_drm_set_conn_backlight_level(unsigned int conn_id, unsigned int level,
 		unsigned int params, unsigned int params_flag);
-extern unsigned int mtk_drm_get_conn_obj_id_from_idx(unsigned int disp_idx, int flag);
+extern int mtk_drm_get_conn_obj_id_from_idx(unsigned int disp_idx, int flag);
