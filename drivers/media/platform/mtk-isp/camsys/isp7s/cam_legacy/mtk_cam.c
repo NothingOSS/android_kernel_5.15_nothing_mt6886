@@ -6103,9 +6103,13 @@ static void isp_composer_uninit(struct mtk_cam_ctx *ctx)
 {
 	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_ccd *ccd = cam->rproc_handle->priv;
+	int ipi_id = ctx->rpmsg_channel.src;
 
 	mtk_destroy_client_msgdevice(ccd->rpmsg_subdev, &ctx->rpmsg_channel);
 	ctx->rpmsg_dev = NULL;
+
+	if (ipi_id == CCD_IPI_MRAW_CMD)
+		atomic_set(&cam->sv_only_ctx_existed, 0);
 }
 
 static void isp_tx_frame_worker(struct work_struct *work);
@@ -8720,6 +8724,12 @@ static int isp_composer_init(struct mtk_cam_ctx *ctx, unsigned int pipe_id)
 	if (ipi_id < 0)
 		return -EINVAL;
 
+	if (ipi_id == CCD_IPI_MRAW_CMD) {
+		// only 1 cmasv ctx is allowed
+		if (atomic_cmpxchg(&cam->sv_only_ctx_existed, 0, 1))
+			return -EINVAL;
+	}
+
 	snprintf_safe(msg->name, RPMSG_NAME_SIZE, "mtk-camsys\%d", ipi_id - 1);
 	msg->src = ipi_id;
 	ctx->rpmsg_dev = mtk_get_client_msgdevice(rpmsg_subdev, msg);
@@ -11243,6 +11253,7 @@ static int mtk_cam_probe(struct platform_device *pdev)
 	cam_dev->streaming_ctx = 0;
 	for (i = 0; i < cam_dev->max_stream_num; i++)
 		mtk_cam_ctx_init(cam_dev->ctxs + i, cam_dev, i);
+	atomic_set(&cam_dev->sv_only_ctx_existed, 0);
 
 	cam_dev->running_job_count = 0;
 	spin_lock_init(&cam_dev->pending_job_lock);

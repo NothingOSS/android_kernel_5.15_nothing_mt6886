@@ -605,6 +605,7 @@ struct mtk_cam_device {
 	unsigned int streaming_ctx;
 	unsigned int streaming_pipe;
 	struct mtk_cam_ctx *ctxs;
+	atomic_t sv_only_ctx_existed;
 
 	/* request related */
 	struct list_head pending_job_list;
