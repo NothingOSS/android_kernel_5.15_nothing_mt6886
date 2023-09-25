@@ -4701,6 +4701,7 @@ static inline void DPE_Reset(void)
 /*******************************************************************************
  *
  ******************************************************************************/
+#ifdef DPE_ioctl_en
 static signed int DPE_ReadReg(struct DPE_REG_IO_STRUCT *pRegIo)
 {
 	unsigned int i;
@@ -4749,9 +4750,11 @@ static signed int DPE_ReadReg(struct DPE_REG_IO_STRUCT *pRegIo)
 EXIT:
 	return Ret;
 }
+#endif
 /*******************************************************************************
  *
  ******************************************************************************/
+#ifdef DPE_ioctl_en
 static signed int DPE_WriteRegToHw(struct DPE_REG_STRUCT *pReg,
 							unsigned int Count)
 {
@@ -4786,9 +4789,11 @@ static signed int DPE_WriteRegToHw(struct DPE_REG_STRUCT *pReg,
 	/*  */
 	return Ret;
 }
+#endif
 /*******************************************************************************
  *
  ******************************************************************************/
+#ifdef DPE_ioctl_en
 static signed int DPE_WriteReg(struct DPE_REG_IO_STRUCT *pRegIo)
 {
 	signed int Ret = 0;
@@ -4840,9 +4845,11 @@ EXIT:
 	}
 	return Ret;
 }
+#endif
 /*******************************************************************************
  *
  ******************************************************************************/
+#ifdef DPE_ioctl_en
 static signed int DPE_WaitIrq(struct DPE_WAIT_IRQ_STRUCT *WaitIrq)
 {
 	signed int Ret = 0;
@@ -4992,6 +4999,7 @@ static signed int DPE_WaitIrq(struct DPE_WAIT_IRQ_STRUCT *WaitIrq)
 EXIT:
 	return Ret;
 }
+#endif
 /*******************************************************************************
  *
  ******************************************************************************/
@@ -4999,9 +5007,11 @@ static long DPE_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 {
 	signed int Ret = 0;
 	/*unsigned int pid = 0;*/
+#ifdef DPE_ioctl_en
 	static struct DPE_REG_IO_STRUCT RegIo;
 	static struct DPE_WAIT_IRQ_STRUCT IrqInfo;
 	static struct DPE_CLEAR_IRQ_STRUCT ClearIrq;
+#endif
 	static struct DPE_Config dpe_DpeConfig;
 	static struct DPE_Request dpe_DpeReq;
 	// signed int enqnum;
@@ -5058,6 +5068,8 @@ static long DPE_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 		}
 	case DPE_READ_REGISTER:
 		{
+			LOG_INF("Not support DPE ioctl DPE_READ_REGISTER\n");
+			#ifdef DPE_ioctl_en
 			if (copy_from_user(&RegIo, (void *)Param,
 				sizeof(struct DPE_REG_IO_STRUCT)) == 0) {
 				Ret = DPE_ReadReg(&RegIo);
@@ -5066,10 +5078,13 @@ static long DPE_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				"DPE_READ_REGISTER copy_from_user failed");
 				Ret = -EFAULT;
 			}
+			#endif
 			break;
 		}
 	case DPE_WRITE_REGISTER:
 		{
+			LOG_INF("Not support DPE ioctl DPE_WRITE_REGISTER\n");
+			#ifdef DPE_ioctl_en
 			if (copy_from_user(&RegIo, (void *)Param,
 				sizeof(struct DPE_REG_IO_STRUCT)) == 0) {
 				Ret = DPE_WriteReg(&RegIo);
@@ -5078,10 +5093,13 @@ static long DPE_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				"DPE_WRITE_REGISTER copy_from_user failed");
 				Ret = -EFAULT;
 			}
+			#endif
 			break;
 		}
 	case DPE_WAIT_IRQ:
 		{
+			LOG_INF("Not support DPE ioctl DPE_WAIT_IRQ\n");
+			#ifdef DPE_ioctl_en
 			if (copy_from_user(&IrqInfo, (void *)Param,
 				sizeof(struct DPE_WAIT_IRQ_STRUCT)) == 0) {
 				/*  */
@@ -5116,10 +5134,13 @@ static long DPE_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				LOG_ERR("DPE_WAIT_IRQ copy_from_user failed");
 				Ret = -EFAULT;
 			}
+			#endif
 			break;
 		}
 	case DPE_CLEAR_IRQ:
 		{
+			LOG_INF("Not support DPE ioctl DPE_CLEAR_IRQ\n");
+			#ifdef DPE_ioctl_en
 			if (copy_from_user(&ClearIrq, (void *)Param,
 				sizeof(struct DPE_CLEAR_IRQ_STRUCT)) == 0) {
 				LOG_INF("DPE_CLEAR_IRQ Type(%d)",
@@ -5154,6 +5175,7 @@ static long DPE_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				"DPE_CLEAR_IRQ copy_from_user failed\n");
 				Ret = -EFAULT;
 			}
+			#endif
 			break;
 		}
 	case DPE_ENQNUE_NUM:
