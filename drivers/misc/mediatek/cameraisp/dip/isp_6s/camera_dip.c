@@ -4163,13 +4163,17 @@ static inline void Prepare_Enable_ccf_clock(void)
 		LOG_ERR("mtk_smi_larb_get larb11 fail %d\n", ret);
 	}
 
-	ret = clk_prepare_enable(dip_clk.DIP_IMG_LARB9);
+	if (dip_clk.DIP_IMG_LARB9 != NULL) {
+		ret = clk_prepare_enable(dip_clk.DIP_IMG_LARB9);
 	if (ret)
 		LOG_ERR("cannot prepare and enable DIP_IMG_LARB9 clock\n");
+	}
 
-	ret = clk_prepare_enable(dip_clk.DIP_IMG_DIP);
+	if (dip_clk.DIP_IMG_DIP != NULL) {
+		ret = clk_prepare_enable(dip_clk.DIP_IMG_DIP);
 	if (ret)
 		LOG_ERR("cannot prepare and enable DIP_IMG_DIP clock\n");
+	}
 
 	if (dip_clk.DIP_IMG_MFB_DIP != NULL) {
 		ret = clk_prepare_enable(dip_clk.DIP_IMG_LARB11);
@@ -4376,6 +4380,25 @@ static inline int m4u_control_iommu_port(void)
 	return ret;
 }
 #endif
+
+static inline void DIP_Load_InitialSettings(void)
+{
+	unsigned int i = 0;
+
+	LOG_DBG("- E.\n");
+
+	for (i = 0 ; i < DIP_INIT_ARRAY_COUNT ; i++) {
+		//ofset = DIP_A_BASE + DIP_INIT_ARY[i].ofset;
+		DIP_WR32(DIP_A_BASE + DIP_INIT_ARY[i].ofset,
+				DIP_INIT_ARY[i].val);
+
+		if (mtk_dip_count == 2)
+			DIP_WR32(DIP_B_BASE + DIP_INIT_ARY[i].ofset,
+				DIP_INIT_ARY[i].val);
+	}
+
+}
+
 /**************************************************************
  *
  **************************************************************/
@@ -4413,10 +4436,14 @@ static void DIP_EnableClock(bool En)
 
 #else/*CCF*/
 		/*LOG_INF("CCF:prepare_enable clk");*/
-		Prepare_Enable_ccf_clock(); /* !!cannot be used in spinlock!! */
 		spin_lock(&(IspInfo.SpinLockClock));
 		G_u4DipEnClkCnt++;
+		LOG_INF("Camera clock enabled. G_u4DipEnClkCnt: %d.", G_u4DipEnClkCnt);
 		spin_unlock(&(IspInfo.SpinLockClock));
+		if (G_u4DipEnClkCnt == 1) {
+			Prepare_Enable_ccf_clock(); /* !!cannot be used in spinlock!! */
+			DIP_Load_InitialSettings();
+		}
 
 #endif
 	} else {                /* Disable clock. */
@@ -4441,10 +4468,12 @@ static void DIP_EnableClock(bool En)
 		spin_unlock(&(IspInfo.SpinLockClock));
 #else
 		/*LOG_INF("CCF:disable_unprepare clk\n");*/
-		Disable_Unprepare_ccf_clock();
 		spin_lock(&(IspInfo.SpinLockClock));
 		G_u4DipEnClkCnt--;
+		LOG_INF("Camera clock disabled. G_u4DipEnClkCnt: %d.", G_u4DipEnClkCnt);
 		spin_unlock(&(IspInfo.SpinLockClock));
+		if (G_u4DipEnClkCnt == 0)
+			Disable_Unprepare_ccf_clock();
 		/* !!cannot be used in spinlock!! */
 #endif
 	}
@@ -6568,24 +6597,6 @@ static long DIP_ioctl_compat(
 
 #endif
 
-static inline void DIP_Load_InitialSettings(void)
-{
-	unsigned int i = 0;
-
-	LOG_DBG("- E.\n");
-
-	for (i = 0 ; i < DIP_INIT_ARRAY_COUNT ; i++) {
-		//ofset = DIP_A_BASE + DIP_INIT_ARY[i].ofset;
-		DIP_WR32(DIP_A_BASE + DIP_INIT_ARY[i].ofset,
-				DIP_INIT_ARY[i].val);
-
-		if (mtk_dip_count == 2)
-			DIP_WR32(DIP_B_BASE + DIP_INIT_ARY[i].ofset,
-				DIP_INIT_ARY[i].val);
-	}
-
-}
-
 /**************************************************************
  *
  **************************************************************/
@@ -6800,8 +6811,6 @@ static signed int DIP_open(
 #endif
 	DIP_EnableClock(MTRUE);
 	g_u4DipCnt = 0;
-	if (G_u4DipEnClkCnt == 1)
-		DIP_Load_InitialSettings();
 #ifdef CONFIG_PM_WAKELOCKS
 	__pm_relax(dip_wake_lock);
 #else
@@ -7152,6 +7161,7 @@ static signed int DIP_probe(struct platform_device *pDev)
 	LOG_INF("- E. DIP driver probe. nr_dip_devs : %d.\n", nr_dip_devs);
 	max_tdr_no = 0;
 	mtk_dip_count = 1;
+	G_u4DipEnClkCnt = 0;
 	/* Get platform_device parameters */
 #ifdef CONFIG_OF
 
@@ -7362,12 +7372,15 @@ static signed int DIP_probe(struct platform_device *pDev)
 			devm_clk_get(&pDev->dev, "DIP_CG_IMG_DIP2");
 
 		if (IS_ERR(dip_clk.DIP_IMG_LARB9)) {
+			dip_clk.DIP_IMG_LARB9 = NULL;
 			LOG_ERR("cannot get DIP_IMG_LARB9 clock\n");
 		}
 		if (IS_ERR(dip_clk.DIP_IMG_DIP)) {
+			dip_clk.DIP_IMG_DIP = NULL;
 			LOG_ERR("cannot get DIP_IMG_DIP clock\n");
 		}
 		if (IS_ERR(dip_clk.DIP_IMG_DIP_MSS)) {
+			dip_clk.DIP_IMG_DIP_MSS = NULL;
 			LOG_ERR("cannot get DIP_IMG_DIP_MSS clock\n");
 		}
 		if (IS_ERR(dip_clk.DIP_IMG_MFB_DIP)) {
@@ -7375,6 +7388,7 @@ static signed int DIP_probe(struct platform_device *pDev)
 			LOG_ERR("cannot get DIP_IMG_MFB_DIP clock\n");
 		}
 		if (IS_ERR(dip_clk.DIP_IMG_LARB11)) {
+			dip_clk.DIP_IMG_LARB11 = NULL;
 			LOG_ERR("cannot get DIP_IMG_LARB11 clock\n");
 		}
 		if (IS_ERR(dip_clk.DIP_IMG_DIP2)) {
@@ -8427,10 +8441,10 @@ static signed int __init DIP_Init(void)
 	/* Register DIP callback */
 	LOG_INF("register dip callback for MDP");
 	cmdqCoreRegisterCB(mdp_get_group_isp(),
-			   NULL,
+			   DIP_MDPClockOnCallback,
 			   DIP_MDPDumpCallback,
 			   DIP_MDPResetCallback,
-			   NULL);
+			   DIP_MDPClockOffCallback);
 	/* Register GCE callback for dumping DIP register */
 	LOG_DBG("register dip callback for GCE");
 	cmdqCoreRegisterDebugRegDumpCB
