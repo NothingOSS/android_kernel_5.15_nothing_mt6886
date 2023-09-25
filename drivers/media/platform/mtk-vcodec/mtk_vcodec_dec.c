@@ -1564,8 +1564,7 @@ not_put_fb:
 			mutex_lock(&ctx->dev->ctx_mutex);
 		list_for_each_safe(p, q, &ctx->dev->ctx_list) {
 			tmp_ctx = list_entry(p, struct mtk_vcodec_ctx, list);
-			if (tmp_ctx != NULL &&
-			    tmp_ctx->state < MTK_STATE_ABORT && tmp_ctx->state > MTK_STATE_FREE)
+			if (tmp_ctx != NULL && tmp_ctx->state == MTK_STATE_HEADER)
 				v4l2_m2m_try_schedule(tmp_ctx->m2m_ctx);
 		}
 		if (!mtk_vcodec_is_vcp(MTK_INST_DECODER))
