@@ -2474,7 +2474,7 @@ stop_charging:
 		_mtk_enable_charging(info, charging);
 	else if (charging == false && chg_dev_chgen == true)
 		_mtk_enable_charging(info, charging);
-	if((info->aging_mode == true) || (info->safety_timeout == true))
+	if((info->aging_mode == true && info->cmd_discharging == false) || (info->safety_timeout == true))
 		mtk_charger_enable_power_path(info, CHG1_SETTING, true);
 	else
 		mtk_charger_enable_power_path(info, CHG1_SETTING, charging);
