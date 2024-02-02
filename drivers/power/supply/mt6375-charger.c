@@ -676,7 +676,7 @@ static const struct mt6375_chg_platform_data mt6375_chg_pdata_def = {
 	.aicr = 3225,
 	.mivr = 4400,
 	.ichg = 2000,
-	.ieoc = 150,
+	.ieoc = 500,
 	.cv = 4200,
 	.wdt = 40000,
 	.vbus_ov = 14500,
@@ -2282,6 +2282,9 @@ static int mt6375_plug_out(struct charger_device *chgdev)
 			return ret;
 		}
 	}
+	ret = mt6375_chg_field_set(ddata, F_IEOC, pdata->ieoc);
+	if (ret < 0)
+		dev_err(ddata->dev,"failed to set IEOC\n");
 	ddata->typec_chg_vol = 0;
 	return 0;
 }
