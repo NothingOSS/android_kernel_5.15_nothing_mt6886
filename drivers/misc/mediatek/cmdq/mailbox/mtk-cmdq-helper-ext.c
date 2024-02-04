@@ -488,12 +488,13 @@ static void cmdq_dump_vcp_reg(struct cmdq_pkt *pkt)
 	}
 }
 
-static bool cmdq_pkt_is_exec(struct cmdq_pkt *pkt)
+bool cmdq_pkt_is_exec(struct cmdq_pkt *pkt)
 {
 	if (pkt && pkt->task_alloc && !pkt->rec_irq)
 		return true;
 	return false;
 }
+EXPORT_SYMBOL(cmdq_pkt_is_exec);
 
 void cmdq_mbox_pool_set_limit(struct cmdq_client *cl, u32 limit)
 {
@@ -2460,7 +2461,6 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	debug_end[debug_cnt++] = sched_clock();
 #endif
-	complete(&pkt->cmplt);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 #ifdef CMDQ_SECURE_SUPPORT
 	if (!pkt->sec_data)
@@ -2471,6 +2471,7 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 			thread->user_cb_cost += (debug_end[1] - debug_end[0]);
 	}
 #endif
+	complete(&pkt->cmplt);
 }
 #endif
 
