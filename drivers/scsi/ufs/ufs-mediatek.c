@@ -3985,27 +3985,25 @@ static ssize_t manual_gc_show(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	int err;
 
 	u32 status = MANUAL_GC_OFF;
 
 	if (host->manual_gc.state == MANUAL_GC_DISABLE)
 		return scnprintf(buf, PAGE_SIZE, "%s", "disabled\n");
 
-	if (host->manual_gc.hagc_support) {
-		int err;
 
-		if (!ufshcd_hagc_eh_in_progress(hba)) {
-			pm_runtime_get_sync(hba->dev);
-			err = ufshcd_query_attr_retry(hba,
-				UPIU_QUERY_OPCODE_READ_ATTR,
-				QUERY_ATTR_IDN_MANUAL_GC_STATUS, 0, 0, &status);
-			pm_runtime_put_sync(hba->dev);
-			host->manual_gc.hagc_support = err ? false: true;
-		}
+	if (!ufshcd_hagc_eh_in_progress(hba)) {
+		pm_runtime_get_sync(hba->dev);
+		err = ufshcd_query_attr_retry(hba,
+			UPIU_QUERY_OPCODE_READ_ATTR,
+			QUERY_ATTR_IDN_MANUAL_GC_STATUS, 0, 0, &status);
+		pm_runtime_put_sync(hba->dev);
+		host->manual_gc.hagc_support = err ? false: true;
 	}
 
 	if (!host->manual_gc.hagc_support)
-		return scnprintf(buf, PAGE_SIZE, "%s", "bkops\n");
+		return scnprintf(buf, PAGE_SIZE, "%s", "GRAY\n");
 
 	dev_err(dev, "%s status=%d\n", __func__, status);
 	return scnprintf(buf, PAGE_SIZE, "%s\n",
