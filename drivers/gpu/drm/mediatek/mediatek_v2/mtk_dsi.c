@@ -378,6 +378,7 @@ EXPORT_SYMBOL(sku_is_ind);
 unsigned int is_system_resume = 0;
 EXPORT_SYMBOL(is_system_resume);
 
+unsigned int is_esdcheck_process = 0;
 
 unsigned int esdcheck_in_ed = 0;
 unsigned char esd_base_val_1 = 0;
@@ -3820,6 +3821,9 @@ static void lcm_close_od(void)
 }
 
 bool aod_resume = false;
+bool reading_base = false;
+EXPORT_SYMBOL(reading_base);
+
 static void get_lcm_esd_val(struct work_struct *work)
 {
 	printk("[esd][%s] begin !!!\n", __func__);
@@ -3831,11 +3835,14 @@ static void get_lcm_esd_val(struct work_struct *work)
 	}
 	if(aod_resume) {
 		pr_info("[esd] Open ESD exit aod \n");
-		if(lcm_now_state == 0)
+		if(lcm_now_state == 0) {
+			is_esdcheck_process = 1;
 			set_esd_start(true);
+		}
 		aod_resume = false;
 		return;
 		}
+	reading_base = true;
 
 	if (mtk_dsi_get_vendor_id() == 2) {
 		lcm_set_page(6, 0xfe, 0xed);
@@ -3853,18 +3860,22 @@ static void get_lcm_esd_val(struct work_struct *work)
 		g_dsi->ext->params->lcm_esd_check_table[0].para_list[0] = esd_base_val_1;
 		g_dsi->ext->params->lcm_esd_check_table[1].para_list[0] = esd_base_val_2;
 	}
+	printk("[esd][%s %d]esd_base_val_1:0x%x|esd_base_val_2:0x%x\n",__func__, __LINE__, esd_base_val_1, esd_base_val_2);
+	reading_base = false;
+	lcm_set_page(6, 0xfe, 0x00);
 
 	got_esd_base_val = 1;
 	is_system_resume = 1;
 	esd_reading_flag = false;
 	mdelay(70);
-	if(lcm_now_state == 0)
+	if(lcm_now_state == 0) {
+		is_esdcheck_process = 1;
 		set_esd_start(true);
+	}
 	else {
+		is_esdcheck_process = 0;
 		set_esd_start(false);
 	}
-	printk("[esd][%s %d]esd_base_val_1:0x%x|esd_base_val_2:0x%x\n",__func__, __LINE__, esd_base_val_1, esd_base_val_2);
-
 }
 
 void mtk_switch_esd_aod(bool enable)
@@ -3875,13 +3886,14 @@ void mtk_switch_esd_aod(bool enable)
 		if(got_esd_base_val == 1) {
 			pr_info("[esd] start esd exit aod\n");
 			aod_resume = true;
-			schedule_delayed_work(&bl_work, HZ*1/25);
+			schedule_delayed_work(&bl_work, HZ*1/11);
 		} else if (esd_reading_flag == false) {
 			pr_info("[esd] start esd base val read exit aod\n");
 			schedule_delayed_work(&bl_work, HZ*1/11);
 			esd_reading_flag = true;
 		}
 	} else {
+		is_esdcheck_process = 0;
 		set_esd_start(false);
 	}
 }
@@ -4148,6 +4160,7 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 
 	DDPINFO("%s+ doze_enabled:%d\n", __func__, new_doze_state);
 	if (((mtk_dsi_get_vendor_id() == 2)&&(!sku_is_ind)) || (mtk_dsi_get_vendor_id() == 3)) {
+		is_esdcheck_process = 0;
 		set_esd_start(false);
 	}
 	if (!dsi->output_en)
@@ -4941,7 +4954,7 @@ int mtk_dsi_esd_cmp(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 	else /* can't find panel ext information, stop esd read */
 		return 0;
 
-	if (((mtk_dsi_get_vendor_id() == 2) || (mtk_dsi_get_vendor_id() == 3)) && got_esd_base_val == 0){
+	if (((mtk_dsi_get_vendor_id() == 2) || (mtk_dsi_get_vendor_id() == 3)) && is_esdcheck_process == 0){
 		return 0;
 	}
 
@@ -6715,7 +6728,7 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 	unsigned int use_lpm = cmd_msg->flags & MIPI_DSI_MSG_USE_LPM;
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 
-	DDPMSG("%s +\n", __func__);
+	DDPINFO("%s +\n", __func__);
 
 	/* Check cmd_msg param */
 	if (cmd_msg->tx_cmd_num == 0 ||
@@ -6848,7 +6861,7 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 		mtk_dsi_trigger(comp, handle);
 	}
 
-	DDPMSG("%s -\n", __func__);
+	DDPINFO("%s -\n", __func__);
 	return 0;
 }
 
@@ -7310,7 +7323,7 @@ int mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 	unsigned int recv_data_cnt = 0;
 	unsigned int reg_val;
 
-	DDPMSG("%s +\n", __func__);
+	DDPINFO("%s +\n", __func__);
 
 	/* Check cmd_msg param */
 	if (cmd_msg->tx_cmd_num == 0 ||
@@ -7552,7 +7565,7 @@ int mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 done:
 	cmdq_pkt_destroy(cmdq_handle);
 
-	DDPMSG("%s -\n", __func__);
+	DDPINFO("%s -\n", __func__);
 	return 0;
 }
 

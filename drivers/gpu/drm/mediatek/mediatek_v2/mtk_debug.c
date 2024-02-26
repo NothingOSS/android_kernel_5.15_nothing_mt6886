@@ -958,7 +958,7 @@ int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg,
 		return -EINVAL;
 	}
 
-	DDPMSG("%s +\n", __func__);
+	DDPINFO("%s +\n", __func__);
 
 	/* This cmd only for crtc0 */
 	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
@@ -1082,7 +1082,7 @@ int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg,
 		cb_data->cmdq_handle = cmdq_handle;
 		cmdq_pkt_flush_threaded(cmdq_handle, mtk_ddic_send_cb, cb_data);
 	}
-	DDPMSG("%s -\n", __func__);
+	DDPINFO("%s -\n", __func__);
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	mutex_unlock(&private->commit.lock);
 	CRTC_MMP_EVENT_END(index, ddic_send_cmd, (unsigned long)crtc,
@@ -1153,7 +1153,7 @@ int mtk_ddic_dsi_read_cmd(struct mtk_ddic_dsi_msg *cmd_msg)
 		return -EINVAL;
 	}
 
-	DDPMSG("%s +\n", __func__);
+	DDPINFO("%s +\n", __func__);
 
 	/* This cmd only for crtc0 */
 	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
@@ -1212,7 +1212,7 @@ int mtk_ddic_dsi_read_cmd(struct mtk_ddic_dsi_msg *cmd_msg)
 
 	CRTC_MMP_MARK(index, ddic_read_cmd, 3, 0);
 
-	DDPMSG("%s -\n", __func__);
+	DDPINFO("%s -\n", __func__);
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	mutex_unlock(&private->commit.lock);
 	CRTC_MMP_EVENT_END(index, ddic_read_cmd, (unsigned long)crtc, 4);
@@ -1490,12 +1490,12 @@ void lcm_ddic_dsi_send_cmd(unsigned int case_num,unsigned char val1, unsigned ch
 		break;
 	}
 
-	DDPMSG("send lcm tx_cmd_num:%d\n", (int)cmd_msg->tx_cmd_num);
+	DDPINFO("send lcm tx_cmd_num:%d\n", (int)cmd_msg->tx_cmd_num);
 	for (i = 0; i < (int)cmd_msg->tx_cmd_num; i++) {
-		DDPMSG("send lcm tx_len[%d]=%d\n",
+		DDPINFO("send lcm tx_len[%d]=%d\n",
 			i, (int)cmd_msg->tx_len[i]);
 		for (j = 0; j < (int)cmd_msg->tx_len[i]; j++) {
-			DDPMSG(
+			DDPINFO(
 				"send lcm type[%d]=0x%x, tx_buf[%d]--byte:%d,val:0x%x\n",
 				i, cmd_msg->type[i], i, j,
 				*(char *)(cmd_msg->tx_buf[i] + j));
@@ -1510,7 +1510,7 @@ void lcm_ddic_dsi_send_cmd(unsigned int case_num,unsigned char val1, unsigned ch
 done:
 	vfree(cmd_msg);
 
-	DDPMSG("%s end -\n", __func__);
+	DDPINFO("%s end -\n", __func__);
 }
 
 unsigned int lcm_set_bk(unsigned char val1, unsigned char val2)
@@ -1941,7 +1941,7 @@ void lcm_ddic_dsi_read_cmd(unsigned int case_num, unsigned char val)
 		vmalloc(sizeof(struct mtk_ddic_dsi_msg));
 	u8 tx[10] = {0};
 
-	DDPMSG("%s start case_num:%d\n", __func__, case_num);
+	DDPINFO("%s start case_num:%d\n", __func__, case_num);
 
 	if (!cmd_msg) {
 		DDPPR_ERR("cmd msg is NULL\n");
@@ -1980,10 +1980,10 @@ void lcm_ddic_dsi_read_cmd(unsigned int case_num, unsigned char val)
 	}
 
 	ret_dlen = cmd_msg->rx_len[0];
-	DDPMSG("read lcm addr:0x%x--dlen:%d\n",
+	DDPINFO("read lcm addr:0x%x--dlen:%d\n",
 		*(char *)(cmd_msg->tx_buf[0]), ret_dlen);
 	for (j = 0; j < ret_dlen; j++) {
-		DDPMSG("read lcm addr:0x%x--byte:%d,val:0x%x\n",
+		DDPINFO("read lcm addr:0x%x--byte:%d,val:0x%x\n",
 			*(char *)(cmd_msg->tx_buf[0]), j,
 			*(char *)(cmd_msg->rx_buf[0] + j));
 		get_val = *(char *)(cmd_msg->rx_buf[0] + j);
@@ -1993,7 +1993,7 @@ done:
 	vfree(cmd_msg->rx_buf[0]);
 	vfree(cmd_msg);
 
-	DDPMSG("%s end -\n", __func__);
+	DDPINFO("%s end -\n", __func__);
 
 }
 

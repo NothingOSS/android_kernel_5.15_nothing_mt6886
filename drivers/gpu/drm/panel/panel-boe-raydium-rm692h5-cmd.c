@@ -61,6 +61,7 @@ extern unsigned int lcm_now_state;
 static void lcm_pannel_reconfig_blk(struct lcm *ctx);
 extern unsigned char get_reg_val(unsigned int case_num, unsigned char val);
 extern unsigned int is_system_resume;
+extern bool reading_base;
 
 extern bool need_brightness_sync;
 
@@ -736,7 +737,8 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 {
 	char bl_tb0[] = {0x51,0x07,0xFF};
 	unsigned int reg_level = 125;
-	char set_aod_tb[] = {0xfe, 0x00};
+	char set_page00_tb[] = {0xfe, 0x00};
+	char esd_page_tb[] = {0xfe,0x20};
 	pr_err("[rm692h5]%s level=%d\n", __func__, level);
 
 	if(level){
@@ -761,7 +763,7 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 			bl_tb0[1] = 0x00;
 			bl_tb0[2] = 0x03;
 		}
-		cb(dsi, handle, set_aod_tb, ARRAY_SIZE(set_aod_tb));
+		cb(dsi, handle, set_page00_tb, ARRAY_SIZE(set_page00_tb));
 		cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
 
 		return 0;
@@ -777,7 +779,11 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 	if (!cb)
 		return -1;
 
+	if(reading_base)
+		cb(dsi, handle, set_page00_tb, ARRAY_SIZE(set_page00_tb));
 	cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
+	if(reading_base)
+		cb(dsi, handle, esd_page_tb, ARRAY_SIZE(esd_page_tb));
 
 	return 0;
 }
@@ -789,6 +795,8 @@ static int panel_hbm_set_cmdq(struct drm_panel *panel, void *dsi,
 	unsigned int level_normal = 125;
 	char normal_tb0[] = {0x51, 0x07,0xFF};
 	char hbm_tb[] = {0x51,0x0F,0xF0};
+	char set_page00_tb[] = {0xfe, 0x00};
+	char esd_page_tb[] = {0xfe,0x20};
 	struct lcm *ctx = panel_to_lcm(panel);
 
 	if (!cb)
@@ -805,7 +813,11 @@ static int panel_hbm_set_cmdq(struct drm_panel *panel, void *dsi,
 
 		pr_err("[panel] %s : set HBM\n",__func__);
 		g_ctx->hbm_stat = true;
+		if(reading_base)
+			cb(dsi, handle, set_page00_tb, ARRAY_SIZE(set_page00_tb));
 		cb(dsi, handle, hbm_tb, ARRAY_SIZE(hbm_tb));
+		if(reading_base)
+			cb(dsi, handle, esd_page_tb, ARRAY_SIZE(esd_page_tb));
 	}
 	else
 	{
@@ -815,7 +827,12 @@ static int panel_hbm_set_cmdq(struct drm_panel *panel, void *dsi,
 		normal_tb0[2] = (level_normal)&0xff;
 
 		g_ctx->hbm_stat = false;
+
+		if(reading_base)
+			cb(dsi, handle, set_page00_tb, ARRAY_SIZE(set_page00_tb));
 		cb(dsi, handle, normal_tb0, ARRAY_SIZE(normal_tb0));
+		if(reading_base)
+			cb(dsi, handle, esd_page_tb, ARRAY_SIZE(esd_page_tb));
 
 		if (lcm_now_state) {
 			lcm_change_state(dsi, cb, handle, 1);
@@ -1126,7 +1143,10 @@ static void mode_switch_to_120(struct drm_panel *panel,
 		pr_err("[panel] %s\n",__func__);
 		lcm_dcs_write_seq_static(ctx,0xFE,0x00);
 		lcm_dcs_write_seq_static(ctx,0x2F,0x05);
-		lcm_dcs_write_seq_static(ctx,0xFE,0x00);
+		if(reading_base)
+			lcm_dcs_write_seq_static(ctx,0xFE,0x20);
+		else
+			lcm_dcs_write_seq_static(ctx,0xFE,0x00);
 	}
 }
 
@@ -1139,7 +1159,10 @@ static void mode_switch_to_90(struct drm_panel *panel,
 		pr_err("[panel] %s\n",__func__);
 		lcm_dcs_write_seq_static(ctx,0xFE,0x00);
 		lcm_dcs_write_seq_static(ctx,0x2F,0x06);
-		lcm_dcs_write_seq_static(ctx,0xFE,0x00);
+		if(reading_base)
+			lcm_dcs_write_seq_static(ctx,0xFE,0x20);
+		else
+			lcm_dcs_write_seq_static(ctx,0xFE,0x00);
 	}
 }
 
@@ -1152,7 +1175,11 @@ static void mode_switch_to_60(struct drm_panel *panel,
 		pr_err("[panel] %s\n",__func__);
 		lcm_dcs_write_seq_static(ctx,0xFE,0x00);
 		lcm_dcs_write_seq_static(ctx,0x2F,0x00);
-		lcm_dcs_write_seq_static(ctx,0xFE,0x00);
+		if(reading_base)
+			lcm_dcs_write_seq_static(ctx,0xFE,0x20);
+		else
+			lcm_dcs_write_seq_static(ctx,0xFE,0x00);
+
 	}
 }
 
