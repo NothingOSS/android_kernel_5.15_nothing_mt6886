@@ -66,6 +66,20 @@ enum {
 };
 
 enum {
+    ADC_VAL_EVT_1_B2 = 560,
+    ADC_VAL_DVT_1_B2 = 900,
+    ADC_VAL_PVT_1_B2 = 1180,
+    ADC_VAL_PVT_B2   = 50,
+};
+
+enum {
+    ADC_VAL_EVT_1_B2_GAIN_VAL  = 50,
+    ADC_VAL_DVT_1_B2_GAIN_VAL  = 50,
+    ADC_VAL_PVT_1_B2_GAIN_VAL  = 50,
+    ADC_VAL_PVT_B2_GAIN_VAL    = 50,
+};
+
+enum {
     IDX_PreT0 = 0,
     IDX_T0_1,
     IDX_T0_2,
@@ -76,6 +90,10 @@ enum {
     IDX_DVT_1,
     IDX_PVT,
     IDX_MP,
+    IDX_EVT_1_B2,
+    IDX_DVT_1_B2,
+    IDX_PVT_1_B2,
+    IDX_PVT_B2,
     IDX_UNKNOW,
 };
 static const char * const hwid_type_text[] = {
@@ -89,6 +107,10 @@ static const char * const hwid_type_text[] = {
     "DVT_1",
     "PVT",
     "MP",
+    "EVT_1_B2",
+    "DVT_1_B2",
+    "PVT_1_B2",
+    "PVT_B2",
     "Unknow",
 };
 static unsigned int sel1 = 0;
@@ -175,6 +197,15 @@ static int board_id_probe(struct platform_device *pdev)
             case (ADC_VAL_MP - ADC_VAL_MP_GAIN_VAL) ... (ADC_VAL_MP + ADC_VAL_MP_GAIN_VAL):
                 board_id_version = IDX_MP;
                 break;
+            case (ADC_VAL_EVT_1_B2 - ADC_VAL_EVT_1_B2_GAIN_VAL) ... (ADC_VAL_EVT_1_B2 + ADC_VAL_EVT_1_B2_GAIN_VAL):
+                board_id_version = IDX_EVT_1_B2;
+                break;
+            case (ADC_VAL_DVT_1_B2 - ADC_VAL_DVT_1_B2_GAIN_VAL) ... (ADC_VAL_DVT_1_B2 + ADC_VAL_DVT_1_B2_GAIN_VAL):
+                board_id_version = IDX_DVT_1_B2;
+                break;
+            case (ADC_VAL_PVT_1_B2 - ADC_VAL_PVT_1_B2_GAIN_VAL) ... (ADC_VAL_PVT_1_B2 + ADC_VAL_PVT_1_B2_GAIN_VAL):
+                board_id_version = IDX_PVT_1_B2;
+                break;
             default:
                 board_id_version = IDX_UNKNOW;
                 break;
@@ -183,8 +214,8 @@ static int board_id_probe(struct platform_device *pdev)
         adc_val = ccci_get_adc_mV();
         switch(adc_val)
         {
-            case (0) ... (ADC_VAL_PreT0 + ADC_VAL_PreT0_GAIN_VAL):
-                board_id_version = IDX_PreT0;
+            case (0) ... (ADC_VAL_PVT_B2 + ADC_VAL_PVT_B2_GAIN_VAL):
+                board_id_version = IDX_PVT_B2;
                 break;
             case (ADC_VAL_T0_1 - ADC_VAL_T0_1_GAIN_VAL) ... (ADC_VAL_T0_1 + ADC_VAL_T0_1_GAIN_VAL):
                 board_id_version = IDX_T0_1;
