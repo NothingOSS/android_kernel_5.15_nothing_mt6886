@@ -424,7 +424,7 @@ void fts_gesture_recovery(struct fts_ts_data *ts_data)
 {
 	if (ts_data->gesture_support && ts_data->suspended) {
 		FTS_DEBUG("gesture recovery...");
-		fts_write_reg(0xD1, 0xFF);
+		fts_write_reg(0xD1, 0x80);
 		//fts_write_reg(0xD2, 0xFF);
 		//fts_write_reg(0xD5, 0xFF);
 		//fts_write_reg(0xD6, 0xFF);
@@ -449,15 +449,15 @@ int fts_gesture_suspend(struct fts_ts_data *ts_data)
 		FTS_DEBUG("enable_irq_wake(irq:%d) fail", ts_data->irq);
 	}
 	if (ts_data->gesture_support) {
-		fts_write_reg(0xD1, 0xFF);
+		fts_write_reg(0xD1, 0x80); // bit7 single Tap; bit1 double Tap
 		//fts_write_reg(0xD2, 0xFF);
 		//fts_write_reg(0xD5, 0xFF);
 		//fts_write_reg(0xD6, 0xFF);
 		//fts_write_reg(0xD7, 0xFF);
 		//fts_write_reg(0xD8, 0xFF);
 	} else {
-		fts_write_reg(0xD1, 0x7F);
-	} 
+		fts_write_reg(0xD1, 0);
+	}
 	if (ts_data->fod_support) {
 		fts_write_reg(FTS_REG_FOD_EN, FTS_REG_FOD_VALUE);
 	}
