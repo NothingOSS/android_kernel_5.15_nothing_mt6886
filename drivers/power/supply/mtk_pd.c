@@ -255,8 +255,8 @@ void __mtk_pdc_get_cap_max_watt(struct chg_alg_device *alg)
 	int idx = 0;
 
 	cap = &pd->cap;
-
-	if (pd->pd_cap_max_watt == -1) {
+	//if (pd->pd_cap_max_watt == -1) {
+	pd->pd_cap_max_watt = -1;
 		for (i = 0; i < cap->nr; i++) {
 			if (cap->min_mv[i] <= pd->vbus_h &&
 				cap->min_mv[i] >= pd->vbus_l &&
@@ -281,7 +281,7 @@ void __mtk_pdc_get_cap_max_watt(struct chg_alg_device *alg)
 		pd_dbg("[%s]idx:%d vbus:%d %d maxwatt:%d\n", __func__,
 			idx, cap->min_mv[idx], cap->max_mv[idx],
 			pd->pd_cap_max_watt);
-	}
+	//}
 }
 
 int __mtk_pdc_get_idx(struct chg_alg_device *alg, int selected_idx,
