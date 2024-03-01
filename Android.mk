@@ -115,6 +115,7 @@ MTK_DTBIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TAR
 include device/mediatek/build/core/build_dtbimage.mk
 
 MTK_DTBOIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(PROJECT_DTB_NAMES)))
+MTK_DTBOIMAGE_DTS += $(wildcard $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/$(PROJECT_DTB_NAMES)_*.dts)
 include device/mediatek/build/core/build_dtboimage.mk
 
 endif #LINUX_KERNEL_VERSION

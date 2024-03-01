@@ -10,8 +10,9 @@
 #include <dt-bindings/phy/phy.h>
 
 / {
-    hw_rev = <0>;
+    hw_rev = <1>;
 };
+
 
 &mobicore{
 	trustonic,real-drv = <1>;
@@ -31,7 +32,7 @@ initcall_debug=1";
 	backlight {
 		led_mode = <6>;
 		gate_enable = <1>;
-		pwm_config = <0 1 0 0 0>;
+		pwm_config = <0 1 1 1 0>;
 	};
 };*/
 &mtk_leds {
@@ -39,7 +40,7 @@ initcall_debug=1";
 
 	backlight {
 		led_mode = <4>;
-		pwm_config = <0 1 0 0 0>;
+		pwm_config = <0 1 1 1 0>;
 	};
 };
 
@@ -418,7 +419,7 @@ initcall_debug=1";
 };
 
 
-/* add to new_feature
+/*
  * analog audio switch IC
  */
 &i2c7 {
@@ -430,7 +431,7 @@ initcall_debug=1";
 };
 /* usb typec mux end*/
 
-/* add for new_feature
+/*
 * Add support for aw20036 i2c led
 */
 &i2c3 {
@@ -472,7 +473,7 @@ initcall_debug=1";
 };
 /* @} */
 
-/* add for new_feature
+/*
  * Add support for haptic aw8692x i2c linear vibrator
  */
 &i2c6 {
@@ -523,7 +524,7 @@ initcall_debug=1";
 	};
 };
 
-/* add for new_feature
+/*
  * Add support for aac rt6010 i2c linear vibrator
 */
 &i2c6 {
@@ -539,7 +540,7 @@ initcall_debug=1";
 	};
 };
 
-/* add to new_feature
+/*
  * dual awinic aw882xx smartPA
  */
 &i2c8 {
@@ -568,7 +569,7 @@ initcall_debug=1";
 &sound {
 	mediatek,spk-i2s = <3 9>;
 	mediatek,speaker-codec {
-		/* edit to new_feature
+		/*
 		 * update dai link as dual smartPA
 		 */
 		/* sound-dai = <&spk>; */
@@ -694,7 +695,6 @@ initcall_debug=1";
 	};
 };
 
-/* add support st nfc fix */
 &i2c7 {
 	clock-frequency = <400000>;
 	st21nfc: st21nfc@08 {
