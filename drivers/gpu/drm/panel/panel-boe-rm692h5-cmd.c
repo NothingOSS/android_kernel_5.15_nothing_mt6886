@@ -1356,7 +1356,7 @@ static void mode_switch_to_120(struct drm_panel *panel,
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	if (stage == BEFORE_DSI_POWERDOWN) {
+	if (stage == AFTER_DSI_POWERON) {
 		pr_err("[panel] %s\n",__func__);
 		lcm_dcs_write_seq_static(ctx,0xFE,0x00);
 		lcm_dcs_write_seq_static(ctx,0x2F,0x05);
@@ -1372,7 +1372,7 @@ static void mode_switch_to_90(struct drm_panel *panel,
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	if (stage == BEFORE_DSI_POWERDOWN) {
+	if (stage == AFTER_DSI_POWERON) {
 		pr_err("[panel] %s\n",__func__);
 		lcm_dcs_write_seq_static(ctx,0xFE,0x00);
 		lcm_dcs_write_seq_static(ctx,0x2F,0x06);
@@ -1388,7 +1388,7 @@ static void mode_switch_to_60(struct drm_panel *panel,
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	if (stage == BEFORE_DSI_POWERDOWN) {
+	if (stage == AFTER_DSI_POWERON) {
 		pr_err("[panel] %s\n",__func__);
 		lcm_dcs_write_seq_static(ctx,0xFE,0x00);
 		lcm_dcs_write_seq_static(ctx,0x2F,0x00);
