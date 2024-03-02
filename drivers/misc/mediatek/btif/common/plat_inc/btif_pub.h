@@ -38,7 +38,20 @@ struct _MTK_BTIF_INFO_STR_ *hal_btif_info_get(void);
  * RETURNS
  *  0 means success, negative means fail
  *****************************************************************************/
-int hal_btif_clk_get_and_prepare(struct platform_device *pdev);
+int hal_btif_clk_get(struct platform_device *pdev);
+
+/*****************************************************************************
+ * FUNCTION
+ *  hal_btif_clk_prepare
+ * DESCRIPTION
+ *  prepare for enable/disable control
+ * PARAMETERS
+ *  void
+ * RETURNS
+ *  0 means success, negative means fail
+ *****************************************************************************/
+int hal_btif_clk_prepare(void);
+
 /*****************************************************************************
  * FUNCTION
  *  hal_btif_clk_unprepare
