@@ -821,7 +821,6 @@ static int lcm_prepare(struct drm_panel *panel)
 	int ret;
 
 	pr_info("%s\n", __func__);
-	is_system_resume = 1;
 
 	if (ctx->prepared)
 		return 0;
@@ -842,6 +841,8 @@ static int lcm_prepare(struct drm_panel *panel)
 	lcm_panel_get_data(ctx);
 #endif
 	lcm_now_state = 0;
+	is_system_resume = 1;
+
 	return ret;
 }
 

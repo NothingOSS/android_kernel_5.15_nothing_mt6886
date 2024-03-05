@@ -375,7 +375,7 @@ bool esd_reading_flag = false;
 bool sku_is_ind  = false;
 EXPORT_SYMBOL(sku_is_ind);
 
-unsigned int is_system_resume = 0;
+unsigned int is_system_resume = 1;
 EXPORT_SYMBOL(is_system_resume);
 
 unsigned int is_esdcheck_process = 0;
@@ -3865,7 +3865,6 @@ static void get_lcm_esd_val(struct work_struct *work)
 	lcm_set_page(6, 0xfe, 0x00);
 
 	got_esd_base_val = 1;
-	is_system_resume = 1;
 	esd_reading_flag = false;
 	mdelay(70);
 	if(lcm_now_state == 0) {
@@ -3873,6 +3872,12 @@ static void get_lcm_esd_val(struct work_struct *work)
 		set_esd_start(true);
 	}
 	else {
+		is_esdcheck_process = 0;
+		set_esd_start(false);
+	}
+	/*if panel off, clear base and stop ESD */
+	if (is_system_resume == 0) {
+		got_esd_base_val = 0;
 		is_esdcheck_process = 0;
 		set_esd_start(false);
 	}
