@@ -768,7 +768,7 @@ initcall_debug=1";
 };
 
 #include "mediatek/cust_mt6886_touch_ft3681_1084x2412.dtsi"
-#include "mediatek/cust_mt6886_camera_v4l2.dtsi"
+#include "mediatek/cust_mt6886_camera_v4l2_2.dtsi"
 #include "mediatek/aw32280.dtsi"
 #include "mediatek/sc8562.dtsi"
 #include <k6886v1_64/cust.dtsi>
