@@ -3618,6 +3618,7 @@
 		enable_fast_charging_indicator;
 		/*enable_sw_safety_timer;*/
 		max_charging_time = <36000>;
+		hwovp-en-gpio = <&pio 115 0x0>;
 	};
 
 	logstore: logstore {

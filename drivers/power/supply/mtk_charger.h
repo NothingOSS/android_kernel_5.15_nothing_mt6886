@@ -300,6 +300,7 @@ struct mtk_charger {
 	struct power_supply *usb_psy;
 	bool aging_mode;
 	bool fastchg_rerun;
+	int hwovp_en_gpio;
 
 	int pd_type;
 	bool pd_reset;
@@ -461,5 +462,5 @@ extern void _wake_up_charger(struct mtk_charger *info);
 
 /* functions for other */
 extern int mtk_chg_enable_vbus_ovp(bool enable);
-extern int mtk_chg_set_vbus_ovp(bool enable,int ovp);
+extern int mtk_chg_set_vbus_ovp(bool enable, int alg_id, int ovp);
 #endif /* __MTK_CHARGER_H */

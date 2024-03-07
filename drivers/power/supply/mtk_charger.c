@@ -58,7 +58,8 @@
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/reboot.h>
-
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include <asm/setup.h>
 
 #include "mtk_charger.h"
@@ -540,6 +541,11 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 		chr_err("use default MAX_CHARGING_TIME:%d\n",
 			MAX_CHARGING_TIME);
 		info->data.max_charging_time = MAX_CHARGING_TIME;
+	}
+
+	info->hwovp_en_gpio = of_get_named_gpio(np, "hwovp-en-gpio", 0);
+	if (!gpio_is_valid(info->hwovp_en_gpio)) {
+		chr_err("fail to valid hwovp-en-gpio : %d\n", info->hwovp_en_gpio);
 	}
 }
 
@@ -2070,7 +2076,7 @@ int mtk_chg_enable_vbus_ovp(bool enable)
 	return ret;
 }
 EXPORT_SYMBOL(mtk_chg_enable_vbus_ovp);
-int mtk_chg_set_vbus_ovp(bool enable,int ovp)
+int mtk_chg_set_vbus_ovp(bool enable, int alg_id, int ovp)
 {
 	static struct mtk_charger *pinfo;
 	int ret = 0;

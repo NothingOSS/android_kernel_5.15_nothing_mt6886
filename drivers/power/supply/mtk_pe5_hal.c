@@ -7,6 +7,8 @@
 #include "mtk_charger.h"
 #include "mtk_pe5.h"
 
+#define PE5_VBUS_OVP	(21500000)
+
 enum mtk_chg_type {
 	MTK_CHGTYP_SWCHG = 0,
 	MTK_CHGTYP_DVCHG,
@@ -292,7 +294,8 @@ err:
 
 int pe50_hal_enable_sw_vbusovp(struct chg_alg_device *alg, bool en)
 {
-	mtk_chg_enable_vbus_ovp(en);
+	//mtk_chg_enable_vbus_ovp(en);
+	mtk_chg_set_vbus_ovp(en, PE5_ID ,PE5_VBUS_OVP);
 	return 0;
 }
 

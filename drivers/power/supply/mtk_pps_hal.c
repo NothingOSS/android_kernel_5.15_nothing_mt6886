@@ -294,7 +294,7 @@ err:
 
 int pps_hal_enable_sw_vbusovp(struct chg_alg_device *alg, bool en)
 {
-	mtk_chg_set_vbus_ovp(en,PPS_VBUS_OVP);
+	mtk_chg_set_vbus_ovp(en, PPS_ID, PPS_VBUS_OVP);
 	PPS_INFO("%s swovp: %d\n", __func__,PPS_VBUS_OVP);
 	return 0;
 }
