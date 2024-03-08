@@ -1321,7 +1321,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 
 	//sync brightness and frame commit @{
 	if (need_brightness_sync) {
-		DDPPR_ERR("%s: need brightness sync, level: %d\n", __func__, level);
+		DDPINFO("%s: need brightness sync, level: %d\n", __func__, level);
 		return 0;
 	}
 	//@}
@@ -1751,6 +1751,7 @@ int mtk_drm_aod_scp_get_dsi_ulps_wakeup_prd(struct drm_crtc *crtc)
 }
 
 extern unsigned long long last_te_time;
+/*
 int mtk_drm_crtc_hbm_delay(struct drm_crtc *crtc)
 {
 	int fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
@@ -1782,6 +1783,7 @@ int mtk_drm_crtc_hbm_delay(struct drm_crtc *crtc)
 
 	return 0;
 }
+*/
 
 int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 {
@@ -1791,6 +1793,8 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 	struct cmdq_client *client;
 	bool is_frame_mode;
 	bool state = false;
+	int fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
 
 	if (!(comp && comp->funcs && comp->funcs->io_cmd))
 		return -EINVAL;
@@ -1821,6 +1825,15 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 		return -EINVAL;
 	}
 
+	/*Wait TE, then set hbm cmd*/
+	if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+		comp->funcs->io_cmd(comp, NULL, DSI_HBM_WAIT, NULL);
+		if (fps == 60) {
+			usleep_range(8400, 8900);
+		}
+	}
+
+	/*
 	if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
 		struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 
@@ -1828,6 +1841,7 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 			mtk_drm_crtc_hbm_delay(crtc);
 		}
 	}
+	*/
 
 	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 
@@ -13419,18 +13433,6 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	if (pending_planes)
 		mtk_crtc->pending_planes = true;
 
-	//sync brightness and frame commit @{
-	if (need_brightness_sync) {
-		uint32_t value = (uint32_t)mtk_crtc_state->prop_val[CRTC_PROP_NT_HDR_BRIGHTNESS];
-		if (brightness_now != value) {
-			level_pending = value;
-			mtk_drm_trace_begin("setbacklight: %d", value);
-			schedule_work(&mtk_crtc->delay_set_brightness_work);
-			mtk_drm_trace_end();
-		}
-	}
-	//@}
-
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HBM)) {
 		bool hbm_en = false;
 
@@ -13442,6 +13444,16 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		//if (!mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
 			//mtk_atomic_hbm_bypass_pq(crtc, cmdq_handle, hbm_en);
 		//@}
+	}
+
+	if (need_brightness_sync) {
+		uint32_t value = (uint32_t)mtk_crtc_state->prop_val[CRTC_PROP_NT_HDR_BRIGHTNESS];
+		if (brightness_now != value) {
+			level_pending = value;
+			mtk_drm_trace_begin("setbacklight: %d", value);
+			schedule_work(&mtk_crtc->delay_set_brightness_work);
+			mtk_drm_trace_end();
+		}
 	}
 
 	hdr_en = (bool)mtk_crtc_state->prop_val[CRTC_PROP_HDR_ENABLE];
