@@ -25,6 +25,10 @@
 #include "tcpm.h"
 #endif
 
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+struct mtk_extcon_info *g_extcon;
+#endif
+
 static const unsigned int usb_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
@@ -444,6 +448,31 @@ static int mtk_usb_extcon_id_pin_init(struct mtk_extcon_info *extcon)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+int  extcon_usb_mode_switch(bool mode)
+{
+	struct regulator *vbus = g_extcon->vbus;
+	if(!g_extcon){
+		pr_err("g_extcon is NULL,return...\n");
+		return -1;
+	}
+
+	if (mode){
+		if ((vbus != NULL) && g_extcon->vbus_on) {
+			mtk_usb_extcon_set_vbus(g_extcon, false);
+			mtk_usb_extcon_set_role(g_extcon, USB_ROLE_DEVICE);
+			dev_info(g_extcon->dev, "disable otg...\n");
+		} else {
+			mtk_usb_extcon_set_role(g_extcon,USB_ROLE_NONE);
+			dev_info(g_extcon->dev, "Switch usb out mode...\n");
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(extcon_usb_mode_switch);
+#endif
+
 static int mtk_usb_extcon_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -508,6 +537,10 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 	ret = mtk_usb_extcon_tcpc_init(extcon);
 	if (ret < 0)
 		dev_err(dev, "failed to init tcpc\n");
+#endif
+
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+	g_extcon = extcon;
 #endif
 
 	platform_set_drvdata(pdev, extcon);

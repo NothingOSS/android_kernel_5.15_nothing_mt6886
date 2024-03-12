@@ -20,10 +20,6 @@
 #include "../../codecs/richtek/rt5512.h"
 #endif
 
-#if IS_ENABLED(CONFIG_SND_SOC_TFA9874)
-#include "../../codecs/tfa98xx/inc/tfa98xx_ext.h"
-#endif
-
 #if IS_ENABLED(CONFIG_SND_SOC_AW87339)
 #include "aw87339.h"
 #endif
@@ -42,7 +38,14 @@
 #define MTK_SPK_NAME "Speaker Codec"
 #define MTK_SPK_REF_NAME "Speaker Codec Ref"
 
+/* add to new_feature
+ * set spk type to smartPA
+ */
+#if IS_ENABLED(CONFIG_SND_SOC_AW882XX)
+static unsigned int mtk_spk_type = MTK_SPK_AWINIC_AW882XX;
+#else
 static unsigned int mtk_spk_type;
+#endif
 static int mtk_spk_i2s_out = MTK_SPK_I2S_3, mtk_spk_i2s_in = MTK_SPK_I2S_0;
 static struct mtk_spk_i2c_ctrl mtk_spk_list[MTK_SPK_TYPE_NUM] = {
 	[MTK_SPK_NOT_SMARTPA] = {

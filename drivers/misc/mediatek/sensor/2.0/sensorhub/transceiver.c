@@ -269,6 +269,31 @@ static void transceiver_report(struct transceiver_device *dev,
 	} while (ret < 0);
 }
 
+static void transceiver_print_event(struct hf_manager_event *event, int64_t src_timestamp, int64_t remap_timestamp)
+{
+	switch (event->sensor_type) {
+		case SENSOR_TYPE_PROXIMITY:
+			pr_info("[SCP/AP] prox_event: scp_ts 0x%llX hal_ts 0x%llX raw_adc %lu(%lu:<%lu,%lu>) factory_val %lu near_far %d\n",
+				src_timestamp, remap_timestamp,
+				event->word[1], event->word[2], event->word[3], event->word[4], event->word[5], event->word[0]);
+			break;
+		case SENSOR_TYPE_FINGERPRINT_DISPLAY:
+			pr_info("[SCP/AP] fingerprint_display_detect_event scp_ts 0x%llX hal_ts 0x%llX data %d\n",
+				src_timestamp, remap_timestamp, event->word[0]);
+			break;
+		case SENSOR_TYPE_AMBIENT_LIGHT:
+			pr_info("[SCP/AP] ambient_light_scene_event scp_ts 0x%llX hal_ts 0x%llX data %d %d\n",
+				src_timestamp, remap_timestamp, event->word[0], event->word[1]);
+			break;
+		case SENSOR_TYPE_SCREEN_UPWARD:
+			pr_info("[SCP/AP] screen_upward_event scp_ts 0x%llX hal_ts 0x%llX data %d\n",
+				src_timestamp, remap_timestamp, event->word[0]);
+			break;
+		default:
+			break;
+	}
+}
+
 static int transceiver_translate(struct transceiver_device *dev,
 		struct hf_manager_event *dst,
 		const struct share_mem_data *src)
@@ -326,9 +351,21 @@ static int transceiver_translate(struct transceiver_device *dev,
 			dst->word[1] = src->value[1];
 			dst->word[2] = src->value[2];
 			break;
+		case SENSOR_TYPE_PROXIMITY:
+			dst->word[0] = src->value[0];
+			dst->word[1] = src->value[1];
+			dst->word[2] = src->value[2];
+			dst->word[3] = src->value[3];
+			dst->word[4] = src->value[4];
+			dst->word[5] = src->value[5];
+		break;
+		case SENSOR_TYPE_AMBIENT_LIGHT:
+			dst->word[0] = src->value[0];
+			dst->word[1] = src->value[1];
+		break;
+
 		case SENSOR_TYPE_LIGHT:
 		case SENSOR_TYPE_PRESSURE:
-		case SENSOR_TYPE_PROXIMITY:
 		case SENSOR_TYPE_STEP_COUNTER:
 			dst->word[0] = src->value[0];
 			break;
@@ -337,6 +374,7 @@ static int transceiver_translate(struct transceiver_device *dev,
 				min(sizeof(dst->word), sizeof(src->value)));
 			break;
 		}
+		transceiver_print_event(dst, src->timestamp, remap_timestamp);
 	} else if (src->action == FLUSH_ACTION) {
 		dst->timestamp = remap_timestamp;
 		dst->sensor_type = src->sensor_type;

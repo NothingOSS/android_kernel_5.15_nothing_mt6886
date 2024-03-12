@@ -309,8 +309,14 @@ bool pd_hal_is_chip_enable(struct chg_alg_device *alg, enum chg_idx chgidx)
 int pd_hal_enable_vbus_ovp(struct chg_alg_device *alg, bool enable)
 {
 	//wy fix me
-	mtk_chg_enable_vbus_ovp(enable);
+	/*mtk_chg_enable_vbus_ovp(enable);*/
+	struct mtk_pd *pd;
 
+	if (alg == NULL)
+		return -EINVAL;
+	pd = dev_get_drvdata(&alg->dev);
+	mtk_chg_set_vbus_ovp(enable,pd->max_charger_voltage);
+	pd_dbg("%s swovp: %d\n", __func__,pd->max_charger_voltage);
 	return 0;
 }
 

@@ -2005,7 +2005,8 @@ static int mtk_mipi_tx_pll_prepare_mt6886(struct clk_hw *hw)
 	}
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PRESERVED_MT6983,
 		FLD_RD_DSI_PRESERVED0_BIT5_4, 0x3 << 4);
-
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
+		FLD_RG_DSI_HSTX_LDO_REF_SEL, 0xB << 6);
 	writel(0x00FF12E0, mipi_tx->regs + MIPITX_PLL_CON4);
 	/* BG_LPF_EN / BG_CORE_EN */
 	writel(0x3FFF0180, mipi_tx->regs + MIPITX_LANE_CON_MT6983);

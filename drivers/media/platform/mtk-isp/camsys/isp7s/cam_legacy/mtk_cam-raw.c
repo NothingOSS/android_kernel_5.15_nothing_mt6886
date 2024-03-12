@@ -621,15 +621,6 @@ mtk_cam_raw_try_res_ctrl(struct mtk_raw_pipeline *pipeline,
 			      res_cfg->res_plan, res_user->sensor_res.width,
 			      res_user->sensor_res.height, &width, &height);
 
-	if (res_user->raw_res.bin && !res_cfg->bin_enable) {
-		if (log)
-			dev_info(dev,
-			 "%s:%s:pipe(%d): res calc failed on fource bin: user(%d)/bin_enable(%d)\n",
-			 __func__, dbg_str, pipeline->id, res_user->raw_res.bin,
-			 res_cfg->bin_enable);
-		return -EINVAL;
-	}
-
 	if (res_cfg->raw_num_used > res_cfg->hwn_limit_max ||
 	    res_cfg->raw_num_used < res_cfg->hwn_limit_min) {
 		if (log)
@@ -2025,6 +2016,10 @@ int mtk_cam_init_hdr_tsfifo(struct mtk_raw *raw, struct v4l2_device *v4l2_dev)
 
 		pipe->hdr_ts_buffer =
 			devm_kzalloc(dev, pipe->hdr_ts_fifo_size, GFP_KERNEL);
+		if (!pipe->hdr_ts_buffer) {
+			dev_info(dev, "kzalloc memory faill %d", __LINE__);
+			pipe->hdr_ts_buffer = vmalloc(pipe->hdr_ts_fifo_size);
+		}
 		if (!pipe->hdr_ts_buffer)
 			return -ENOMEM;
 	}
@@ -2644,6 +2639,19 @@ static void mtk_raw_update_debug_param(struct mtk_cam_device *cam,
 
 }
 
+/* 0: disable, 1: 2x2, 2: 3x3 3: 4x4 */
+static inline int mtk_cbn_type(int cbn)
+{
+	if (cbn == MTK_CAM_CBN_2X2_ON)
+		return 1;
+	else if (cbn == MTK_CAM_CBN_3X3_ON)
+		return 2;
+	else if (cbn == MTK_CAM_CBN_4X4_ON)
+		return 3;
+	else
+		return 0;
+}
+
 bool mtk_raw_resource_calc(struct mtk_cam_device *cam,
 			   struct mtk_cam_resource_config *res,
 			   s64 pixel_rate, int res_plan,
@@ -2684,8 +2692,8 @@ bool mtk_raw_resource_calc(struct mtk_cam_device *cam,
 		/ (in_h + vblank);
 	calc.width = in_w;
 	calc.height = in_h;
-	calc.bin_en = (res->bin_limit >= 1) ? 1:0;
-	calc.cbn_type = 0; /* 0: disable, 1: 2x2, 2: 3x3 3: 4x4 */
+	calc.bin_en = (res->bin_limit == MTK_CAM_BIN_ON) ? 1 : 0;
+	calc.cbn_type = mtk_cbn_type(res->bin_limit);
 	calc.qbnd_en = 0;
 	calc.qbn_type = 0; /* 0: disable, 1: w/2, 2: w/4 */
 
@@ -2723,8 +2731,8 @@ bool mtk_raw_resource_calc(struct mtk_cam_device *cam,
 	res->raw_num_used = calc.raw_num;
 	res->clk_target = calc.clk;
 	res->bin_enable = calc.bin_en;
-	*out_w = in_w >> calc.bin_en;
-	*out_h = in_h >> calc.bin_en;
+	*out_w = calc.cbn_type ? in_w * (1 + calc.cbn_type) : in_w >> calc.bin_en;
+	*out_h = calc.cbn_type ? in_h * (1 + calc.cbn_type) : in_h >> calc.bin_en;
 
 	mtk_raw_update_debug_param(cam, res);
 
@@ -3292,6 +3300,10 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 	if (!dev->dma_parms) {
 		dev->dma_parms =
 			devm_kzalloc(dev, sizeof(*dev->dma_parms), GFP_KERNEL);
+		if (!dev->dma_parms) {
+			dev_info(dev, "kzalloc memory faill %d", __LINE__);
+			dev->dma_parms = vmalloc(sizeof(*dev->dma_parms));
+		}
 		if (!dev->dma_parms)
 			return -ENOMEM;
 	}
@@ -3358,6 +3370,12 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 	if (raw->num_clks) {
 		raw->clks = devm_kcalloc(dev, raw->num_clks, sizeof(*raw->clks),
 					 GFP_KERNEL);
+
+		if (!raw->clks) {
+		    printk("kcalloc memory faill %d", __LINE__);
+		    raw->clks = vmalloc(raw->num_clks*sizeof(*raw->clks));
+		}
+
 		if (!raw->clks)
 			return -ENOMEM;
 	}
@@ -7166,6 +7184,11 @@ static int mtk_raw_probe(struct platform_device *pdev)
 	int ret;
 
 	raw_dev = devm_kzalloc(dev, sizeof(*raw_dev), GFP_KERNEL);
+
+	if (!raw_dev) {
+		dev_info(dev, "kzalloc memory faill %d", __LINE__);
+		raw_dev = vmalloc(sizeof(*raw_dev));
+	}
 	if (!raw_dev)
 		return -ENOMEM;
 
@@ -7180,6 +7203,10 @@ static int mtk_raw_probe(struct platform_device *pdev)
 		roundup_pow_of_two(8 * sizeof(struct mtk_camsys_irq_info));
 
 	raw_dev->msg_buffer = devm_kzalloc(dev, raw_dev->fifo_size, GFP_KERNEL);
+	if (!raw_dev->msg_buffer) {
+		dev_info(dev, "kzalloc memory faill %d", __LINE__);
+		raw_dev->msg_buffer = vmalloc(raw_dev->fifo_size);
+	}
 	if (!raw_dev->msg_buffer)
 		return -ENOMEM;
 #ifdef PR_DETECT
@@ -7437,6 +7464,10 @@ static int mtk_yuv_of_probe(struct platform_device *pdev,
 	if (!dev->dma_parms) {
 		dev->dma_parms =
 			devm_kzalloc(dev, sizeof(*dev->dma_parms), GFP_KERNEL);
+		if (!dev->dma_parms) {
+			dev_info(dev, "kzalloc memory faill %d", __LINE__);
+			dev->dma_parms = vmalloc(sizeof(*dev->dma_parms));
+		}
 		if (!dev->dma_parms)
 			return -ENOMEM;
 	}
@@ -7500,6 +7531,12 @@ static int mtk_yuv_of_probe(struct platform_device *pdev,
 		drvdata->clks = devm_kcalloc(dev,
 					     drvdata->num_clks, sizeof(*drvdata->clks),
 					     GFP_KERNEL);
+
+		if (!drvdata->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    drvdata->clks = vmalloc(drvdata->num_clks*sizeof(*drvdata->clks));
+		}
+
 		if (!drvdata->clks)
 			return -ENOMEM;
 	}
@@ -7561,6 +7598,10 @@ static int mtk_yuv_probe(struct platform_device *pdev)
 	int ret;
 
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
+	if (!drvdata) {
+		dev_info(dev, "kzalloc memory faill %d", __LINE__);
+		drvdata = vmalloc( sizeof(*drvdata));
+	}
 	if (!drvdata)
 		return -ENOMEM;
 

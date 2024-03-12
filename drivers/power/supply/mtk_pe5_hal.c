@@ -197,6 +197,7 @@ int pe50_hal_authenticate_ta(struct chg_alg_device *alg,
 			PE50_DBG("authenticate fail(%d)\n", ret);
 			continue;
 		}
+		_data.support_meas_cap = false;
 		hal->adapter = hal->adapters[i];
 		data->vta_min = _data.vta_min;
 		data->vta_max = _data.vta_max;
@@ -430,7 +431,59 @@ static int pe50_get_tbat(struct pe50_hal *hal)
 	PE50_DBG("%d\n", ret);
 	return ret;
 }
+int pe50_hal_set_ieoc(struct chg_alg_device *alg, enum chg_idx chgidx, u32 mA)
+{
+	int ret;
+	int chgtyp = to_chgtyp(chgidx);
+	struct pe50_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
 
+	if (alg == NULL)
+		return -EINVAL;
+
+	ret = charger_dev_set_eoc_current(hal->chgdevs[chgtyp], milli_to_micro(mA));
+	PE50_DBG("%s idx:%d %d\n", __func__, chgidx, mA);
+	return ret;
+}
+static int pe50_get_ibat(struct pe50_hal *hal)
+{
+	int ret = 0;
+	int tmp_ret;
+	union power_supply_propval prop;
+	struct power_supply *bat_psy;
+
+	bat_psy = devm_power_supply_get_by_phandle(hal->dev, "gauge");
+	if (IS_ERR_OR_NULL(bat_psy)) {
+		PE50_ERR("%s Couldn't get bat_psy\n", __func__);
+		ret = 0;
+	} else {
+		tmp_ret = power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_CURRENT_NOW,
+						&prop);
+		ret = micro_to_milli(prop.intval);
+	}
+
+	PE50_DBG("%d\n", ret);
+	return ret;
+}
+static int pe50_get_vbat(struct pe50_hal *hal)
+{
+	int ret = 0;
+	int tmp_ret;
+	union power_supply_propval prop;
+	struct power_supply *bat_psy;
+
+	bat_psy = devm_power_supply_get_by_phandle(hal->dev, "gauge");
+	if (IS_ERR_OR_NULL(bat_psy)) {
+		PE50_ERR("%s Couldn't get bat_psy\n", __func__);
+		ret = 0;
+	} else {
+		tmp_ret = power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_VOLTAGE_NOW,
+						&prop);
+		ret = micro_to_milli(prop.intval);
+	}
+
+	PE50_DBG("%d\n", ret);
+	return ret;
+}
 int pe50_hal_get_adc(struct chg_alg_device *alg, enum chg_idx chgidx,
 		     enum pe50_adc_channel chan, int *val)
 {
@@ -448,11 +501,23 @@ int pe50_hal_get_adc(struct chg_alg_device *alg, enum chg_idx chgidx,
 		*val = pe50_get_tbat(hal);
 		return 0;
 	}
+	if(_chan == ADC_CHANNEL_IBAT){
+		*val = pe50_get_ibat(hal);
+		return 0;
+	}
+	if(_chan == ADC_CHANNEL_VBAT){
+		*val = pe50_get_vbat(hal);
+		return 0;
+	}
 	ret = charger_dev_get_adc(hal->chgdevs[chgtyp], _chan, val, val);
 	if (ret < 0)
 		return ret;
+	/*
 	if (_chan == ADC_CHANNEL_VBAT || _chan == ADC_CHANNEL_IBAT ||
 	    _chan == ADC_CHANNEL_VBUS || _chan == ADC_CHANNEL_IBUS ||
+	    _chan == ADC_CHANNEL_VOUT || _chan == ADC_CHANNEL_VSYS)
+	*/
+	if (_chan == ADC_CHANNEL_VBUS || _chan == ADC_CHANNEL_IBUS || 
 	    _chan == ADC_CHANNEL_VOUT || _chan == ADC_CHANNEL_VSYS)
 		*val = micro_to_milli(*val);
 	return 0;
@@ -609,4 +674,23 @@ int pe50_hal_init_chip(struct chg_alg_device *alg, enum chg_idx chgidx)
 	if (chgtyp < 0)
 		return chgtyp;
 	return charger_dev_init_chip(hal->chgdevs[chgtyp]);
+}
+int pe50_hal_dump_registers(struct chg_alg_device *alg, enum chg_idx chgidx)
+{
+	int chgtyp = to_chgtyp(chgidx);
+	struct pe50_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
+
+	if (chgtyp < 0)
+		return chgtyp;
+	return charger_dev_dump_registers(hal->chgdevs[chgtyp]);
+}
+int pe50_set_operating_mode(struct chg_alg_device *alg, enum chg_idx chgidx,
+			    bool en)
+{
+	int chgtyp = to_chgtyp(chgidx);
+	struct pe50_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
+
+	if (chgtyp < 0)
+		return chgtyp;
+	return charger_dev_set_operation_mode(hal->chgdevs[chgtyp], en);
 }

@@ -60,6 +60,15 @@ config TYPEC_MUX_FLIP_ALPHA_FSA4480
          Support typec analog audio switch.
          Support turn on source vbus function.
 
+# add to new_feature
+# add analog audio switch fsa4480/was4780 support
+config TYPEC_MUX_AUDIO_SWITCH_FSA4480
+       tristate "FSA4480 type-C analog audio switch IC"
+       help
+         Say Y or M if your system has a FSA4480 switch IC.
+         Support DP aux channel switch function.
+         Support typec analog audio switch.
+
 config TYPEC_MUX_PI3DPX1205A
 	tristate "DIODES USB TYPE-C DP Linear Redriver"
 	depends on MTK_USB_TYPEC_MUX

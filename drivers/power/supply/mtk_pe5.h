@@ -69,6 +69,16 @@ enum pe50_thermal_level {
 	PE50_THERMAL_VERY_HOT,
 	PE50_THERMAL_MAX,
 };
+enum pe50_jeita_level {
+	PE50_JEITA_LEVEL_0 = 0,
+	PE50_JEITA_LEVEL_1,
+	PE50_JEITA_LEVEL_2,
+	PE50_JEITA_LEVEL_3,
+	PE50_JEITA_LEVEL_4,
+	PE50_JEITA_MAX,
+};
+#define NT_INVALID_DATA  -400
+#define NT_CTRL_MODE  101
 
 enum pe50_rcable_level {
 	PE50_RCABLE_NORMAL = 0,
@@ -127,6 +137,9 @@ struct pe50_algo_data {
 	u32 notify;
 
 	/* Algorithm */
+	bool waiver;
+	bool finish;
+	int  g_nt_cp_ctrl;
 	bool inited;
 	bool ta_ready;
 	bool run_once;
@@ -216,6 +229,14 @@ struct pe50_algo_desc {
 	int tdvchg_curlmt[PE50_THERMAL_MAX];	/* DVCHG temp current limit */
 	int tswchg_level_def[PE50_THERMAL_MAX];	/* SWCHG temp level */
 	int tswchg_curlmt[PE50_THERMAL_MAX];	/* SWCHG temp current limit */
+	int tbat_t0_to_t1_cv[PE50_JEITA_MAX];	/* BAT T0~T1 CV level */
+	int tbat_t0_to_t1_curlmt[PE50_JEITA_MAX];	/* BAT T0~T1 CV current limit */
+	int tbat_t1_to_t2_cv[PE50_JEITA_MAX];	/* BAT T1~T2 CV level */
+	int tbat_t1_to_t2_curlmt[PE50_JEITA_MAX];	/* BAT T1~T2 CV current limit */
+	int tbat_t2_to_t3_cv[PE50_JEITA_MAX];	/* BAT T2~T3 CV level */
+	int tbat_t2_to_t3_curlmt[PE50_JEITA_MAX];	/* BAT T2~T3 CV current limit */
+	int tbat_t3_to_t4_cv[PE50_JEITA_MAX];	/* BAT T3~T4 CV level */
+	int tbat_t3_to_t4_curlmt[PE50_JEITA_MAX];	/* BAT T3~T4 CV current limit */
 	u32 tta_recovery_area;
 	u32 tbat_recovery_area;
 	u32 tdvchg_recovery_area;
@@ -323,4 +344,8 @@ extern int pe50_hal_get_adc_accuracy(struct chg_alg_device *alg,
 				     enum chg_idx chgidx,
 				     enum pe50_adc_channel chan, int *val);
 extern int pe50_hal_init_chip(struct chg_alg_device *alg, enum chg_idx chgidx);
+extern int pe50_hal_dump_registers(struct chg_alg_device *alg, enum chg_idx chgidx);
+extern int pe50_set_operating_mode(struct chg_alg_device *alg, enum chg_idx chgidx,
+			    bool en);
+extern int pe50_hal_set_ieoc(struct chg_alg_device *alg, enum chg_idx chgidx, u32 uA);
 #endif /* __MTK_PE5_H */

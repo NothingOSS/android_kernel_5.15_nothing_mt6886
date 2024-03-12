@@ -1,0 +1,6 @@
+config PRIZE_HARDWARE_INFO
+	tristate "hardware_info"
+	default y
+	help
+	  hardware_info. If configures to be n, means devices doesn't support
+	  hardwareinfo functionality.

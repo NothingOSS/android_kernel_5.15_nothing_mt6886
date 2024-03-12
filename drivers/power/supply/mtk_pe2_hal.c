@@ -546,8 +546,14 @@ int pe2_hal_send_ta20_current_pattern(struct chg_alg_device *alg,
 
 int pe2_hal_enable_vbus_ovp(struct chg_alg_device *alg, bool enable)
 {
-	mtk_chg_enable_vbus_ovp(enable);
+	/*mtk_chg_enable_vbus_ovp(enable);*/
+	struct mtk_pe20 *pe2;
 
+	if (alg == NULL)
+		return -EINVAL;
+	pe2 = dev_get_drvdata(&alg->dev);
+	mtk_chg_set_vbus_ovp(enable,pe2->max_charger_voltage);
+	pe2_dbg("%s swovp: %d\n", __func__,pe2->max_charger_voltage);
 	return 0;
 }
 

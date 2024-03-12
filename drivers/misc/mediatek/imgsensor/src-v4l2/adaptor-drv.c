@@ -40,6 +40,10 @@ static struct subdrv_entry *imgsensor_subdrvs[] = {
 #endif
 };
 
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+#include "../../../hardware_info/hardware_info.h"
+#endif
+
 module_param(sensor_debug, uint, 0644);
 MODULE_PARM_DESC(sensor_debug, "imgsensor_debug");
 
@@ -387,6 +391,27 @@ static int search_sensor(struct adaptor_ctx *ctx)
 		if (!ret) {
 			dev_info(ctx->dev, "sensor %s found\n",
 				ctx->subdrv->name);
+			if (strcmp(ctx->subdrv->name,"s5kgn9_mipi_raw") == 0) {
+			    strcpy(current_imgsensor_info[0].chip, ctx->subdrv->name);
+			    sprintf(current_imgsensor_info[0].id,"0x%x",sensor_id);
+			    strcpy(current_imgsensor_info[0].vendor, "qtech");
+			    strcpy(current_imgsensor_info[0].more, "8160*6144");
+			} else if (strcmp(ctx->subdrv->name,"s5kgn9stech_mipi_raw") == 0) {
+			    strcpy(current_imgsensor_info[0].chip, ctx->subdrv->name);
+			    sprintf(current_imgsensor_info[0].id,"0x%x",sensor_id);
+			    strcpy(current_imgsensor_info[0].vendor, "stech");
+			    strcpy(current_imgsensor_info[0].more, "8160*6144");
+			} else if (strcmp(ctx->subdrv->name,"imx615_mipi_raw") == 0) {
+			    strcpy(current_imgsensor_info[1].chip, ctx->subdrv->name);
+			    sprintf(current_imgsensor_info[1].id,"0x%x",sensor_id);
+			    strcpy(current_imgsensor_info[1].vendor, "qtech");
+			    strcpy(current_imgsensor_info[1].more, "6528*4896");
+			} else if (strcmp(ctx->subdrv->name,"s5kjn1_mipi_raw") == 0) {
+			    strcpy(current_imgsensor_info[2].chip, ctx->subdrv->name);
+			    sprintf(current_imgsensor_info[2].id,"0x%x",sensor_id);
+			    strcpy(current_imgsensor_info[2].vendor, "qtech");
+			    strcpy(current_imgsensor_info[2].more, "8160*6144");
+			}
 			subdrv_call(ctx, init_ctx, ctx->i2c_client,
 				ctx->subctx.i2c_write_id);
 			ctx->ctx_pw_seq = kmalloc_array(ctx->subdrv->pw_seq_cnt,

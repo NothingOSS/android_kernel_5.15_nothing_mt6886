@@ -167,6 +167,7 @@ static int _pd_is_algo_ready(struct chg_alg_device *alg)
 		ret_value = pd_hal_is_pd_adapter_ready(alg);
 		if (ret_value == ALG_READY) {
 			uisoc = pd_hal_get_uisoc(alg);
+#if 0
 			if (pd->input_current_limit1 != -1 ||
 				pd->charging_current_limit1 != -1 ||
 				pd->input_current_limit2 != -1 ||
@@ -174,6 +175,10 @@ static int _pd_is_algo_ready(struct chg_alg_device *alg)
 				ret_value = ALG_NOT_READY;
 			else if (uisoc >= pd->pd_stop_battery_soc ||
 				(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
+#else
+			if (uisoc >= pd->pd_stop_battery_soc ||
+				(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
+#endif
 				ret_value = ALG_WAIVER;
 		} else if (ret_value == ALG_TA_NOT_SUPPORT)
 			pd->state = PD_TA_NOT_SUPPORT;
@@ -261,6 +266,7 @@ void __mtk_pdc_get_cap_max_watt(struct chg_alg_device *alg)
 				if (cap->maxwatt[i] > pd->pd_cap_max_watt) {
 					pd->pd_cap_max_watt = cap->maxwatt[i];
 					idx = i;
+					cap->selected_cap_idx = idx;
 				}
 				pd_dbg("%d %d %d %d %d %d\n",
 					cap->min_mv[i],
@@ -506,10 +512,12 @@ int mtk_pd_input_current_protection(struct chg_alg_device *alg, int vbus)
 
 	switch (vbus) {
 	case 5000:
-		pd->input_current_limit1 = 3000000;
+		//pd->input_current_limit1 = 3000000;
+		pd->input_current_limit1 = 1600000;
 		break;
 	case 9000:
-		pd->input_current_limit1 = 1500000;
+		//pd->input_current_limit1 = 1500000;
+		pd->input_current_limit1 = 1600000;
 		break;
 	}
 	pd_hal_set_input_current(alg,
@@ -942,6 +950,7 @@ static int _pd_start_algo(struct chg_alg_device *alg)
 				pd->state = PD_TA_NOT_SUPPORT;
 			else if (ret_value == ALG_READY) {
 				uisoc = pd_hal_get_uisoc(alg);
+#if 0
 				if (pd->input_current_limit1 != -1 ||
 					pd->charging_current_limit1 != -1 ||
 					pd->input_current_limit2 != -1 ||
@@ -949,6 +958,10 @@ static int _pd_start_algo(struct chg_alg_device *alg)
 					ret_value = ALG_NOT_READY;
 				else if (uisoc >= pd->pd_stop_battery_soc ||
 					(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
+#else
+				if (uisoc >= pd->pd_stop_battery_soc ||
+					(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
+#endif
 					ret_value = ALG_WAIVER;
 				else {
 					pd->state = PD_RUN;
@@ -1180,6 +1193,15 @@ static void mtk_pd_parse_dt(struct mtk_pd *pd,
 {
 	struct device_node *np = dev->of_node;
 	u32 val;
+
+	if (of_property_read_u32(np, "max_charger_voltage", &val) >= 0)
+		pd->max_charger_voltage = val;
+	else if (of_property_read_u32(np, "max-charger-voltage", &val) >= 0)
+		pd->max_charger_voltage = val;
+	else {
+		pd_err("use default V_CHARGER_MAX:%d\n", PD_V_CHARGER_MAX);
+		pd->max_charger_voltage = PD_V_CHARGER_MAX;
+	}
 
 	if (of_property_read_u32(np, "min_charger_voltage", &val) >= 0)
 		pd->min_charger_voltage = val;

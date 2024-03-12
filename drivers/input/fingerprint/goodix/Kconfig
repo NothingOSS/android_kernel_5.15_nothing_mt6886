@@ -1,0 +1,12 @@
+config GOODIX_FINGERPRINT
+	tristate "generic goodix fingerprint driver"
+	default y
+	help
+	add support for goodix fingerprint driver.
+
+config PRIZE_FP_USE_VFP
+        bool "Fingerprint power vfp"
+        default n
+        help
+        CHIPONE fingerprint CHIPONE's device.
+

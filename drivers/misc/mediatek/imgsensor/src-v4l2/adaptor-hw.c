@@ -8,13 +8,21 @@
 #include <linux/pm_runtime.h>
 #include <linux/clk.h>
 #include <linux/gpio/consumer.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pinctrl/consumer.h>
-
 #include "kd_imgsensor_define_v4l2.h"
 #include "adaptor.h"
 #include "adaptor-hw.h"
 #include <linux/clk-provider.h>
+
+extern void wl2868c_enable_ldo(int value);
+extern void wl2868c_disable_ldo(int value);
+extern void dio8018_enable_ldo(int value);
+extern void dio8018_disable_ldo(int value);
+struct device_node *dnode;
+int dcdc_GPIO;
 
 #define INST_OPS(__ctx, __field, __idx, __hw_id, __set, __unset) do {\
 	if (__ctx->__field[__idx]) { \
@@ -295,6 +303,9 @@ static int reinit_pinctrl(struct adaptor_ctx *ctx)
 int do_hw_power_on(struct adaptor_ctx *ctx)
 {
 	int i;
+	// optimize dio8018 and wl2868.@{
+	int down_up_flag = 1;
+	//@}
 	const struct subdrv_pw_seq_entry *ent;
 	struct adaptor_hw_ops *op;
 #if IMGSENSOR_LOG_MORE
@@ -318,18 +329,80 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 	if (op->set)
 		op->set(ctx, op->data, 0);
 
+	// dio8018 bringup
+	// dio8018 bringup.@{
+	dnode = of_find_node_by_name(NULL,"dio8018");
+	if(NULL == dnode)
+	{
+		printk("get dnode fail");
+		return -1;
+	}
+	//get GPIO number
+	dcdc_GPIO = of_get_named_gpio(dnode,"dcdc-gpio",0);
+	if(dcdc_GPIO < 0)
+	{
+		printk("get dcdc_GPIO fail");
+		return -1;
+	}
+
+	gpio_request(dcdc_GPIO , NULL);
+	gpio_direction_output(dcdc_GPIO,1);
+
+	//@}
 	for (i = 0; i < ctx->subdrv->pw_seq_cnt; i++) {
 		if (ctx->ctx_pw_seq)
 			ent = &ctx->ctx_pw_seq[i]; // use ctx pw seq
 		else
 			ent = &ctx->subdrv->pw_seq[i];
-		op = &ctx->hw_ops[ent->id];
-		if (!op->set) {
-			dev_dbg(ctx->dev, "cannot set comp %d val %d\n",
-				ent->id, ent->val);
-			continue;
+		// optimize dio8018 and wl2868.@{
+		if(ent->id == HW_ID_AVDD1 || ent->id == HW_ID_DVDD1 || ent->id == HW_ID_DOVDD)
+		{
+			if(down_up_flag)
+			{
+			    if (strcmp(ctx->subdrv->name,"s5kgn9_mipi_raw") == 0 || strcmp(ctx->subdrv->name,"s5kgn9stech_mipi_raw") == 0) {
+					wl2868c_enable_ldo(LDO1);
+					dio8018_enable_ldo(LDO1);
+					mdelay(1);
+					wl2868c_enable_ldo(LDO4);
+					dio8018_enable_ldo(LDO4);
+
+					wl2868c_enable_ldo(LDO6);
+				    dio8018_enable_ldo(LDO6);
+					wl2868c_enable_ldo(LDO3);
+					dio8018_enable_ldo(LDO3);
+					wl2868c_enable_ldo(LDO_OTHER);
+					dio8018_enable_ldo(LDO_OTHER);
+
+				}
+				else if (strcmp(ctx->subdrv->name,"s5kjn1_mipi_raw") == 0)
+				{
+					wl2868c_enable_ldo(LDO2);
+					dio8018_enable_ldo(LDO2);
+					mdelay(1);
+					wl2868c_enable_ldo(LDO7);
+					dio8018_enable_ldo(LDO7);
+
+					wl2868c_enable_ldo(LDO6);
+					dio8018_enable_ldo(LDO6);
+				}
+				else if(strcmp(ctx->subdrv->name,"imx615_mipi_raw") == 0 )
+				{
+					wl2868c_enable_ldo(LDO6);
+					dio8018_enable_ldo(LDO6);
+				}
+				down_up_flag = 0;
+			}
 		}
-		op->set(ctx, op->data, ent->val);
+		//@}
+		else{
+		    op = &ctx->hw_ops[ent->id];
+		    if (!op->set) {
+			    dev_dbg(ctx->dev, "cannot set comp %d val %d\n",
+				    ent->id, ent->val);
+			    continue;
+		    }
+		    op->set(ctx, op->data, ent->val);
+		}
 		if (ent->delay)
 			mdelay(ent->delay);
 	}
@@ -364,6 +437,9 @@ int adaptor_hw_power_on(struct adaptor_ctx *ctx)
 int do_hw_power_off(struct adaptor_ctx *ctx)
 {
 	int i;
+	// optimize dio8018 and wl2868.@{
+	int down_up_flag = 1;
+	//@}
 	const struct subdrv_pw_seq_entry *ent;
 	struct adaptor_hw_ops *op;
 #if IMGSENSOR_LOG_MORE
@@ -374,19 +450,63 @@ int do_hw_power_off(struct adaptor_ctx *ctx)
 
 	if (ctx->subdrv->ops->power_off)
 		subdrv_call(ctx, power_off, NULL);
-
 	for (i = ctx->subdrv->pw_seq_cnt - 1; i >= 0; i--) {
 		if (ctx->ctx_pw_seq)
 			ent = &ctx->ctx_pw_seq[i]; // use ctx pw seq
 		else
 			ent = &ctx->subdrv->pw_seq[i];
-		op = &ctx->hw_ops[ent->id];
-		if (!op->unset)
-			continue;
-		op->unset(ctx, op->data, ent->val);
-		//msleep(ent->delay);
-	}
+		// optimize dio8018 and wl2868.@{
+		if(ent->id == HW_ID_AVDD1 || ent->id == HW_ID_DVDD1 || ent->id == HW_ID_DOVDD)
+		{
+			if(down_up_flag)
+			{
+				if (strcmp(ctx->subdrv->name,"s5kgn9_mipi_raw") == 0 || strcmp(ctx->subdrv->name,"s5kgn9stech_mipi_raw") == 0) {
+					wl2868c_disable_ldo(LDO4);
+					dio8018_disable_ldo(LDO4);
+					mdelay(1);
+					wl2868c_disable_ldo(LDO1);
+					dio8018_disable_ldo(LDO1);
 
+					wl2868c_disable_ldo(LDO6);
+					dio8018_disable_ldo(LDO6);
+					wl2868c_disable_ldo(LDO3);
+					dio8018_disable_ldo(LDO3);
+
+					wl2868c_disable_ldo(LDO_OTHER);
+					dio8018_disable_ldo(LDO_OTHER);
+				}
+				else if (strcmp(ctx->subdrv->name,"s5kjn1_mipi_raw") == 0)
+				{
+					wl2868c_disable_ldo(LDO7);
+					dio8018_disable_ldo(LDO7);
+					mdelay(1);
+					wl2868c_disable_ldo(LDO2);
+					dio8018_disable_ldo(LDO2);
+
+					wl2868c_disable_ldo(LDO6);
+					dio8018_disable_ldo(LDO6);
+				}
+				else if(strcmp(ctx->subdrv->name,"imx615_mipi_raw") == 0 )
+				{
+					wl2868c_disable_ldo(LDO6);
+					dio8018_disable_ldo(LDO6);
+				}
+				down_up_flag = 0;
+			}
+		}
+		//@}
+		else{
+		    op = &ctx->hw_ops[ent->id];
+		    if (!op->unset)
+			    continue;
+		        op->unset(ctx, op->data, ent->val);
+		    //msleep(ent->delay);
+		}
+	}
+	// dio8018 bringup.@{
+	gpio_direction_output(dcdc_GPIO,0);
+	gpio_free(dcdc_GPIO);
+	//@}
 	op = &ctx->hw_ops[HW_ID_MIPI_SWITCH];
 	if (op->unset)
 		op->unset(ctx, op->data, 0);

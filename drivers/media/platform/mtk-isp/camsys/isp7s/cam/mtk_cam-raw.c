@@ -1302,6 +1302,12 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 	if (raw->num_clks) {
 		raw->clks = devm_kcalloc(dev, raw->num_clks, sizeof(*raw->clks),
 					 GFP_KERNEL);
+
+		if (!raw->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    raw->clks = vmalloc(raw->num_clks*sizeof(*raw->clks));
+		}
+
 		if (!raw->clks)
 			return -ENOMEM;
 	}
@@ -1709,6 +1715,11 @@ static int mtk_yuv_of_probe(struct platform_device *pdev,
 		drvdata->clks = devm_kcalloc(dev,
 					     drvdata->num_clks, sizeof(*drvdata->clks),
 					     GFP_KERNEL);
+		if (!drvdata->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    drvdata->clks = vmalloc(drvdata->num_clks*sizeof(*drvdata->clks));
+		}
+
 		if (!drvdata->clks)
 			return -ENOMEM;
 	}

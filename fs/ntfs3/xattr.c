@@ -542,6 +542,281 @@ struct posix_acl *ntfs_get_acl(struct inode *inode, int type, bool rcu)
 	return ntfs_get_acl_ex(inode, type, 0);
 }
 
+static struct posix_acl *
+nt_posix_acl_clone(const struct posix_acl *acl, gfp_t flags)
+{
+	struct posix_acl *clone = NULL;
+
+	if (acl) {
+		int size = sizeof(struct posix_acl) + acl->a_count *
+		           sizeof(struct posix_acl_entry);
+		clone = kmemdup(acl, size, flags);
+		if (clone)
+			refcount_set(&clone->a_refcount, 1);
+	}
+	return clone;
+}
+
+static int nt_posix_acl_create_masq(struct posix_acl *acl, umode_t *mode_p)
+{
+	struct posix_acl_entry *pa, *pe;
+	struct posix_acl_entry *group_obj = NULL, *mask_obj = NULL;
+	umode_t mode = *mode_p;
+	int not_equiv = 0;
+
+	/* assert(atomic_read(acl->a_refcount) == 1); */
+
+	FOREACH_ACL_ENTRY(pa, acl, pe) {
+                switch(pa->e_tag) {
+                        case ACL_USER_OBJ:
+				pa->e_perm &= (mode >> 6) | ~S_IRWXO;
+				mode &= (pa->e_perm << 6) | ~S_IRWXU;
+				break;
+
+			case ACL_USER:
+			case ACL_GROUP:
+				not_equiv = 1;
+				break;
+
+                        case ACL_GROUP_OBJ:
+				group_obj = pa;
+                                break;
+
+                        case ACL_OTHER:
+				pa->e_perm &= mode | ~S_IRWXO;
+				mode &= pa->e_perm | ~S_IRWXO;
+                                break;
+
+                        case ACL_MASK:
+				mask_obj = pa;
+				not_equiv = 1;
+                                break;
+
+			default:
+				return -EIO;
+                }
+        }
+
+	if (mask_obj) {
+		mask_obj->e_perm &= (mode >> 3) | ~S_IRWXO;
+		mode &= (mask_obj->e_perm << 3) | ~S_IRWXG;
+	} else {
+		if (!group_obj)
+			return -EIO;
+		group_obj->e_perm &= (mode >> 3) | ~S_IRWXO;
+		mode &= (group_obj->e_perm << 3) | ~S_IRWXG;
+	}
+
+	*mode_p = (*mode_p & ~S_IRWXUGO) | mode;
+        return not_equiv;
+}
+
+static struct posix_acl **nt_acl_by_type(struct inode *inode, int type)
+{
+	switch (type) {
+	case ACL_TYPE_ACCESS:
+		return &inode->i_acl;
+	case ACL_TYPE_DEFAULT:
+		return &inode->i_default_acl;
+	default:
+		BUG();
+	}
+}
+
+struct posix_acl *nt_get_cached_acl(struct inode *inode, int type)
+{
+	struct posix_acl **p = nt_acl_by_type(inode, type);
+	struct posix_acl *acl;
+
+	for (;;) {
+		rcu_read_lock();
+		acl = rcu_dereference(*p);
+		if (!acl || is_uncached_acl(acl) ||
+		    refcount_inc_not_zero(&acl->a_refcount))
+			break;
+		rcu_read_unlock();
+		cpu_relax();
+	}
+	rcu_read_unlock();
+	return acl;
+}
+
+
+struct posix_acl *nt_get_acl(struct inode *inode, int type)
+{
+	void *sentinel;
+	struct posix_acl **p;
+	struct posix_acl *acl;
+
+	/*
+	 * The sentinel is used to detect when another operation like
+	 * set_cached_acl() or forget_cached_acl() races with get_acl().
+	 * It is guaranteed that is_uncached_acl(sentinel) is true.
+	 */
+
+	acl = nt_get_cached_acl(inode, type);
+	if (!is_uncached_acl(acl))
+		return acl;
+
+	if (!IS_POSIXACL(inode))
+		return NULL;
+
+	sentinel = uncached_acl_sentinel(current);
+	p = nt_acl_by_type(inode, type);
+
+	/*
+	 * If the ACL isn't being read yet, set our sentinel.  Otherwise, the
+	 * current value of the ACL will not be ACL_NOT_CACHED and so our own
+	 * sentinel will not be set; another task will update the cache.  We
+	 * could wait for that other task to complete its job, but it's easier
+	 * to just call ->get_acl to fetch the ACL ourself.  (This is going to
+	 * be an unlikely race.)
+	 */
+	if (cmpxchg(p, ACL_NOT_CACHED, sentinel) != ACL_NOT_CACHED)
+		/* fall through */ ;
+
+	/*
+	 * Normally, the ACL returned by ->get_acl will be cached.
+	 * A filesystem can prevent that by calling
+	 * forget_cached_acl(inode, type) in ->get_acl.
+	 *
+	 * If the filesystem doesn't have a get_acl() function at all, we'll
+	 * just create the negative cache entry.
+	 */
+	if (!inode->i_op->get_acl) {
+		set_cached_acl(inode, type, NULL);
+		return NULL;
+	}
+	acl = inode->i_op->get_acl(inode, type, false);
+
+	if (IS_ERR(acl)) {
+		/*
+		 * Remove our sentinel so that we don't block future attempts
+		 * to cache the ACL.
+		 */
+		cmpxchg(p, sentinel, ACL_NOT_CACHED);
+		return acl;
+	}
+
+	/*
+	 * Cache the result, but only if our sentinel is still in place.
+	 */
+	posix_acl_dup(acl);
+	if (unlikely(cmpxchg(p, sentinel, acl) != sentinel))
+		posix_acl_release(acl);
+	return acl;
+}
+
+int
+nt_posix_acl_create(struct inode *dir, umode_t *mode,
+		struct posix_acl **default_acl, struct posix_acl **acl)
+{
+	struct posix_acl *p;
+	struct posix_acl *clone;
+	int ret;
+
+	*acl = NULL;
+	*default_acl = NULL;
+
+	if (S_ISLNK(*mode) || !IS_POSIXACL(dir))
+		return 0;
+
+	p = nt_get_acl(dir, ACL_TYPE_DEFAULT);
+	if (!p || p == ERR_PTR(-EOPNOTSUPP)) {
+		*mode &= ~current_umask();
+		return 0;
+	}
+	if (IS_ERR(p))
+		return PTR_ERR(p);
+
+	ret = -ENOMEM;
+	clone = nt_posix_acl_clone(p, GFP_NOFS);
+	if (!clone)
+		goto err_release;
+
+	ret = nt_posix_acl_create_masq(clone, mode);
+	if (ret < 0)
+		goto err_release_clone;
+
+	if (ret == 0)
+		posix_acl_release(clone);
+	else
+		*acl = clone;
+
+	if (!S_ISDIR(*mode))
+		posix_acl_release(p);
+	else
+		*default_acl = p;
+
+	return 0;
+
+err_release_clone:
+	posix_acl_release(clone);
+err_release:
+	posix_acl_release(p);
+	return ret;
+}
+
+int nt_posix_acl_update_mode(struct user_namespace *mnt_userns,
+			  struct inode *inode, umode_t *mode_p,
+			  struct posix_acl **acl)
+{
+	umode_t mode = inode->i_mode;
+	int error;
+
+	error = posix_acl_equiv_mode(*acl, &mode);
+	if (error < 0)
+		return error;
+	if (error == 0)
+		*acl = NULL;
+	if (!in_group_p(i_gid_into_mnt(mnt_userns, inode)) &&
+	    !capable_wrt_inode_uidgid(mnt_userns, inode, CAP_FSETID))
+		mode &= ~S_ISGID;
+	*mode_p = mode;
+	return 0;
+}
+
+/*
+ * Convert from in-memory to extended attribute representation.
+ */
+int
+nt_posix_acl_to_xattr(struct user_namespace *user_ns, const struct posix_acl *acl,
+		   void *buffer, size_t size)
+{
+	struct posix_acl_xattr_header *ext_acl = buffer;
+	struct posix_acl_xattr_entry *ext_entry;
+	int real_size, n;
+
+	real_size = posix_acl_xattr_size(acl->a_count);
+	if (!buffer)
+		return real_size;
+	if (real_size > size)
+		return -ERANGE;
+
+	ext_entry = (void *)(ext_acl + 1);
+	ext_acl->a_version = cpu_to_le32(POSIX_ACL_XATTR_VERSION);
+
+	for (n=0; n < acl->a_count; n++, ext_entry++) {
+		const struct posix_acl_entry *acl_e = &acl->a_entries[n];
+		ext_entry->e_tag  = cpu_to_le16(acl_e->e_tag);
+		ext_entry->e_perm = cpu_to_le16(acl_e->e_perm);
+		switch(acl_e->e_tag) {
+		case ACL_USER:
+			ext_entry->e_id =
+				cpu_to_le32(from_kuid(user_ns, acl_e->e_uid));
+			break;
+		case ACL_GROUP:
+			ext_entry->e_id =
+				cpu_to_le32(from_kgid(user_ns, acl_e->e_gid));
+			break;
+		default:
+			ext_entry->e_id = cpu_to_le32(ACL_UNDEFINED_ID);
+			break;
+		}
+	}
+	return real_size;
+}
+
 static noinline int ntfs_set_acl_ex(struct user_namespace *mnt_userns,
 				    struct inode *inode, struct posix_acl *acl,
 				    int type, bool init_acl)
@@ -561,7 +836,7 @@ static noinline int ntfs_set_acl_ex(struct user_namespace *mnt_userns,
 	case ACL_TYPE_ACCESS:
 		/* Do not change i_mode if we are in init_acl */
 		if (acl && !init_acl) {
-			err = posix_acl_update_mode(mnt_userns, inode, &mode,
+			err = nt_posix_acl_update_mode(mnt_userns, inode, &mode,
 						    &acl);
 			if (err)
 				return err;
@@ -591,7 +866,7 @@ static noinline int ntfs_set_acl_ex(struct user_namespace *mnt_userns,
 		value = kmalloc(size, GFP_NOFS);
 		if (!value)
 			return -ENOMEM;
-		err = posix_acl_to_xattr(&init_user_ns, acl, value, size);
+		err = nt_posix_acl_to_xattr(&init_user_ns, acl, value, size);
 		if (err < 0)
 			goto out;
 		flags = 0;
@@ -634,7 +909,7 @@ int ntfs_init_acl(struct user_namespace *mnt_userns, struct inode *inode,
 	struct posix_acl *default_acl, *acl;
 	int err;
 
-	err = posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
+	err = nt_posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
 	if (err)
 		return err;
 

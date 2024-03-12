@@ -71,7 +71,12 @@ unsigned int do_lens_id_base(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
 unsigned int do_lens_id(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
-
+unsigned int do_fuse_id(struct EEPROM_DRV_FD_DATA *pdata,
+		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
+// eeprom add OisInfo@{
+unsigned int do_ois_info(struct EEPROM_DRV_FD_DATA *pdata,
+		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
+//@}
 unsigned int get_is_need_power_on(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int *pGetNeedPowerOn);
 unsigned int get_cal_data(struct EEPROM_DRV_FD_DATA *pdata, unsigned int *pGetSensorCalData);

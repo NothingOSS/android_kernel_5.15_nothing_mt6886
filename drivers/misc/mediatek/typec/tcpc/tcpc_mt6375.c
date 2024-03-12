@@ -140,6 +140,7 @@
 #define MT6375_MSK_BMCIOOSC_EN	BIT(0)
 #define MT6375_MSK_VBUSDET_EN	BIT(1)
 #define MT6375_MSK_LPWR_EN	BIT(3)
+#define MT6375_MSK_BG_ITRIM_EN	BIT(4)
 /* MT6375_REG_MTINT1: 0x98 */
 #define MT6375_MSK_WAKEUP	BIT(0)
 #define MT6375_MSK_VBUS80	BIT(1)
@@ -201,6 +202,7 @@
 #define MT6375_MSK_RPDET_MANUAL	BIT(6)
 #define MT6375_MSK_RPDET_AUTO	BIT(7)
 /* MT6375_REG_TYPECOTPCTRL: 0xCD */
+#define MT6375_MSK_TYPECOTP_HWEN	BIT(0)
 #define MT6375_MSK_TYPECOTP_FWEN	BIT(2)
 /* MT6375_REG_WD12MODECTRL: 0xD0 */
 #define MT6375_MSK_WD12MODE_EN	BIT(4)
@@ -1283,8 +1285,10 @@ static int mt6375_wd_polling_evt_process(struct mt6375_tcpc_data *ddata)
 	}
 	if (polling)
 		mt6375_enable_wd_polling(ddata, true);
+#if CONFIG_WATER_DETECTION
 	else
 		tcpc_typec_handle_wd(ddata->tcpc, true);
+#endif /* CONFIG_WATER_DETECTION */
 	return 0;
 }
 
@@ -1313,7 +1317,9 @@ out:
 	MT6375_DBGINFO("%s: retry cnt = %d\n", __func__,
 		       atomic_read(&ddata->wd_protect_retry));
 	if (!protection && atomic_dec_and_test(&ddata->wd_protect_retry)) {
+#if CONFIG_WATER_DETECTION
 		tcpc_typec_handle_wd(ddata->tcpc, false);
+#endif /* CONFIG_WATER_DETECTION */
 		atomic_set(&ddata->wd_protect_retry,
 			   CONFIG_WD_PROTECT_RETRY_COUNT);
 	} else
@@ -1847,6 +1853,7 @@ static int mt6375_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 #if CONFIG_TYPEC_CAP_NORP_SRC
 		data |= MT6375_MSK_VBUSDET_EN;
 #endif	/* CONFIG_TYPEC_CAP_NORP_SRC */
+		data |= MT6375_MSK_BG_ITRIM_EN;
 	} else {
 		data = MT6375_MSK_VBUSDET_EN | MT6375_MSK_BMCIOOSC_EN;
 	}
@@ -2009,6 +2016,7 @@ static int mt6375_set_cc_hidet(struct tcpc_device *tcpc, bool en)
 	return ret;
 }
 
+#if CONFIG_WATER_DETECTION
 static int mt6375_is_water_detected(struct tcpc_device *tcpc)
 {
 	int ret, i;
@@ -2042,6 +2050,7 @@ static int mt6375_set_wd_polling(struct tcpc_device *tcpc, bool en)
 		cancel_delayed_work_sync(&ddata->wd_poll_dwork);
 	return mt6375_enable_wd_polling(ddata, en);
 }
+#endif /* CONFIG_WATER_DETECTION */
 
 static int mt6375_set_floating_ground(struct tcpc_device *tcpc, bool en)
 {
@@ -2065,6 +2074,16 @@ static int mt6375_vsafe0v_irq_handler(struct mt6375_tcpc_data *ddata)
 		return ret;
 	ddata->tcpc->vbus_safe0v = ret ? true : false;
 	return 0;
+}
+
+static int mt6375_typec_otp_update_hwen(struct mt6375_tcpc_data *ddata, u8 en)
+{
+	int ret;
+
+	ret = (en ? mt6375_set_bits : mt6375_clr_bits)
+		(ddata, MT6375_REG_TYPECOTPCTRL, MT6375_MSK_TYPECOTP_HWEN);
+
+	return ret;
 }
 
 static int mt6375_typec_otp_irq_handler(struct mt6375_tcpc_data *ddata)
@@ -2303,9 +2322,11 @@ static struct tcpc_ops mt6375_tcpc_ops = {
 
 	.set_cc_hidet = mt6375_set_cc_hidet,
 
+#if CONFIG_WATER_DETECTION
 	.is_water_detected = mt6375_is_water_detected,
 	.set_water_protection = mt6375_set_water_protection,
 	.set_usbid_polling = mt6375_set_wd_polling,
+#endif /* CONFIG_WATER_DETECTION */
 
 	.set_floating_ground = mt6375_set_floating_ground,
 	.set_otp_fwen = mt6375_enable_typec_otp_fwen,
@@ -2668,6 +2689,13 @@ static int mt6375_tcpc_probe(struct platform_device *pdev)
 	ret = mt6375_tcpc_init_irq(ddata);
 	if (ret < 0) {
 		dev_err(ddata->dev, "failed to init irq\n");
+		goto err;
+	}
+
+	/* disable hw otp*/
+	ret = mt6375_typec_otp_update_hwen(ddata, false);
+	if (ret < 0) {
+		dev_err(ddata->dev, "failed to disable hw otp\n");
 		goto err;
 	}
 

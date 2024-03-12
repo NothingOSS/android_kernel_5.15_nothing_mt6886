@@ -46,6 +46,35 @@
 static int ufs_abort_aee_count;
 #endif
 
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+#include "../../misc/hardware_info/hardware_info.h"
+#endif
+
+/* UFSHCD error handling flags */
+enum {
+	UFSHCD_HAGC_EH_IN_PROGRESS = (1 << 0),
+};
+
+/* UFSHCD UIC layer error flags */
+enum {
+	UFSHCD_UIC_DL_PA_INIT_ERROR = (1 << 0), /* Data link layer error */
+	UFSHCD_UIC_DL_NAC_RECEIVED_ERROR = (1 << 1), /* Data link layer error */
+	UFSHCD_UIC_DL_TCx_REPLAY_ERROR = (1 << 2), /* Data link layer error */
+	UFSHCD_UIC_NL_ERROR = (1 << 3), /* Network layer error */
+	UFSHCD_UIC_TL_ERROR = (1 << 4), /* Transport Layer error */
+	UFSHCD_UIC_DME_ERROR = (1 << 5), /* DME error */
+	UFSHCD_UIC_PA_GENERIC_ERROR = (1 << 6), /* Generic PA error */
+};
+
+static int ufs_nt_init_sysfs(struct ufs_hba *hba);
+
+#define ufshcd_set_hagc_eh_in_progress(h) \
+	((h)->eh_flags |= UFSHCD_HAGC_EH_IN_PROGRESS)
+#define ufshcd_hagc_eh_in_progress(h) \
+	((h)->eh_flags & UFSHCD_HAGC_EH_IN_PROGRESS)
+#define ufshcd_clear_hagc_eh_in_progress(h) \
+	((h)->eh_flags &= ~UFSHCD_HAGC_EH_IN_PROGRESS)
+
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 static void ufs_mtk_mphy_dump(struct ufs_hba *hba);
 static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage);
@@ -385,6 +414,10 @@ static const u8 *mphy_str[] = {
 	"CL", /* 149 */
 };
 
+#endif
+
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+static struct ufs_hba *g_hba_ptr = NULL;
 #endif
 
 extern void mt_irq_dump_status(unsigned int irq);
@@ -2224,6 +2257,17 @@ static void ufs_mtk_fix_ahit(struct ufs_hba *hba)
 	ufs_mtk_setup_clk_gating(hba);
 }
 
+static void ufs_mtk_delay_eh_work_fn(struct work_struct *dwork)
+{
+	struct ufs_hba *hba;
+	struct ufs_mtk_host *host;
+
+	host = container_of(dwork, struct ufs_mtk_host, delay_eh_work.work);
+	hba = host->hba;
+
+	queue_work(hba->eh_wq, &hba->eh_work);
+}
+
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -2330,6 +2374,10 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	host->pm_qos_init = true;
 
 	init_completion(&host->luns_added);
+	INIT_DELAYED_WORK(&host->delay_eh_work, ufs_mtk_delay_eh_work_fn);
+	host->delay_eh_workq = create_singlethread_workqueue("ufs_mtk_eh_wq");
+
+	init_manual_gc(hba);
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 	host->skip_blocktag = false;
@@ -3504,6 +3552,10 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 	else
 		ufs_mtk_setup_ref_clk_wait_us(hba, 30, 30);
 
+	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SKHYNIX) {
+		ufs_nt_init_sysfs(hba);
+	}
+
 	return 0;
 }
 
@@ -3542,12 +3594,38 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 #endif
 }
 
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+void ufs_get_hardware_info(struct hardware_info *hwinfo)
+{
+	if (hwinfo != NULL && g_hba_ptr != NULL) {
+		/* set only if it has not been set */
+		if (strcmp(hwinfo->chip, "unknow") == 0) {
+			snprintf(hwinfo->chip,
+				sizeof(hwinfo->chip),
+				"model=%s",
+				g_hba_ptr->dev_info.model);
+			snprintf(hwinfo->id,
+				sizeof(hwinfo->id),
+				"Device vendor=0x%X",
+				g_hba_ptr->dev_info.wmanufacturerid);
+			snprintf(hwinfo->vendor,
+				sizeof(hwinfo->vendor),
+				"hba->ufs_version = 0x%x",
+				g_hba_ptr->ufs_version);
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(ufs_get_hardware_info);
+#endif
+
 static void ufs_mtk_event_notify(struct ufs_hba *hba,
 				 enum ufs_event_type evt, void *data)
 {
 	unsigned int val = *(u32 *)data;
 	unsigned long reg;
 	uint8_t bit;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 set;
 
 	trace_ufs_mtk_event(evt, val);
 
@@ -3571,8 +3649,22 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 			ufs_mtk_mphy_record(hba, UFS_MPHY_UIC);
 #endif
 		ufs_mtk_dbg_register_dump(hba);
-	}
 
+		if ((reg & UIC_PHY_ADAPTER_LAYER_ERROR_CODE_MASK) == 0x3) {
+			dev_info(hba->dev, "force reset only 0x80000003!\n");
+			hba->force_reset = true;
+			hba->ufshcd_state = UFSHCD_STATE_EH_SCHEDULED_FATAL;
+
+			/* Disable UIC error intr to stop consecutive irq */
+			set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
+			set &= ~UFSHCD_ERROR_MASK;
+			ufshcd_writel(hba, set, REG_INTERRUPT_ENABLE);
+
+			queue_delayed_work(host->delay_eh_workq,
+				&host->delay_eh_work,
+				msecs_to_jiffies(1000));
+		}
+	}
 	if (evt == UFS_EVT_DL_ERR) {
 		for_each_set_bit(bit, &reg, ARRAY_SIZE(ufs_uic_dl_err_str))
 			dev_info(hba->dev, "%s\n", ufs_uic_dl_err_str[bit]);
@@ -3867,6 +3959,9 @@ skip_phy:
 	 * entering LPM.
 	 */
 	ufs_mtk_dev_vreg_set_lpm(hba, false);
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+	g_hba_ptr = hba;
+#endif
 
 out:
 	of_node_put(phy_node);
@@ -3883,6 +3978,218 @@ static void ufs_mtk_remove_ufsf(struct ufs_hba *hba)
 		ufsf_remove(ufsf);
 }
 #endif
+
+/* for manual gc */
+static ssize_t manual_gc_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	u32 status = MANUAL_GC_OFF;
+
+	if (host->manual_gc.state == MANUAL_GC_DISABLE)
+		return scnprintf(buf, PAGE_SIZE, "%s", "disabled\n");
+
+	if (host->manual_gc.hagc_support) {
+		int err;
+
+		if (!ufshcd_hagc_eh_in_progress(hba)) {
+			pm_runtime_get_sync(hba->dev);
+			err = ufshcd_query_attr_retry(hba,
+				UPIU_QUERY_OPCODE_READ_ATTR,
+				QUERY_ATTR_IDN_MANUAL_GC_STATUS, 0, 0, &status);
+			pm_runtime_put_sync(hba->dev);
+			host->manual_gc.hagc_support = err ? false: true;
+		}
+	}
+
+	if (!host->manual_gc.hagc_support)
+		return scnprintf(buf, PAGE_SIZE, "%s", "bkops\n");
+
+	dev_err(dev, "%s status=%d\n", __func__, status);
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			status == MANUAL_GC_STATUS_CLEAN ? "GREEN" :
+			status == MANUAL_GC_STATUS_PAUSE ? "YELLOW" :
+			status == MANUAL_GC_STATUS_DIRTY ? "RED" :
+			status == MANUAL_GC_STATUS_MAX ? "UNKNOWN" : "UNKNOWN");
+}
+
+static int manual_gc_enable(struct ufs_hba *hba, u32 *value)
+{
+	int ret;
+
+	if (ufshcd_hagc_eh_in_progress(hba))
+		return -EBUSY;
+
+	dev_err(hba->dev, "%s value=%d\n", __func__, *value);
+	pm_runtime_get_sync(hba->dev);
+	ret = ufshcd_query_attr_retry(hba,
+				UPIU_QUERY_OPCODE_WRITE_ATTR,
+				QUERY_ATTR_IDN_MANUAL_GC_CONT, 0, 0,
+				value);
+	pm_runtime_put_sync(hba->dev);
+	dev_err(hba->dev, "%s ret=%d\n", __func__, ret);
+	return ret;
+}
+
+static ssize_t manual_gc_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	u32 value;
+	int err = 0;
+
+	if (kstrtou32(buf, 0, &value))
+		return -EINVAL;
+
+	if (value >= MANUAL_GC_MAX)
+		return -EINVAL;
+
+	if (ufshcd_hagc_eh_in_progress(hba))
+		return -EBUSY;
+
+	if (value == MANUAL_GC_DISABLE || value == MANUAL_GC_ENABLE) {
+		host->manual_gc.state = value;
+		return count;
+	}
+	if (host->manual_gc.state == MANUAL_GC_DISABLE)
+		return count;
+
+	if (host->manual_gc.hagc_support)
+		host->manual_gc.hagc_support =
+			manual_gc_enable(hba, &value) ? false : true;
+
+	pm_runtime_get_sync(hba->dev);
+
+	if (!host->manual_gc.hagc_support) {
+		err = ufshcd_bkops_ctrl(hba, (value == MANUAL_GC_ON) ?
+					BKOPS_STATUS_NON_CRITICAL:
+					BKOPS_STATUS_CRITICAL);
+		if (!hba->auto_bkops_enabled)
+			err = -EAGAIN;
+	}
+
+	/* flush wb buffer */
+	if (hba->dev_info.wspecversion >= 0x0310) {
+		enum query_opcode opcode = (value == MANUAL_GC_ON) ?
+						UPIU_QUERY_OPCODE_SET_FLAG:
+						UPIU_QUERY_OPCODE_CLEAR_FLAG;
+		u8 index = ufshcd_wb_get_query_index(hba);
+
+		ufshcd_query_flag_retry(hba, opcode,
+				QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8,
+				index, NULL);
+		ufshcd_query_flag_retry(hba, opcode,
+				QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN, index, NULL);
+	}
+
+	if (err || hrtimer_active(&host->manual_gc.hrtimer)) {
+		pm_runtime_put_sync(hba->dev);
+		return count;
+	} else {
+		/* pm_runtime_put_sync in delay_ms */
+		hrtimer_start(&host->manual_gc.hrtimer,
+			ms_to_ktime(host->manual_gc.delay_ms),
+			HRTIMER_MODE_REL);
+	}
+	return count;
+}
+
+static DEVICE_ATTR_RW(manual_gc);
+
+static ssize_t manual_gc_hold_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	return snprintf(buf, PAGE_SIZE, "%lu\n", host->manual_gc.delay_ms);
+}
+
+static ssize_t manual_gc_hold_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	unsigned long value;
+
+	if (kstrtoul(buf, 0, &value))
+		return -EINVAL;
+
+	if (value < UFSHCD_MANUAL_GC_HOLD_HIBERN8_MIN ||
+		value > UFSHCD_MANUAL_GC_HOLD_HIBERN8_MAX) {
+		dev_err(dev, "%s Invaild value: %d\n", __func__, value);
+		return -EINVAL;
+	}
+	host->manual_gc.delay_ms = value;
+	return count;
+}
+
+static DEVICE_ATTR_RW(manual_gc_hold);
+
+static enum hrtimer_restart mgc_hrtimer_handler(struct hrtimer *timer)
+{
+	struct ufs_mtk_host *host = container_of(timer, struct ufs_mtk_host,
+					manual_gc.hrtimer);
+
+	queue_work(host->manual_gc.mgc_workq, &host->manual_gc.hibern8_work);
+	return HRTIMER_NORESTART;
+}
+
+static void mgc_hibern8_work(struct work_struct *work)
+{
+	struct ufs_mtk_host *host = container_of(work, struct ufs_mtk_host,
+					manual_gc.hibern8_work);
+	pm_runtime_put_sync(host->hba->dev);
+	/* bkops will be disabled when power down */
+}
+
+static struct attribute *ufs_nt_sysfs_attrs[] = {
+	&dev_attr_manual_gc.attr,
+	&dev_attr_manual_gc_hold.attr,
+	NULL
+};
+
+static const struct attribute_group ufs_nt_sysfs_group = {
+	.name = "nt",
+	.attrs = ufs_nt_sysfs_attrs,
+};
+
+static int ufs_nt_init_sysfs(struct ufs_hba *hba)
+{
+	int ret;
+
+	ret = sysfs_create_group(&hba->dev->kobj, &ufs_nt_sysfs_group);
+	if (ret)
+		dev_err(hba->dev, "%s: Failed to create manual_gc sysfs group (err = %d)\n",
+				__func__, ret);
+
+	return ret;
+}
+
+void init_manual_gc(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct ufs_manual_gc *mgc = &host->manual_gc;
+	char wq_name[sizeof("ufs_mgc_hibern8_work")];
+
+	mgc->state = MANUAL_GC_ENABLE;
+	mgc->hagc_support = true;
+	mgc->delay_ms = UFSHCD_MANUAL_GC_HOLD_HIBERN8;
+
+	hrtimer_init(&mgc->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	mgc->hrtimer.function = mgc_hrtimer_handler;
+
+	INIT_WORK(&mgc->hibern8_work, mgc_hibern8_work);
+	snprintf(wq_name, ARRAY_SIZE(wq_name), "ufs_mgc_hibern8_work_%d",
+			hba->host->host_no);
+	host->manual_gc.mgc_workq = create_singlethread_workqueue(wq_name);
+}
 
 /**
  * ufs_mtk_remove - set driver_data of the device to NULL

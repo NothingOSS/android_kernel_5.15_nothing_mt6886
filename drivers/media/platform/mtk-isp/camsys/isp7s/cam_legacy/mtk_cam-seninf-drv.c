@@ -406,8 +406,16 @@ static int seninf_dfs_init(struct seninf_dfs *dfs, struct device *dev)
 
 	dfs->freqs = devm_kzalloc(dev,
 				  sizeof(unsigned long) * dfs->cnt, GFP_KERNEL);
+	if (!dfs->freqs) {
+		dev_info(dev, "kzalloc memory faill %d", __LINE__);
+		dfs->freqs = vmalloc(sizeof(unsigned long) * dfs->cnt);
+	}
 	dfs->volts = devm_kzalloc(dev,
 				  sizeof(unsigned long) * dfs->cnt, GFP_KERNEL);
+	if (!dfs->volts) {
+		dev_info(dev, "kzalloc memory faill %d", __LINE__);
+		dfs->volts = vmalloc(sizeof(unsigned long) * dfs->cnt);
+	}
 	if (!dfs->freqs || !dfs->volts)
 		return -ENOMEM;
 
@@ -502,6 +510,12 @@ static int seninf_core_pm_runtime_enable(struct seninf_core *core)
 	else if (core->pm_domain_cnt > 1) {
 		core->pm_domain_devs = devm_kcalloc(core->dev, core->pm_domain_cnt,
 					sizeof(*core->pm_domain_devs), GFP_KERNEL);
+
+		if (!core->pm_domain_devs) {
+		    dev_info(core->dev, "kcalloc memory faill %d", __LINE__);
+		    core->pm_domain_devs = vmalloc(core->pm_domain_cnt*sizeof(*core->pm_domain_devs));
+		}
+
 		if (!core->pm_domain_devs)
 			return -ENOMEM;
 
@@ -735,6 +749,10 @@ static int seninf_core_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 
 	core = devm_kzalloc(&pdev->dev, sizeof(*core), GFP_KERNEL);
+	if (!core) {
+		dev_info(dev, "kzalloc memory faill %d", __LINE__);
+		core = vmalloc(sizeof(*core));
+	}
 	if (!core)
 		return -ENOMEM;
 
@@ -2442,6 +2460,10 @@ static int seninf_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
+	if (!ctx) {
+		dev_info(dev, "kzalloc memory faill %d", __LINE__);
+		ctx = vmalloc(sizeof(*ctx));
+	}
 	if (!ctx)
 		return -ENOMEM;
 

@@ -1149,6 +1149,7 @@ bool mtk_drm_lcm_is_connect(struct mtk_drm_crtc *mtk_crtc)
 	return !!panel_ext->is_connected;
 }
 
+extern int mtk_dsi_get_vendor_id(void);
 static void drm_atomic_esd_chk_first_enable(struct drm_device *dev,
 				     struct drm_atomic_state *old_state)
 {
@@ -1165,8 +1166,13 @@ static void drm_atomic_esd_chk_first_enable(struct drm_device *dev,
 
 		if (crtc && crtc_idx < MAX_CRTC && is_checked[crtc_idx] == 0 &&
 				mtk_crtc && mtk_crtc->enabled) {
-			if  (mtk_drm_is_enable_from_lk(crtc) && mtk_drm_lcm_is_connect(mtk_crtc))
-				mtk_disp_esd_check_switch(crtc, true);
+			if  (mtk_drm_is_enable_from_lk(crtc) && mtk_drm_lcm_is_connect(mtk_crtc)) {
+				if ((mtk_dsi_get_vendor_id() == 2) || (mtk_dsi_get_vendor_id() == 3)) {
+					mtk_disp_esd_check_switch(crtc, false);
+				} else {
+					mtk_disp_esd_check_switch(crtc, true);
+				}
+			}
 			is_checked[crtc_idx] = 1;
 		}
 	}

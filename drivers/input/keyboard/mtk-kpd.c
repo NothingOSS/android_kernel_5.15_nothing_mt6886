@@ -90,6 +90,7 @@ static void kpd_keymap_handler(unsigned long data)
 	struct mtk_keypad *keypad = (struct mtk_keypad *)data;
 
 	kpd_get_keymap_state(keypad->base, new_state);
+	pr_info("%s(): new_state[0] = 0x%x\n", __func__, new_state[0]);
 
 	__pm_wakeup_event(keypad->suspend_lock, 500);
 
@@ -110,16 +111,18 @@ static void kpd_keymap_handler(unsigned long data)
 
 			/* bit is 1: not pressed, 0: pressed */
 			pressed = (new_state[i] & mask) == 0U;
-			pr_notice("(%s) HW keycode = %d\n",
-				(pressed) ? "pressed" : "released",
-					hw_keycode);
+			// pr_notice("(%s) HW keycode = %d\n",
+			// 	(pressed) ? "pressed" : "released",
+			// 		hw_keycode);
 
 			keycode = keypad->hw_init_map[hw_keycode];
 			if (!keycode)
 				continue;
 			input_report_key(keypad->input_dev, keycode, pressed);
 			input_sync(keypad->input_dev);
-			pr_notice("report Linux keycode = %d\n", keycode);
+			// pr_notice("report Linux keycode = %d\n", keycode);
+			pr_notice("report Linux keycode = %d(%s)\n",
+					keycode, (pressed) ? "pressed" : "released");
 		}
 	}
 
@@ -132,6 +135,8 @@ static irqreturn_t kpd_irq_handler(int irq, void *dev_id)
 	/* use _nosync to avoid deadlock */
 	struct mtk_keypad *keypad = dev_id;
 
+	pr_info("%s(): new_state[0] = 0x%x\n",
+			__func__, readw(keypad->base + KP_MEM1));
 	disable_irq_nosync(keypad->irqnr);
 	tasklet_schedule(&keypad->tasklet);
 	return IRQ_HANDLED;
@@ -294,6 +299,7 @@ static int kpd_pdrv_probe(struct platform_device *pdev)
 		pr_notice("irq %d enable irq wake fail\n", keypad->irqnr);
 
 	platform_set_drvdata(pdev, keypad);
+	enable_kpd(keypad->base, 1);
 
 	return 0;
 
@@ -323,19 +329,11 @@ static int kpd_pdrv_remove(struct platform_device *pdev)
 
 static int kpd_pdrv_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	struct mtk_keypad *keypad = platform_get_drvdata(pdev);
-
-	enable_kpd(keypad->base, 0);
-
 	return 0;
 }
 
 static int kpd_pdrv_resume(struct platform_device *pdev)
 {
-	struct mtk_keypad *keypad = platform_get_drvdata(pdev);
-
-	enable_kpd(keypad->base, 1);
-
 	return 0;
 }
 

@@ -55,6 +55,10 @@ int sec_schip_enabled(void)
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+EXPORT_SYMBOL(sec_schip_enabled);
+#endif
+
 /******************************************************************************
  * CHECK IF SECURE USBDL IS ENABLED
  ******************************************************************************/

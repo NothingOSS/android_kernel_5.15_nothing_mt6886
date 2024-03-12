@@ -302,6 +302,12 @@ static int seninf_core_pm_runtime_enable(struct seninf_core *core)
 	else {
 		core->pm_domain_devs = devm_kcalloc(core->dev, core->pm_domain_cnt,
 					sizeof(*core->pm_domain_devs), GFP_KERNEL);
+
+		if (!core->pm_domain_devs) {
+		    dev_info(core->dev, "kcalloc memory faill %d", __LINE__);
+		    core->pm_domain_devs = vmalloc(core->pm_domain_cnt*sizeof(*core->pm_domain_devs));
+		}
+
 		if (!core->pm_domain_devs)
 			return -ENOMEM;
 

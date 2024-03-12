@@ -48,7 +48,12 @@ enum {
 	CHARGER_DEV_NOTIFY_VDROVP,
 	CHARGER_DEV_NOTIFY_BATPRO_DONE,
 };
-
+enum {
+	CP_DEV_REVISION,
+	CP_DEV_OVPGATE,
+	CP_DEV_WPCGATE,
+	CP_DEV_WORKMODE,
+};
 struct charger_device {
 	struct charger_properties props;
 	struct chgdev_notify noti;
@@ -160,7 +165,8 @@ struct charger_ops {
 	int (*enable_otg)(struct charger_device *dev, bool en);
 	int (*enable_discharge)(struct charger_device *dev, bool en);
 	int (*set_boost_current_limit)(struct charger_device *dev, u32 uA);
-
+	int (*get_boost_current_limit)(struct charger_device *dev, u32 *uA);
+	int (*get_boost_voltage_limit)(struct charger_device *dev, u32 *uV);
 	/* charger type detection */
 	int (*enable_chg_type_det)(struct charger_device *dev, bool en);
 
@@ -183,6 +189,9 @@ struct charger_ops {
 	int (*get_vbus_adc)(struct charger_device *dev, u32 *vbus);
 	int (*get_ibus_adc)(struct charger_device *dev, u32 *ibus);
 	int (*get_ibat_adc)(struct charger_device *dev, u32 *ibat);
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+	int (*get_ts_adc)(struct charger_device *dev, u32 *ts);
+#endif /* CONFIG_NT_USB_TS */
 	int (*get_tchg_adc)(struct charger_device *dev, int *tchg_min,
 		int *tchg_max);
 	int (*get_zcv)(struct charger_device *dev, u32 *uV);
@@ -204,6 +213,10 @@ struct charger_ops {
 	int (*get_property)(struct charger_device *dev,
 			    enum charger_property prop,
 			    union charger_propval *val);
+	/* Charger Pump */
+	int (*get_cp_status)(struct charger_device *dev, u32 evt);
+	/* Charger Pump */
+	int (*enable_ship_mode)(struct charger_device *dev, bool en);
 };
 
 static inline void *charger_dev_get_drvdata(
@@ -340,6 +353,10 @@ extern int charger_dev_get_adc(struct charger_device *charger_dev,
 extern int charger_dev_get_adc_accuracy(struct charger_device *charger_dev,
 	enum adc_channel chan, int *min, int *max);
 /* Prefer use charger_dev_get_adc api */
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+extern int charger_dev_get_ts(
+	struct charger_device *chg_dev, u32 *ts);
+#endif /* CONFIG_NT_USB_TS */
 extern int charger_dev_get_vbus(
 	struct charger_device *charger_dev, u32 *vbus);
 extern int charger_dev_get_ibus(
@@ -397,6 +414,8 @@ extern int unregister_charger_device_notifier(
 				struct notifier_block *nb);
 extern int charger_dev_notify(
 	struct charger_device *charger_dev, int event);
-
-
+extern int charger_dev_get_boost_current_limit(struct charger_device *chg_dev, u32* uA);
+extern int charger_dev_get_boost_voltage_limit(struct charger_device *chg_dev, u32* uV);
+extern int charger_dev_get_cp_status(struct charger_device *charger_dev, u32 evt);
+extern int charger_dev_enable_ship_mode(struct charger_device *charger_dev, bool en);
 #endif /*LINUX_POWER_CHARGER_CLASS_H*/

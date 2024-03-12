@@ -77,6 +77,14 @@ bypass_oneshot:
 	*val = be16_to_cpu(be_val);
 	ret = IIO_VAL_INT;
 
+	/* For valule of TS channel not stable when usb is absent:
+	 * If val returned too small, treat as NTC NC state (return VRef).
+	 * */
+	if (unlikely((chan == MT6375_ADC_TS))) {
+		dev_info(priv->dev, "%s(): be_val %d, val %d\n", __func__, be_val, *val);
+		if (*val < 5) *val = 1440; /* = (VRef) / (scale of TS) = 1800000 / 1250 */
+	}
+
 adc_unlock:
 	pm_relax(priv->dev);
 	mutex_unlock(&priv->lock);

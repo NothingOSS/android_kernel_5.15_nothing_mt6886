@@ -25,6 +25,7 @@
 
 #define IDX_MAX_CAM_NUMBER 7 // refer to IHalsensor.h
 #define MAX_EEPROM_LIST_NUMBER 32
+#define LSC_SIZE 1868
 
 #undef E
 #define E(__x__) (__x__)
@@ -72,29 +73,35 @@ int get_mtk_format_version(struct EEPROM_DRV_FD_DATA *pdata, unsigned int *pGetS
 unsigned int layout_check(struct EEPROM_DRV_FD_DATA *pdata,
 				unsigned int sensorID)
 {
-	unsigned int header_offset = cam_cal_config->layout->header_addr;
-	unsigned int check_id = 0x00000000;
+	/*Cancel the headerid determination, fearing that the headerid of the module may change and cause reading failure. 
+	Use the sensor name directly to determine*/
+
+	//unsigned int header_offset = cam_cal_config->layout->header_addr;
+	//unsigned int check_id = 0x00000000;
 	unsigned int result = CAM_CAL_ERR_NO_DEVICE;
 
 	if (cam_cal_config->sensor_id == sensorID)
+	{
 		debug_log("%s sensor_id matched\n", cam_cal_config->name);
+		result = CAM_CAL_ERR_NO_ERR;
+	}
 	else {
 		debug_log("%s sensor_id not matched\n", cam_cal_config->name);
 		return result;
 	}
 
-	if (read_data_region(pdata, (u8 *)&check_id, header_offset, 4) != 4) {
-		debug_log("header_id read failed\n");
-		return result;
-	}
+	// if (read_data_region(pdata, (u8 *)&check_id, header_offset+1, 3) != 3) {
+	// 	debug_log("header_id read failed\n");
+	// 	return result;
+	// }
 
-	if (check_id == cam_cal_config->layout->header_id) {
-		debug_log("header_id matched 0x%08x 0x%08x\n",
-			check_id, cam_cal_config->layout->header_id);
-		result = CAM_CAL_ERR_NO_ERR;
-	} else
-		debug_log("header_id not matched 0x%08x 0x%08x\n",
-			check_id, cam_cal_config->layout->header_id);
+	// if (check_id == cam_cal_config->layout->header_id) {
+	// 	debug_log("header_id matched 0x%08x 0x%08x\n",
+	// 		check_id, cam_cal_config->layout->header_id);
+	// 	result = CAM_CAL_ERR_NO_ERR;
+	// } else
+	// 	debug_log("header_id not matched 0x%08x 0x%08x\n",
+	// 		check_id, cam_cal_config->layout->header_id);
 
 	return result;
 }
@@ -184,6 +191,93 @@ unsigned int do_part_number(struct EEPROM_DRV_FD_DATA *pdata,
 }
 
 
+unsigned int do_fuse_id(struct EEPROM_DRV_FD_DATA *pdata,
+		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
+{
+	struct STRUCT_CAM_CAL_DATA_STRUCT *pCamCalData =
+				(struct STRUCT_CAM_CAL_DATA_STRUCT *)pGetSensorCalData;
+	unsigned int err;
+	unsigned int size_limit;
+	int ptrnull = -1;
+	if(pCamCalData == NULL || pdata == NULL)
+	{
+		error_log("pCamCalData or pdata is NULL");
+		return ptrnull;
+	}
+	err = CamCalReturnErr[pCamCalData->Command];
+	size_limit = sizeof(pCamCalData->FuseId);
+	memset(&pCamCalData->FuseId[0], 0, size_limit);
+
+	if (block_size > size_limit) {
+		error_log("FuseId size can't larger than %u\n", size_limit);
+		return err;
+	}
+
+	if (read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+			start_addr, block_size, (unsigned char *)&pCamCalData->FuseId[0]) > 0)
+		err = CAM_CAL_ERR_NO_ERR;
+	else {
+		error_log("Read Failed\n");
+		show_cmd_error_log(pCamCalData->Command);
+	}
+	debug_log("======================FuseId==================\n");
+	debug_log("[FuseId] = %x %x %x %x\n",
+			pCamCalData->FuseId[0], pCamCalData->FuseId[1],
+			pCamCalData->FuseId[2], pCamCalData->FuseId[3]);
+	debug_log("[FuseId] = %x %x %x %x\n",
+			pCamCalData->FuseId[4], pCamCalData->FuseId[5],
+			pCamCalData->FuseId[6], pCamCalData->FuseId[7]);
+	debug_log("[FuseId] = %x %x %x %x\n",
+			pCamCalData->FuseId[8], pCamCalData->FuseId[9],
+			pCamCalData->FuseId[10], pCamCalData->FuseId[11]);
+	debug_log("======================FuseId==================\n");
+
+	return err;
+}
+
+// eeprom add OisInfo@{
+unsigned int do_ois_info(struct EEPROM_DRV_FD_DATA *pdata,
+		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
+{
+	struct STRUCT_CAM_CAL_DATA_STRUCT *pCamCalData =
+				(struct STRUCT_CAM_CAL_DATA_STRUCT *)pGetSensorCalData;
+	unsigned int err;
+	unsigned int size_limit;
+	int ptrnull = -1;
+	if(pCamCalData == NULL || pdata == NULL)
+	{
+		error_log("pCamCalData or pdata is NULL");
+		return ptrnull;
+	}
+	err = CamCalReturnErr[pCamCalData->Command];
+	size_limit = sizeof(pCamCalData->OisInf);
+	memset(&pCamCalData->OisInf[0], 0, size_limit);
+
+	if (block_size > size_limit) {
+		error_log("OisInf size can't larger than %u\n", size_limit);
+		return err;
+	}
+
+	if (read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+			start_addr, block_size, (unsigned char *)&pCamCalData->OisInf[0]) > 0)
+		err = CAM_CAL_ERR_NO_ERR;
+	else {
+		error_log("Read Failed\n");
+		show_cmd_error_log(pCamCalData->Command);
+	}
+	debug_log("======================OisInf==================\n");
+	debug_log("[OisInf] = %x %x %x %x\n",
+			pCamCalData->OisInf[0], pCamCalData->OisInf[1],
+			pCamCalData->OisInf[2], pCamCalData->OisInf[3]);
+	debug_log("[OisInf] = %x %x %x %x\n",
+			pCamCalData->OisInf[4], pCamCalData->OisInf[5],
+			pCamCalData->OisInf[6], pCamCalData->OisInf[7]);
+	debug_log("======================OisInf==================\n");
+
+	return err;
+}
+//@}
+
 /***********************************************************************************
  * Function : To read 2A information. Please put your AWB+AF data function, here.
  ***********************************************************************************/
@@ -198,11 +292,33 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 
 	unsigned int CalGain = 0, FacGain = 0;
 	unsigned char AWBAFConfig = 0;
-
+	unsigned char AFConfig = 0;
+	unsigned char AWBConfig = 0;
+	unsigned int addr_5100k,addr_4000k,addr_3100k;
 	unsigned short AFInf = 0, AFMacro = 0;
 	int tempMax = 0;
 	int CalR = 1, CalGr = 1, CalGb = 1, CalG = 1, CalB = 1;
 	int FacR = 1, FacGr = 1, FacGb = 1, FacG = 1, FacB = 1;
+	//eeprom awb modify
+	//eeprom awb@{
+	if(IMX615_SENSOR_ID == pCamCalData->sensorID){
+		addr_5100k = 0x4D;
+		addr_4000k = 0x31;
+		addr_3100k = 0x15;
+		AWBConfig = 1;
+	}else if(S5KGN9_SENSOR_ID == pCamCalData->sensorID || S5KGN9STECH_SENSOR_ID == pCamCalData->sensorID){
+		addr_5100k = 0x20;
+		addr_4000k = 0x32;
+		addr_3100k = 0x44;
+		AFConfig = 1;
+		AWBConfig = 1;
+	}else if(S5KJN1_SENSOR_ID == pCamCalData->sensorID){
+		addr_5100k = 0x4D;
+		addr_4000k = 0x31;
+		addr_3100k = 0x15;
+		AWBConfig = 1;
+	}
+	//@}
 
 	debug_log("block_size=%d sensor_id=%x\n", block_size, pCamCalData->sensorID);
 	memset((void *)&pCamCalData->Single2A, 0, sizeof(struct STRUCT_CAM_CAL_SINGLE_2A_STRUCT));
@@ -214,7 +330,7 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 		return err;
 	}
 	if (block_size != 14) {
-		error_log("block_size(%d) is not correct (%d)\n", block_size, 14);
+		error_log("block_size(%d) is not correct (%d)\n", block_size, 16);
 		show_cmd_error_log(pCamCalData->Command);
 		return err;
 	}
@@ -239,19 +355,38 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 	else
 		pCamCalData->Single2A.S2aAfBitflagEn = (0x0C & AWBAFConfig);
 	/* AWB Calibration Data*/
-	if (0x1 & AWBAFConfig) {
+	if (0x1 & AWBConfig) {
 		/* AWB Unit Gain (5100K) */
 		debug_log("5100K AWB\n");
 		pCamCalData->Single2A.S2aAwb.rGainSetNum = 0;
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
-				start_addr + 2, 4, (unsigned char *)&CalGain);
+				addr_5100k, 4, (unsigned char *)&CalGain);
+		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_5100k, 2, (unsigned char *)&CalR);
+		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_5100k + 2, 2, (unsigned char *)&CalGr);
+		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_5100k + 4, 2, (unsigned char *)&CalGb);
+		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_5100k + 6, 2, (unsigned char *)&CalB);
 		if (read_data_size > 0)	{
 			debug_log("Read CalGain OK %x\n", read_data_size);
-			CalR  = CalGain & 0xFF;
-			CalGr = (CalGain >> 8) & 0xFF;
-			CalGb = (CalGain >> 16) & 0xFF;
-			CalG  = ((CalGr + CalGb) + 1) >> 1;
-			CalB  = (CalGain >> 24) & 0xFF;
+			//eeprom awb modify
+			//eeprom awb@{
+			if(S5KJN1_SENSOR_ID == pCamCalData->sensorID || IMX615_SENSOR_ID == pCamCalData->sensorID){
+				CalR  = ((CalR & 0xFF) << 8) | ((CalR & 0xFF00)>> 8);
+				CalGr = ((CalGr & 0xFF) << 8) | ((CalGr & 0xFF00)>> 8);
+				CalGb = ((CalGb & 0xFF) << 8) | ((CalGb & 0xFF00)>> 8);
+				CalG  = ((CalGr + CalGb) + 1) >> 1;
+				CalB  = ((CalB & 0xFF) << 8) | ((CalB & 0xFF00)>> 8);
+			} else {
+				//CalR  = CalGain & 0xFF;
+				//CalGr = (CalGain >> 8) & 0xFF;
+				//CalGb = (CalGain >> 16) & 0xFF;
+				CalG  = ((CalGr + CalGb) + 1) >> 1;
+				//CalB  = //(CalGain >> 24) & 0xFF;
+			}
+			//@}
 			if (CalR > CalG)
 				/* R > G */
 				if (CalR > CalB)
@@ -290,14 +425,33 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 			"There are something wrong on EEPROM, plz contact module vendor!!\n");
 		/* AWB Golden Gain (5100K) */
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
-				start_addr + 6, 4, (unsigned char *)&FacGain);
+				addr_5100k + 8, 4, (unsigned char *)&FacGain);
+		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_5100k + 8, 2, (unsigned char *)&FacR);
+		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_5100k + 10, 2, (unsigned char *)&FacGr);
+		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_5100k + 12, 2, (unsigned char *)&FacGb);
+		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_5100k + 14, 2, (unsigned char *)&FacB);
 		if (read_data_size > 0)	{
 			debug_log("Read FacGain OK\n");
-			FacR  = FacGain & 0xFF;
-			FacGr = (FacGain >> 8) & 0xFF;
-			FacGb = (FacGain >> 16) & 0xFF;
-			FacG  = ((FacGr + FacGb) + 1) >> 1;
-			FacB  = (FacGain >> 24) & 0xFF;
+			//eeprom awb modify
+			//eeprom awb@{
+			if(S5KJN1_SENSOR_ID == pCamCalData->sensorID || IMX615_SENSOR_ID == pCamCalData->sensorID){
+				FacR  = ((FacR & 0xFF) << 8) | ((FacR & 0xFF00)>> 8);
+				FacGr = ((FacGr & 0xFF) << 8) | ((FacGr & 0xFF00)>> 8);
+				FacGb = ((FacGb & 0xFF) << 8) | ((FacGb & 0xFF00)>> 8);
+				FacG  = ((FacGr + FacGb) + 1) >> 1;
+				FacB  = ((FacB & 0xFF) << 8) | ((FacB & 0xFF00)>> 8);
+			} else {
+				//FacR  = FacGain & 0xFF;
+				//FacGr = (FacGain >> 8) & 0xFF;
+				//FacGb = (FacGain >> 16) & 0xFF;
+				FacG  = ((FacGr + FacGb) + 1) >> 1;
+				//FacB  = (FacGain >> 24) & 0xFF;
+			}
+			//@}
 			if (FacR > FacG)
 				if (FacR > FacB)
 					tempMax = FacR;
@@ -354,19 +508,36 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 
 		if (get_mtk_format_version(pdata, pGetSensorCalData) >= 0x22) {
 			/* AWB Unit Gain (3100K) */
-			debug_log("3100K AWB\n");
 			CalR = CalGr = CalGb = CalG = CalB = 0;
 			tempMax = 0;
-			read_data_size = read_data(pdata,
-					pCamCalData->sensorID, pCamCalData->deviceID,
-					0x14FE, 4, (unsigned char *)&CalGain);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_3100k, 4, (unsigned char *)&CalGain);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+					addr_3100k, 2, (unsigned char *)&CalR);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+					addr_3100k + 2, 2, (unsigned char *)&CalGr);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+					addr_3100k + 4, 2, (unsigned char *)&CalGb);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+					addr_3100k + 6, 2, (unsigned char *)&CalB);
 			if (read_data_size > 0)	{
 				debug_log("Read CalGain OK %x\n", read_data_size);
-				CalR  = CalGain & 0xFF;
-				CalGr = (CalGain >> 8) & 0xFF;
-				CalGb = (CalGain >> 16) & 0xFF;
-				CalG  = ((CalGr + CalGb) + 1) >> 1;
-				CalB  = (CalGain >> 24) & 0xFF;
+				//eeprom awb modify
+				//eeprom awb@{
+				if(S5KJN1_SENSOR_ID == pCamCalData->sensorID || IMX615_SENSOR_ID == pCamCalData->sensorID){
+				    CalR  = ((CalR & 0xFF) << 8) | ((CalR & 0xFF00)>> 8);
+				    CalGr = ((CalGr & 0xFF) << 8) | ((CalGr & 0xFF00)>> 8);
+				    CalGb = ((CalGb & 0xFF) << 8) | ((CalGb & 0xFF00)>> 8);
+				    CalG  = ((CalGr + CalGb) + 1) >> 1;
+				    CalB  = ((CalB & 0xFF) << 8) | ((CalB & 0xFF00)>> 8);
+				} else {
+				    //CalR  = CalGain & 0xFF;
+				    //CalGr = (CalGain >> 8) & 0xFF;
+				    //CalGb = (CalGain >> 16) & 0xFF;
+				    CalG  = ((CalGr + CalGb) + 1) >> 1;
+				    //CalB  = (CalGain >> 24) & 0xFF;
+				}
+				//@}
 				if (CalR > CalG)
 					/* R > G */
 					if (CalR > CalB)
@@ -406,16 +577,34 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 			/* AWB Golden Gain (3100K) */
 			FacR = FacGr = FacGb = FacG = FacB = 0;
 			tempMax = 0;
-			read_data_size = read_data(pdata,
-					pCamCalData->sensorID, pCamCalData->deviceID,
-					0x1502, 4, (unsigned char *)&FacGain);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_3100k + 8, 4, (unsigned char *)&FacGain);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_3100k + 8, 2, (unsigned char *)&FacR);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_3100k + 10, 2, (unsigned char *)&FacGr);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_3100k + 12, 2, (unsigned char *)&FacGb);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_3100k + 14, 2, (unsigned char *)&FacB);
 			if (read_data_size > 0)	{
 				debug_log("Read FacGain OK\n");
-				FacR  = FacGain & 0xFF;
-				FacGr = (FacGain >> 8) & 0xFF;
-				FacGb = (FacGain >> 16) & 0xFF;
-				FacG  = ((FacGr + FacGb) + 1) >> 1;
-				FacB  = (FacGain >> 24) & 0xFF;
+				//eeprom awb modify
+				//eeprom awb@{
+				if(S5KJN1_SENSOR_ID == pCamCalData->sensorID || IMX615_SENSOR_ID == pCamCalData->sensorID){
+				    FacR  = ((FacR & 0xFF) << 8) | ((FacR & 0xFF00) >> 8);
+				    FacGr = ((FacGr & 0xFF) << 8) | ((FacGr & 0xFF00)>> 8);
+				    FacGb = ((FacGb & 0xFF) << 8) | ((FacGb & 0xFF00)>> 8);
+				    FacG  = ((FacGr + FacGb) + 1) >> 1;
+				    FacB  = ((FacB & 0xFF) << 8) | ((FacB & 0xFF00)>> 8);
+				} else {
+				    //FacR  = FacGain & 0xFF;
+				    //FacGr = (FacGain >> 8) & 0xFF;
+				    //FacGb = (FacGain >> 16) & 0xFF;
+				    FacG  = ((FacGr + FacGb) + 1) >> 1;
+				    //FacB  = (FacGain >> 24) & 0xFF;
+				}
+				//@}
 				if (FacR > FacG)
 					if (FacR > FacB)
 						tempMax = FacR;
@@ -450,19 +639,36 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 				error_log(
 			"There are something wrong on EEPROM, plz contact module vendor!!\n");
 			/* AWB Unit Gain (4000K) */
-			debug_log("4000K AWB\n");
 			CalR = CalGr = CalGb = CalG = CalB = 0;
 			tempMax = 0;
-			read_data_size = read_data(pdata,
-					pCamCalData->sensorID, pCamCalData->deviceID,
-					0x1506, 4, (unsigned char *)&CalGain);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_4000k, 4, (unsigned char *)&CalGain);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+					addr_4000k, 2, (unsigned char *)&CalR);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+					addr_4000k + 2, 2, (unsigned char *)&CalGr);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+					addr_4000k + 4, 2, (unsigned char *)&CalGb);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+					addr_4000k + 6, 2, (unsigned char *)&CalB);
 			if (read_data_size > 0)	{
 				debug_log("Read CalGain OK %x\n", read_data_size);
-				CalR  = CalGain & 0xFF;
-				CalGr = (CalGain >> 8) & 0xFF;
-				CalGb = (CalGain >> 16) & 0xFF;
-				CalG  = ((CalGr + CalGb) + 1) >> 1;
-				CalB  = (CalGain >> 24) & 0xFF;
+				//eeprom awb modify
+				//eeprom awb@{
+				if(S5KJN1_SENSOR_ID == pCamCalData->sensorID || IMX615_SENSOR_ID == pCamCalData->sensorID){
+				    CalR  = ((CalR & 0xFF) << 8) | ((CalR & 0xFF00)>> 8);
+				    CalGr = ((CalGr & 0xFF) << 8) | ((CalGr & 0xFF00)>> 8);
+				    CalGb = ((CalGb & 0xFF) << 8) | ((CalGb & 0xFF00)>> 8);
+				    CalG  = ((CalGr + CalGb) + 1) >> 1;
+				    CalB  = ((CalB & 0xFF) << 8) | ((CalB & 0xFF00)>> 8);
+				} else {
+				    //CalR  = CalGain & 0xFF;
+				    //CalGr = (CalGain >> 8) & 0xFF;
+				    //CalGb = (CalGain >> 16) & 0xFF;
+				    CalG  = ((CalGr + CalGb) + 1) >> 1;
+				    //CalB  = (CalGain >> 24) & 0xFF;
+				}
+				//@}
 				if (CalR > CalG)
 					/* R > G */
 					if (CalR > CalB)
@@ -502,16 +708,34 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 			/* AWB Golden Gain (4000K) */
 			FacR = FacGr = FacGb = FacG = FacB = 0;
 			tempMax = 0;
-			read_data_size = read_data(pdata,
-					pCamCalData->sensorID, pCamCalData->deviceID,
-					0x150A, 4, (unsigned char *)&FacGain);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_4000k + 8, 4, (unsigned char *)&FacGain);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_4000k + 8, 2, (unsigned char *)&FacR);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_4000k + 10, 2, (unsigned char *)&FacGr);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_4000k + 12, 2, (unsigned char *)&FacGb);
+			read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
+				addr_4000k + 14, 2, (unsigned char *)&FacB);
 			if (read_data_size > 0)	{
 				debug_log("Read FacGain OK\n");
-				FacR  = FacGain & 0xFF;
-				FacGr = (FacGain >> 8) & 0xFF;
-				FacGb = (FacGain >> 16) & 0xFF;
-				FacG  = ((FacGr + FacGb) + 1) >> 1;
-				FacB  = (FacGain >> 24) & 0xFF;
+				//eeprom awb modify
+				//eeprom awb@{
+				if(S5KJN1_SENSOR_ID == pCamCalData->sensorID || IMX615_SENSOR_ID == pCamCalData->sensorID){
+				    FacR  = ((FacR & 0xFF) << 8) | ((FacR & 0xFF00)>> 8);
+				    FacGr = ((FacGr & 0xFF) << 8) | ((FacGr & 0xFF00)>> 8);
+				    FacGb = ((FacGb & 0xFF) << 8) | ((FacGb & 0xFF00)>> 8);
+				    FacG  = ((FacGr + FacGb) + 1) >> 1;
+				    FacB  = ((FacB & 0xFF) << 8) | ((FacB & 0xFF00)>> 8);
+				} else {
+				    //FacR  = FacGain & 0xFF;
+				    //FacGr = (FacGain >> 8) & 0xFF;
+				    //FacGb = (FacGain >> 16) & 0xFF;
+				    FacG  = ((FacGr + FacGb) + 1) >> 1;
+				    //FacB  = (FacGain >> 24) & 0xFF;
+				}
+				//@}
 				if (FacR > FacG)
 					if (FacR > FacB)
 						tempMax = FacR;
@@ -548,9 +772,9 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 		}
 	}
 	/* AF Calibration Data*/
-	if (0x2 & AWBAFConfig) {
+	if (AFConfig) {
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
-				start_addr + 10, 2, (unsigned char *)&AFInf);
+				0x0094, 2, (unsigned char *)&AFInf);
 		if (read_data_size > 0)
 			err = CAM_CAL_ERR_NO_ERR;
 		else {
@@ -560,7 +784,7 @@ unsigned int do_2a_gain(struct EEPROM_DRV_FD_DATA *pdata,
 		}
 
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
-				start_addr + 12, 2, (unsigned char *)&AFMacro);
+				0x0092, 2, (unsigned char *)&AFMacro);
 		if (read_data_size > 0)
 			err = CAM_CAL_ERR_NO_ERR;
 		else {
@@ -675,7 +899,7 @@ unsigned int do_single_lsc(struct EEPROM_DRV_FD_DATA *pdata,
 	struct STRUCT_CAM_CAL_DATA_STRUCT *pCamCalData =
 				(struct STRUCT_CAM_CAL_DATA_STRUCT *)pGetSensorCalData;
 
-	int read_data_size;
+	int read_data_size = 0;
 	unsigned int err = CamCalReturnErr[pCamCalData->Command];
 	unsigned short table_size = 0;
 
@@ -694,23 +918,26 @@ unsigned int do_single_lsc(struct EEPROM_DRV_FD_DATA *pdata,
 
 	debug_log("u4Offset=%d u4Length=%lu", start_addr - 2, sizeof(table_size));
 	read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
-			start_addr - 2, sizeof(table_size), (unsigned char *)&table_size);
+	        start_addr, sizeof(table_size), (unsigned char *)&table_size);
+
 	if (read_data_size <= 0)
 		err = CAM_CAL_ERR_NO_SHADING;
 
+	table_size = LSC_SIZE;
 	debug_log("lsc table_size %d\n", table_size);
 	pCamCalData->SingleLsc.LscTable.MtkLcsData.TableSize = table_size;
 	if (table_size > 0) {
-		pCamCalData->SingleLsc.TableRotation = 0;
+		//pCamCalData->SingleLsc.TableRotation = 0;
 		debug_log("u4Offset=%d u4Length=%d", start_addr, table_size);
 		read_data_size = read_data(pdata,
 			pCamCalData->sensorID, pCamCalData->deviceID,
 			start_addr, table_size, (unsigned char *)
 			&pCamCalData->SingleLsc.LscTable.MtkLcsData.SlimLscType);
+		debug_log("read_data_size=%d", read_data_size);
 		if (table_size == read_data_size)
 			err = CAM_CAL_ERR_NO_ERR;
 		else {
-			error_log("Read Failed\n");
+			error_log("Read Failed2\n");
 			err = CamCalReturnErr[pCamCalData->Command];
 			show_cmd_error_log(pCamCalData->Command);
 		}
@@ -744,12 +971,23 @@ unsigned int do_pdaf(struct EEPROM_DRV_FD_DATA *pdata,
 
 	int read_data_size;
 	int err =  CamCalReturnErr[pCamCalData->Command];
-
+	// pdaf modify@{
+	int procSize = 496;
+	int MaxSize = 1500;
+	int pdOrder;
+	//@}
 	pCamCalData->PDAF.Size_of_PDAF = block_size;
 	debug_log("PDAF start_addr =%x table_size=%d\n", start_addr, block_size);
 
 	read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
 			start_addr, block_size, (unsigned char *)&pCamCalData->PDAF.Data[0]);
+	// pdaf modify@{
+	for(pdOrder = procSize ;pdOrder < MaxSize; pdOrder++)
+	{
+		pCamCalData->PDAF.Data[pdOrder] = pCamCalData->PDAF.Data[pdOrder+16];
+	}
+	//@}
+
 	if (read_data_size > 0)
 		err = CAM_CAL_ERR_NO_ERR;
 
@@ -849,15 +1087,14 @@ unsigned int do_lens_id_base(struct EEPROM_DRV_FD_DATA *pdata,
 unsigned int do_lens_id(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
 {
-	struct STRUCT_CAM_CAL_DATA_STRUCT *pCamCalData =
-				(struct STRUCT_CAM_CAL_DATA_STRUCT *)pGetSensorCalData;
+	// struct STRUCT_CAM_CAL_DATA_STRUCT *pCamCalData =
+	// 			(struct STRUCT_CAM_CAL_DATA_STRUCT *)pGetSensorCalData;
 
-	unsigned int err = CamCalReturnErr[pCamCalData->Command];
+	//unsigned int err = CamCalReturnErr[pCamCalData->Command];
 
-	if (get_mtk_format_version(pdata, pGetSensorCalData) >= 0x18) {
-		debug_log("No lens id data\n");
-		return err;
-	}
+	// if (get_mtk_format_version(pdata, pGetSensorCalData) >= 0x18) {
+	// 	return err;
+	// }
 
 	return do_lens_id_base(pdata, start_addr, block_size, pGetSensorCalData);
 }

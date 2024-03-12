@@ -1,0 +1,42 @@
+&i2c7 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	sc8562-charger@65{
+		compatible = "sc,sc8562-standalone";
+		status = "okay";
+		reg = <0x65>;
+
+		chg_name = "primary_dvchg";
+		sc,sc8562,rst-gpio = <&pio 12 0x0>;
+		sc,sc8562,irq-gpio = <&pio 13 0x0>;
+		sc,sc8562,sc-en-gpio = <&pio 92 0x0>;
+		sc,sc8562,sc-lpm-gpio = <&pio 161 0x0>;
+		sc,sc8562,ovp-en-gpio = <&pio 91 0x0>;
+
+		/*sc,sc8562,bat-ovp-disable;
+		sc,sc8562,bus-ocp-disable;
+		sc,sc8562,bus-ucp-disable;
+		sc,sc8562,pmid2out-ovp-disable;
+		sc,sc8562,pmid2out-uvp-disable;*/
+		sc,sc8562,bat-ovp-alarm-disable;
+		sc,sc8562,bus-ocp-alarm-disable;
+		sc,sc8562,bat-ocp-disable;
+
+		sc,sc8562,bat-ovp-threshold = <4525>;
+		sc,sc8562,bat-ocp-threshold = <9000>;
+		sc,sc8562,bat-ovp-alarm-threshold = <4480>;
+
+		sc,sc8562,bus-ovp-threshold = <24000>;//defult 4:1 charge
+		sc,sc8562,bus-ocp-threshold = <3750>;
+		sc,sc8562,bus-ocp-alarm-threshold = <3500>;
+
+		sc,sc8562,usb-ovp-threshold = <22000>;
+		sc,sc8562,wpc-ovp-threshold = <22000>;
+		sc,sc8562,out-ovp-threshold = <5000>;
+
+		sc,sc8562,pmid2out-ovp-threshold = <400>;
+		sc,sc8562,pmid2out-uvp-threshold = <100>;
+		sc,sc8562,tsbat_dis = <1>;
+		sc,sc8562,sense-r-mohm = <1>;
+	};
+};

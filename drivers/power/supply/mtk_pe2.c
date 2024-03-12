@@ -435,7 +435,9 @@ static int pe20_detect_ta(struct chg_alg_device *alg)
 		ret = pe20_set_ta_vchr(alg, 8500000);
 	else
 		ret = pe20_set_ta_vchr(alg, 6500000);
-
+	/* enable OVP */
+	if(ret < 0)
+		pe2_hal_enable_vbus_ovp(alg, true);
 	pe2_dbg("%s: ret:%d\n", __func__, ret);
 
 	return ret;
@@ -616,6 +618,8 @@ static int _pe2_is_algo_ready(struct chg_alg_device *alg)
 {
 	struct mtk_pe20 *pe2;
 	int ret_value, uisoc;
+	union power_supply_propval pe2_charger_vol;
+	int ret = 0;
 
 	pe2 = dev_get_drvdata(&alg->dev);
 
@@ -639,9 +643,11 @@ static int _pe2_is_algo_ready(struct chg_alg_device *alg)
 		if (pe2_hal_get_charger_type(alg) !=
 			POWER_SUPPLY_TYPE_USB_DCP) {
 			ret_value = ALG_TA_NOT_SUPPORT;
+#if 0
 		} else if (pe2->charging_current_limit1 != -1 ||
 			pe2->charging_current_limit2 != -1) {
 			ret_value = ALG_NOT_READY;
+#endif
 		} else if ((uisoc < pe2->ta_start_battery_soc &&
 			pe2->ref_vbat > pe2->vbat_threshold) ||
 			uisoc >= pe2->ta_stop_battery_soc) {
@@ -661,6 +667,17 @@ static int _pe2_is_algo_ready(struct chg_alg_device *alg)
 	default:
 		ret_value = ALG_INIT_FAIL;
 		break;
+	}
+	if (IS_ERR_OR_NULL(pe2->chg_psy))
+		pe2->chg_psy = power_supply_get_by_name("primary_chg");
+	if (!IS_ERR_OR_NULL(pe2->chg_psy)) {
+		if (ret_value == ALG_RUNNING) {
+			pe2_charger_vol.intval = 10000000;
+			ret = power_supply_set_property(pe2->chg_psy,
+				POWER_SUPPLY_PROP_VOLTAGE_MAX, &pe2_charger_vol);
+			if (ret < 0)
+				pr_notice("set voltage max fail\n");
+		}
 	}
 skip:
 	__pm_relax(pe2->suspend_lock);
@@ -1028,9 +1045,11 @@ static int _pe2_start_algo(struct chg_alg_device *alg)
 				again = true;
 			} else if (ret == ALG_TA_CHECKING)
 				ret_value = ALG_TA_CHECKING;
+#if 0
 			else if (pe2->charging_current_limit1 != -1 ||
 				pe2->charging_current_limit2 != -1)
 				ret_value = ALG_NOT_READY;
+#endif
 			else {
 				pe2->state = PE2_TA_NOT_SUPPORT;
 				ret_value = ALG_TA_NOT_SUPPORT;
@@ -1246,7 +1265,13 @@ static void mtk_pe2_parse_dt(struct mtk_pe20 *pe2,
 		pr_notice("use default V_CHARGER_MIN:%d\n", PE20_V_CHARGER_MIN);
 		pe2->min_charger_voltage = PE20_V_CHARGER_MIN;
 	}
-
+//modify it to issue
+	if (of_property_read_u32(np, "max_charger_voltage", &val) >= 0)
+		pe2->max_charger_voltage = val;
+	else {
+		pr_notice("use default V_CHARGER_MIN:%d\n", PE20_V_CHARGER_MAX);
+		pe2->max_charger_voltage = PE20_V_CHARGER_MAX;
+	}
 	/* cable measurement impedance */
 	if (of_property_read_u32(np, "cable_imp_threshold", &val) >= 0)
 		pe2->cable_imp_threshold = val;
@@ -1427,6 +1452,10 @@ static int mtk_pe2_probe(struct platform_device *pdev)
 	mutex_init(&pe2->access_lock);
 	mutex_init(&pe2->cable_out_lock);
 	mutex_init(&pe2->data_lock);
+
+	pe2->chg_psy = power_supply_get_by_name("primary_chg");
+	if (IS_ERR_OR_NULL(pe2->chg_psy))
+		pr_notice("%s: devm fail to get chg_psy\n", __func__);
 
 	pe2->ta_vchr_org = 5000000;
 	pe2->idx = -1;

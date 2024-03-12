@@ -4105,6 +4105,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		rcv = &msg->fgd_data[0];
 		prcv = (struct fgd_cmd_param_t_4 *)rcv;
 		memcpy(&param, prcv->input, sizeof(struct fgd_cmd_param_t_8));
+		gm->nt_quse = param.data[4];
 
 		bm_err("[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
 				param.data[0],

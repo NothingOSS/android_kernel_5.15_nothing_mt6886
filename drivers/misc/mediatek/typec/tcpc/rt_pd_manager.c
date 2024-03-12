@@ -227,13 +227,26 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 					TYPEC_ACCESSORY_NONE;
 				break;
 			}
-			rpmd->partner = typec_register_partner(rpmd->typec_port,
-					&rpmd->partner_desc);
-			if (IS_ERR(rpmd->partner)) {
-				ret = PTR_ERR(rpmd->partner);
+
+			/* modified for suppressing the following system notification
+			* when analog type-C headset inserted start:
+			* Analog audio accessory detected: The attached device is not
+			* compatible with this phone. */
+
+			if (likely(new_state != TYPEC_ATTACHED_AUDIO)) {
+				rpmd->partner = typec_register_partner(rpmd->typec_port,
+						&rpmd->partner_desc);
+				if (IS_ERR(rpmd->partner)) {
+					ret = PTR_ERR(rpmd->partner);
+					dev_notice(rpmd->dev,
+					"%s typec register partner fail(%d)\n",
+						   __func__, ret);
+				}
+			}
+			else {
 				dev_notice(rpmd->dev,
-				"%s typec register partner fail(%d)\n",
-					   __func__, ret);
+					"%s USB audio accessory attach, skip registering tcpc partner\n",
+					__func__);
 			}
 		}
 		break;
@@ -375,6 +388,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		typec_mux_set(rpmd->typec_port->mux, &state);
 		break;
 	case TCP_NOTIFY_WD0_STATE:
+/*
 		if (rpmd->wd0_enable) {
 			if (noti->wd0_state.wd0)
 				tcpm_typec_change_role(rpmd->tcpc,
@@ -386,6 +400,12 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 
 		}
 		break;
+*/
+		if (!rpmd->wd0_enable)
+			break;
+		tcpm_typec_change_role_postpone(rpmd->tcpc,
+			noti->wd0_state.wd0 ? rpmd->role_def : TYPEC_ROLE_SNK, true);
+	break;
 	default:
 		break;
 	};

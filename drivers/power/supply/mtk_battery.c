@@ -30,8 +30,10 @@
 #include <linux/suspend.h>
 #include "mtk_battery.h"
 #include "mtk_battery_table.h"
-
-
+#define TBAT_COMPENSATE_ABOVE_CURR     (4000)
+#define TBAT_COMPENSATE_GAP_TEMP_H     (47)
+#define TBAT_COMPENSATE_GAP_TEMP_L     (43)
+#define TBAT_COMPENSATE_TEMP_VALUE     (2)
 struct tag_bootmode {
 	u32 size;
 	u32 tag;
@@ -638,7 +640,10 @@ static int battery_psy_get_property(struct power_supply *psy,
 		val->intval = bs_data->bat_technology;
 		break;
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
-		val->intval = 1;
+		/*
+			val->intval = 1;
+		*/
+		val->intval = gm->bat_cycle;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		/* 1 = META_BOOT, 4 = FACTORY_BOOT 5=ADVMETA_BOOT */
@@ -648,13 +653,17 @@ static int battery_psy_get_property(struct power_supply *psy,
 			val->intval = 75;
 			break;
 		}
-
-		if (gm->fixed_uisoc != 0xffff)
+		//if (gm->fixed_uisoc != 0xffff)
+		if (gm->fixed_uisoc != FAKE_BATT_MAGIC)
 			val->intval = gm->fixed_uisoc;
 		else
 			val->intval = bs_data->bat_capacity;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		if (gm->fixed_bat_i != FAKE_BATT_MAGIC) {
+			val->intval = gm->fixed_bat_i * 1000;
+			break;
+		}
 		ret = gauge_get_property_control(gm, GAUGE_PROP_BATTERY_CURRENT,
 			&curr_now, 1);
 
@@ -668,6 +677,10 @@ static int battery_psy_get_property(struct power_supply *psy,
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
+		if (gm->fixed_bat_i != FAKE_BATT_MAGIC) {
+			val->intval = gm->fixed_bat_i * 1000;
+			break;
+		}
 		ret = gauge_get_property_control(gm, GAUGE_PROP_AVERAGE_CURRENT,
 			&curr_avg, 1);
 
@@ -696,7 +709,10 @@ static int battery_psy_get_property(struct power_supply *psy,
 			val->intval = 4000000;
 			break;
 		}
-
+		if (gm->fixed_bat_v != FAKE_BATT_MAGIC) {
+			val->intval = gm->fixed_bat_v * 1000;
+			break;
+		}
 		if (gm->disableGM30)
 			bs_data->bat_batt_vol = 4000;
 		else
@@ -707,7 +723,7 @@ static int battery_psy_get_property(struct power_supply *psy,
 			val->intval = gm->vbat;
 		else {
 			gm->vbat = bs_data->bat_batt_vol;
-		val->intval = bs_data->bat_batt_vol * 1000;
+			val->intval = bs_data->bat_batt_vol * 1000;
 		}
 		ret = 0;
 		break;
@@ -958,8 +974,8 @@ void battery_service_data_init(struct mtk_battery *gm)
 	bs_data->bat_capacity = -1,
 	bs_data->bat_batt_vol = 0,
 	bs_data->bat_batt_temp = 0,
-
-	gm->fixed_uisoc = 0xffff;
+	//gm->fixed_uisoc = 0xffff;
+	gm->fixed_uisoc = FAKE_BATT_MAGIC;
 }
 
 /* ============================================================ */
@@ -975,13 +991,15 @@ int adc_battemp(struct mtk_battery *gm, int res)
 	ptable = gm->tmp_table;
 	if (res >= ptable[0].TemperatureR) {
 		tbatt_value = -40;
-	} else if (res <= ptable[20].TemperatureR) {
-		tbatt_value = 60;
+	/*	} else if (res <= ptable[20].TemperatureR) {
+		tbatt_value = 60;*/
+	} else if (res <= ptable[FG_TEMP_T_MAX-1].TemperatureR) {
+		tbatt_value = 70;
 	} else {
 		res1 = ptable[0].TemperatureR;
 		tmp1 = ptable[0].BatteryTemp;
-
-		for (i = 0; i <= 20; i++) {
+		/*for (i = 0; i <= 20; i++) {*/
+		for (i = 0; i <= (FG_TEMP_T_MAX-1); i++) {
 			if (res >= ptable[i].TemperatureR) {
 				res2 = ptable[i].TemperatureR;
 				tmp2 = ptable[i].BatteryTemp;
@@ -1181,7 +1199,12 @@ int force_get_tbat_internal(struct mtk_battery *gm)
 				/*pmic_auxadc_debug(1);*/
 				WARN_ON(1);
 			}
-
+			if (fg_current_state == true) {
+				if((fg_current_temp >= TBAT_COMPENSATE_ABOVE_CURR) && 
+					((bat_temperature_volt_temp >= TBAT_COMPENSATE_GAP_TEMP_L) && 
+						(bat_temperature_volt_temp <= TBAT_COMPENSATE_GAP_TEMP_H)))
+				bat_temperature_volt_temp -= TBAT_COMPENSATE_TEMP_VALUE;
+			}
 			pre_bat_temperature_volt_temp =
 				bat_temperature_volt_temp;
 			pre_bat_temperature_volt = bat_temperature_volt;
@@ -1224,8 +1247,8 @@ int force_get_tbat(struct mtk_battery *gm, bool update)
 		gm->cur_bat_temp = 25;
 		return 25;
 	}
-
-	if (gm->fixed_bat_tmp != 0xffff) {
+	//if (gm->fixed_bat_tmp != 0xffff) {
+	if (gm->fixed_bat_tmp != FAKE_BATT_MAGIC) {
 		gm->cur_bat_temp = gm->fixed_bat_tmp;
 		return gm->fixed_bat_tmp;
 	}
@@ -3584,6 +3607,7 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 		bm_debug("[%s]OVERHEAT shutdown!\n", __func__);
 		kernel_power_off();
 		break;
+#ifdef SHUTDOWN_CONDITION_SOC_ZERO_PERCENT
 	case SOC_ZERO_PERCENT:
 		if (sdc->shutdown_status.is_soc_zero_percent != true) {
 			mutex_lock(&sdc->lock);
@@ -3602,6 +3626,8 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 			mutex_unlock(&sdc->lock);
 		}
 		break;
+#endif
+#ifdef SHUTDOWN_CONDITION_UISOC_ONE_PERCENT
 	case UISOC_ONE_PERCENT:
 		if (sdc->shutdown_status.is_uisoc_one_percent != true) {
 			mutex_lock(&sdc->lock);
@@ -3621,6 +3647,7 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 			mutex_unlock(&sdc->lock);
 		}
 		break;
+#endif
 #ifdef SHUTDOWN_CONDITION_LOW_BAT_VOLT
 	case LOW_BAT_VOLT:
 		if (sdc->shutdown_status.is_under_shutdown_voltage != true) {
@@ -3702,7 +3729,9 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 			polling++;
 			if (tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
 				bm_debug("soc zero shutdown\n");
-				kernel_power_off();
+				//kernel_power_off();
+				gm->bs_data.bat_capacity = 0;
+				battery_update(gm);
 				return next_waketime(polling);
 			}
 		} else if (current_soc > 0) {
@@ -3823,7 +3852,9 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 				if (tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
 					bm_debug("low bat shutdown, over %d second\n",
 						SHUTDOWN_TIME);
-					kernel_power_off();
+					//kernel_power_off();
+					gm->bs_data.bat_capacity = 0;
+					battery_update(gm);
 					return next_waketime(polling);
 				}
 			}
@@ -4108,7 +4139,12 @@ int battery_init(struct platform_device *pdev)
 
 	gauge = dev_get_drvdata(&pdev->dev);
 	gm = gauge->gm;
-	gm->fixed_bat_tmp = 0xffff;
+	//gm->fixed_bat_tmp = 0xffff;
+	gm->fixed_bat_tmp = FAKE_BATT_MAGIC;
+	gm->fixed_bat_i = FAKE_BATT_MAGIC;
+	gm->fixed_bat_v = FAKE_BATT_MAGIC;	
+	gm->nt_quse = FAKE_BATT_MAGIC;
+
 	gm->tmp_table = fg_temp_table;
 	gm->log_level = BMLOG_ERROR_LEVEL;
 	gm->sw_iavg_gap = 3000;

@@ -51,7 +51,11 @@ enum ENUM_CAMERA_CAM_CAL_TYPE_ENUM {
 	CAMERA_CAM_CAL_DATA_STEREO_DATA,
 	CAMERA_CAM_CAL_DATA_DUMP,
 	CAMERA_CAM_CAL_DATA_LENS_ID,
-	CAMERA_CAM_CAL_DATA_LIST
+	CAMERA_CAM_CAL_DATA_FUSE_ID,
+	// eeprom add OisInfo@{
+	CAMERA_CAM_CAL_DATA_OIS_INF,
+	//@}
+	CAMERA_CAM_CAL_DATA_LIST,
 };
 
 enum ENUM_CAM_CAL_DATA_VER_ENUM {
@@ -194,6 +198,10 @@ struct STRUCT_CAM_CAL_DATA_STRUCT {
 	struct STRUCT_CAM_CAL_PDAF_STRUCT         PDAF;
 	struct STRUCT_CAM_CAL_Stereo_Data_STRUCT  Stereo_Data;
 	unsigned char LensDrvId[10];
+	unsigned char FuseId[32];
+	// eeprom add OisInfo@{
+	unsigned char OisInf[8];
+	//@}
 };
 
 /**
@@ -227,6 +235,16 @@ struct STRUCT_CAM_CAL_STEREO_DATA_STRUCT {
 struct STRUCT_CAM_CAL_LENS_ID_STRUCT {
 	unsigned char LensDrvId[10];
 };
+
+struct STRUCT_CAM_CAL_FUSE_ID_STRUCT {
+	unsigned char FuseId[32];
+};
+
+// eeprom add OisInfo@{
+struct STRUCT_CAM_CAL_OIS_INF_STRUCT {
+	unsigned char OisInf[8];
+};
+//@}
 
 struct STRUCT_CAM_CAL_NEED_POWER_ON {
 	enum ENUM_CAMERA_CAM_CAL_TYPE_ENUM Command;

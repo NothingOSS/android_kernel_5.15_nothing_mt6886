@@ -98,6 +98,14 @@ config MTK_MET_DEBUG
 	  Say Y in eng/userdebug build.
 	  If unsure, say N.
 
+config MTK_CAMERA_DEBUG_LOG
+	bool "CAMERA DEBUG LOG"
+	help
+	  To prevent abi violation, we introduce CAMERA DEBUG config
+	  for those MET features enabled only in eng/userdebug build.
+	  Say Y in eng/userdebug build.
+	  If unsure, say N.
+
 config MTK_RTNL_LOCK_DEBUG
 	bool "rtnl_lock debugging, deadlock detection"
 	depends on STACKTRACE_SUPPORT

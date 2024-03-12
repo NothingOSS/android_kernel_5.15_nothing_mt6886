@@ -1470,6 +1470,18 @@ config SND_SOC_TFA989X
 	  Note that the driver currently bypasses the built-in "CoolFlux DSP"
 	  and does not support (hardware) volume control.
 
+# awinic aw882xx smartPA support
+config SND_SOC_AW882XX
+	tristate "Awinic AW882XX series speaker amplifiers"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This option enables support for aw882xx series
+	  Smart PA. It is a Smart power amplifier
+	  which contain speaker protection, multi-band
+	  DRC, equalizer function. It would be set to
+	  yes if your device with aw882xx on it.
+
 config SND_SOC_TLV320AIC23
 	tristate
 

@@ -3282,7 +3282,11 @@ static long mt_accdet_unlocked_ioctl(struct file *file, unsigned int cmd,
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_USB_SWITCH_ET7480)
+/* edit to new_feature
+ * add analog audio switch fsa4480/was4780 support
+ */
+/* #if IS_ENABLED(CONFIG_USB_SWITCH_ET7480) */
+#if IS_ENABLED(CONFIG_USB_SWITCH_ET7480) || IS_ENABLED(CONFIG_TYPEC_MUX_AUDIO_SWITCH_FSA4480)
 void accdet_eint_callback_wrapper(unsigned int plug_status)
 {
 	int ret = 0;

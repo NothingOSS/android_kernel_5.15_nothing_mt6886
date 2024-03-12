@@ -62,3 +62,20 @@ obj-$(CONFIG_HI6421V600_IRQ)	+= hi6421v600-irq.o
 obj-$(CONFIG_UID_SYS_STATS)	+= uid_sys_stats.o
 obj-y				+= mediatek/
 obj-$(CONFIG_OPEN_DICE)		+= open-dice.o
+# add for new_feature
+# Add support for haptic aw8692x i2c linear vibrator
+# @{
+obj-$(CONFIG_AWINIC_HAPTIC_HV) += haptic_hv/
+# @}
+# add for new_feature
+# Add support for aw20036 i2c led
+# @{
+obj-$(CONFIG_LEDS_AW20036) 	+= aw20036/
+# @}
+obj-$(CONFIG_PRIZE_HARDWARE_INFO) += hardware_info/
+obj-$(CONFIG_ICS_HAPTIC_DRV) 	+= haptic/
+# add for new_feature
+# Add support for board id
+# @{
+obj-$(CONFIG_PRIZE_BOARD_ID) 	+= board_id/
+# @}

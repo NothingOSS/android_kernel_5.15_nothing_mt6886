@@ -515,4 +515,21 @@ source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/habanalabs/Kconfig"
 source "drivers/misc/uacce/Kconfig"
 source "drivers/misc/pvpanic/Kconfig"
+# add for new_feature
+# Add support for haptic aw8692x i2c linear vibrator
+# @{
+source "drivers/misc/haptic_hv/Kconfig"
+# @}
+# add for new_feature
+# Add support for aw20036 i2c led
+# @{
+source "drivers/misc/aw20036/Kconfig"
+# @}
+source "drivers/misc/hardware_info/Kconfig"
+source "drivers/misc/haptic/Kconfig"
+# add for new_feature
+# Add support for board id
+# @{
+source "drivers/misc/board_id/Kconfig"
+# @}
 endmenu

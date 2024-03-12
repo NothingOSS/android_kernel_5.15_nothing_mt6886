@@ -516,6 +516,8 @@ struct mtk_panel_params {
 	/*Msync 3.0*/
 	unsigned int skip_vblank;
 	bool vblank_off;
+	bool wait_before_hbm;
+	bool frame_update_wait_te;
 };
 
 struct mtk_panel_ext {
@@ -662,6 +664,8 @@ int mtk_panel_tch_handle_reg(struct drm_panel *panel);
 void **mtk_panel_tch_handle_init(void);
 int mtk_panel_tch_rst(struct drm_panel *panel);
 enum mtk_lcm_version mtk_drm_get_lcm_version(void);
+void mtk_panel_lock(void);
+void mtk_panel_unlock(void);
 int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev,
 				struct cmdq_pkt *handle,
 				mtk_dsi_ddic_handler_cb handler_cb,

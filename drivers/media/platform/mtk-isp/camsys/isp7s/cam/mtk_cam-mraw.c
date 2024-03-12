@@ -2524,6 +2524,12 @@ static int mtk_mraw_of_probe(struct platform_device *pdev,
 	if (mraw->num_clks) {
 		mraw->clks = devm_kcalloc(dev, mraw->num_clks, sizeof(*mraw->clks),
 					 GFP_KERNEL);
+
+		if (!mraw->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    mraw->clks = vmalloc(mraw->num_clks*sizeof(*mraw->clks));
+		}
+
 		if (!mraw->clks)
 			return -ENOMEM;
 	}

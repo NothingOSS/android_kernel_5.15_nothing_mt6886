@@ -94,5 +94,5 @@ struct ioctl_packet {
 #define HF_MANAGER_REQUEST_SENSOR_INFO      _IOWR('a', 6, struct ioctl_packet)
 #define HF_MANAGER_REQUEST_CUST_DATA        _IOWR('a', 7, struct ioctl_packet)
 #define HF_MANAGER_REQUEST_READY_STATUS     _IOWR('a', 8, struct ioctl_packet)
-
+#define HF_MANAGER_REQUEST_OISPOWER_ENABLE  _IOWR('a', 9, struct ioctl_packet)
 #endif

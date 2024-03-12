@@ -10,7 +10,7 @@
 
 
 #define V_CHARGER_MIN 4600000 /* 4.6 V */
-
+#define PD_V_CHARGER_MAX 12000000 /* 12 V */
 /* pd */
 #define PD_VBUS_UPPER_BOUND		10000000	/* uv */
 #define PD_VBUS_LOW_BOUND		5000000	/* uv */
@@ -121,6 +121,7 @@ struct mtk_pd {
 	int ibus_err;
 	int slave_mivr_diff;
 	int min_charger_voltage;
+	int max_charger_voltage;
 	int pd_stop_battery_soc;
 
 	/* single charger dtsi setting*/

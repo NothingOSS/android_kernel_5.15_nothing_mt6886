@@ -9,7 +9,8 @@
 
 &mmc1 {
 	host-index = <1>;
-	status = "okay";
+	/* add support st nfc  fix*/
+	status = "disabled";
 	pinctrl-names = "default", "state_uhs";
 	pinctrl-0 = <&mmc1_pins_default>;
 	pinctrl-1 = <&mmc1_pins_uhs>;

@@ -22,10 +22,14 @@
 
 #include "hf_manager.h"
 
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+#include "../../../../hardware_info/hardware_info.h"
+#endif
 
 static int major;
 static struct class *hf_manager_class;
 static struct task_struct *task;
+extern int mtk_dsi_get_vendor_id(void);
 
 struct coordinate {
 	int8_t sign[3];
@@ -50,7 +54,8 @@ static struct hf_core hfcore;
 #define print_s64(l) (((l) == S64_MAX) ? -1 : (l))
 static int hf_manager_find_client(struct hf_core *core,
 		struct hf_manager_event *event);
-
+extern int  wl2868c_disable_ldo(int value);
+extern int  wl2868c_enable_ldo(int value);
 static void init_hf_core(struct hf_core *core)
 {
 	int i = 0;
@@ -339,6 +344,42 @@ int hf_manager_create(struct hf_device *device)
 			err = -EBUSY;
 			goto out_err;
 		}
+
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+		if(sensor_type == SENSOR_TYPE_ACCELEROMETER)
+		{
+			strcpy(current_gsensor_info.chip, device->support_list[i].name);
+			strcpy(current_gsensor_info.vendor, device->support_list[i].vendor);
+			strcpy(current_gsensor_info.more, "gsensor");
+		}
+		else if(sensor_type == SENSOR_TYPE_LIGHT)
+		{
+			strcpy(current_alsps_info.chip, device->support_list[i].name);
+			strcpy(current_alsps_info.vendor, device->support_list[i].vendor);
+			strcpy(current_alsps_info.more, "alsps");
+		}
+		else if(sensor_type == SENSOR_TYPE_MAGNETIC_FIELD)
+		{
+			strcpy(current_msensor_info.chip, device->support_list[i].name);
+			strcpy(current_msensor_info.vendor, device->support_list[i].vendor);
+			strcpy(current_msensor_info.more, "msensor");
+		}
+		else if(sensor_type == SENSOR_TYPE_GYROSCOPE)
+		{
+			strcpy(current_gyroscope_info.chip, device->support_list[i].name);
+			strcpy(current_gyroscope_info.vendor, device->support_list[i].vendor);
+			strcpy(current_gyroscope_info.more, "gyroscope");
+		}
+		else if(sensor_type == SENSOR_TYPE_PRESSURE)
+		{
+			strcpy(current_barosensor_info.chip, device->support_list[i].name);
+			strcpy(current_barosensor_info.vendor, device->support_list[i].vendor);
+			strcpy(current_barosensor_info.more, "barometer");
+		}
+		else{
+			printk("other sensor\n");
+		}
+#endif
 	}
 
 	INIT_LIST_HEAD(&manager->list);
@@ -913,9 +954,28 @@ static int hf_manager_device_calibration(struct hf_device *device,
 	return 0;
 }
 
+void hf_manager_proc_lcm_vendor_id(void *data)
+{
+	int32_t *tmpData = (int32_t *)data;
+	uint32_t lcmVendorId = 0;
+
+	lcmVendorId = mtk_dsi_get_vendor_id();
+	if (lcmVendorId > 0)
+	{
+		tmpData[2] = 255;
+		tmpData[3]= lcmVendorId;
+	}
+	return;
+}
+
 static int hf_manager_device_config_cali(struct hf_device *device,
 		uint8_t sensor_type, void *data, uint8_t length)
 {
+	if (sensor_type == SENSOR_TYPE_LIGHT)
+	{
+		hf_manager_proc_lcm_vendor_id(data);
+	}
+
 	if (device->config_cali)
 		return device->config_cali(device, sensor_type, data, length);
 	return 0;
@@ -1449,6 +1509,13 @@ static long hf_manager_ioctl(struct file *filp,
 		mutex_unlock(&client->core->device_lock);
 		if (copy_to_user(ubuf, &packet, sizeof(packet)))
 			return -EFAULT;
+		break;
+	case HF_MANAGER_REQUEST_OISPOWER_ENABLE:
+		if (packet.status) {
+			wl2868c_enable_ldo(4);
+		} else {
+			wl2868c_disable_ldo(4);
+		}
 		break;
 	default:
 		pr_err("Unknown command %u\n", cmd);

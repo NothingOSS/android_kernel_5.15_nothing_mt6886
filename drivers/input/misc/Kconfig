@@ -891,5 +891,6 @@ config INPUT_STPMIC1_ONKEY
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called stpmic1_onkey.
-
+source "drivers/input/misc/aw_sar/Kconfig"
+source "drivers/input/misc/goodix_gh621/Kconfig"
 endif

@@ -13,3 +13,7 @@ obj-$(CONFIG_TYPEC_MUX_DP_SELECTOR) += usb_dp_selector.o
 ifneq ($(wildcard $(srctree)/$(src)/k6985v1_64_flip_alpha),)
 obj-$(CONFIG_TYPEC_MUX_FLIP_ALPHA_FSA4480) += k6985v1_64_flip_alpha/
 endif
+# add to new_feature
+# add analog audio switch fsa4480/was4780 support
+ccflags-$(CONFIG_TYPEC_MUX_AUDIO_SWITCH_FSA4480) += -I$(srctree)/drivers/misc/mediatek/typec/tcpc/inc
+obj-$(CONFIG_TYPEC_MUX_AUDIO_SWITCH_FSA4480) += fsa4480-i2c.o

@@ -187,6 +187,12 @@ static int mtk_ut_seninf_of_probe(struct platform_device *pdev,
 	if (seninf->num_clks) {
 		seninf->clks = devm_kcalloc(dev, seninf->num_clks,
 					    sizeof(*seninf->clks), GFP_KERNEL);
+
+		if (!seninf->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    seninf->clks = vmalloc(seninf->num_clks*sizeof(*seninf->clks));
+		}
+
 		if (!seninf->clks)
 			return -ENODEV;
 	}

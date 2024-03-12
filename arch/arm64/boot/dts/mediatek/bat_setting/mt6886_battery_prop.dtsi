@@ -13,15 +13,15 @@
 	KEEP_100_PERCENT = <(1)>;
 	CURR_MEASURE_20A = <(1)>;
 	UNIT_MULTIPLE = <(2)>;
-	R_FG_VALUE = <(1)>;
+	R_FG_VALUE = <(2)>;
 	/* R_sense resistance */
-	EMBEDDED_SEL = <(0)>;
+	EMBEDDED_SEL = <(1)>;
 	/* Configures whether using embedded battery or not */
 	PMIC_SHUTDOWN_CURRENT = <(20)>;
 	/* System shutdown current */
 	FG_METER_RESISTANCE = <(70)>;
 	/* The resistance of PCB */
-	CAR_TUNE_VALUE = <(101)>;
+	CAR_TUNE_VALUE = <(96)>;
 	/* Tune value for current measurement */
 	PMIC_MIN_VOL = <(33500)>;
 	/* vboot voltage for gauge 0%*/
@@ -37,9 +37,9 @@
 	/* Battery temperature T2 */
 	TEMPERATURE_T3 = <(0)>;
 	/* Battery temperature T3 */
-	TEMPERATURE_T4 = <(-7)>;
+	TEMPERATURE_T4 = <(-10)>;
 	/* Battery temperature T4 */
-	TEMPERATURE_T5 = <(-10)>;
+	TEMPERATURE_T5 = <(-20)>;
 	/* Battery temperature T5 */
 	g_FG_PSEUDO100_T0 = <(100)>;
 	/* Pseudo 100% percentage at T0 */

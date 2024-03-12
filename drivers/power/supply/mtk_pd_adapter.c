@@ -318,6 +318,7 @@ static int pd_set_cap(struct adapter_device *dev, enum adapter_cap_type type,
 		int mV, int mA)
 {
 	int ret = MTK_ADAPTER_OK;
+	int cnt = 0;
 	int tcpm_ret = TCPM_SUCCESS;
 	struct mtk_pd_adapter_info *info;
 
@@ -330,21 +331,22 @@ static int pd_set_cap(struct adapter_device *dev, enum adapter_cap_type type,
 		pr_notice("[%s] info null\n", __func__);
 		return -1;
 	}
-
-	if (type == MTK_PD_APDO_START) {
-		tcpm_ret = tcpm_set_apdo_charging_policy(info->tcpc,
-			DPM_CHARGING_POLICY_PPS, mV, mA, NULL);
-	} else if (type == MTK_PD_APDO_END) {
-		// tcpm_ret = tcpm_set_pd_charging_policy(info->tcpc,
-		//	DPM_CHARGING_POLICY_VSAFE5V, NULL);
-		tcpm_ret = tcpm_reset_pd_charging_policy(info->tcpc, NULL);
-	} else if (type == MTK_PD_APDO) {
-		tcpm_ret = tcpm_dpm_pd_request(info->tcpc, mV, mA, NULL);
-	} else if (type == MTK_PD) {
-		tcpm_ret = tcpm_dpm_pd_request(info->tcpc, mV,
-					mA, NULL);
-	}
-
+	do{
+		if (type == MTK_PD_APDO_START) {
+			tcpm_ret = tcpm_set_apdo_charging_policy(info->tcpc,
+				DPM_CHARGING_POLICY_PPS, mV, mA, NULL);
+		} else if (type == MTK_PD_APDO_END) {
+			// tcpm_ret = tcpm_set_pd_charging_policy(info->tcpc,
+			//	DPM_CHARGING_POLICY_VSAFE5V, NULL);
+			tcpm_ret = tcpm_reset_pd_charging_policy(info->tcpc, NULL);
+		} else if (type == MTK_PD_APDO) {
+			tcpm_ret = tcpm_dpm_pd_request(info->tcpc, mV, mA, NULL);
+		} else if (type == MTK_PD) {
+			tcpm_ret = tcpm_dpm_pd_request(info->tcpc, mV,
+						mA, NULL);
+		}
+		cnt++;
+	}while (tcpm_ret != TCP_DPM_RET_SUCCESS && cnt < 3);
 	pr_notice("[%s] type:%d mV:%d mA:%d ret:%d\n",
 		__func__, type, mV, mA, tcpm_ret);
 
@@ -733,8 +735,10 @@ static int adapter_parse_dt(struct mtk_pd_adapter_info *info,
 		&info->adapter_dev_name) < 0)
 		pr_notice("%s: no adapter name\n", __func__);
 	info->force_cv = of_property_read_bool(np, "force_cv");
-	of_property_read_u32(np, "ita_min", &info->ita_min);
-
+	/*of_property_read_u32(np, "ita_min", &info->ita_min);*/
+	if (of_property_read_u32(np, "ita_min", &info->ita_min) < 0) {
+		info->ita_min = 1000;
+	}
 	pr_notice("%s\n", __func__);
 
 	if (!np) {
