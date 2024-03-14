@@ -1873,16 +1873,16 @@ static int sc8562_charger_probe(struct i2c_client *client,
 	match = of_match_node(sc8562_charger_match_table, node);
 	if (match == NULL) {
 		sc_err("device tree match not found!\n");
-		goto err_1;
+		goto err_0;
 	}
 	sc->mode =  *(int *)match->data;
-	ret = sc8562_parse_dt(sc, &client->dev);
-	if (ret){
-		goto err_1;
-	}
 	ret = sc8562_detect_device(sc);
 	if (ret) {
 		sc_err("No sc8562 device found!\n");
+		goto err_0;
+	}
+	ret = sc8562_parse_dt(sc, &client->dev);
+	if (ret){
 		goto err_1;
 	}
 	i2c_set_clientdata(client, sc);
@@ -1915,12 +1915,13 @@ err_3:
 err_2:
 	power_supply_unregister(sc->fc2_psy);
 err_1:
+	if (gpio_is_valid(sc->sc_lpm_gpio))
+		gpio_set_value(sc->sc_lpm_gpio, 0);
+err_0:
 	mutex_destroy(&sc->i2c_rw_lock);
 	mutex_destroy(&sc->data_lock);
 	mutex_destroy(&sc->charging_disable_lock);
 	mutex_destroy(&sc->irq_complete);
-	if (gpio_is_valid(sc->sc_lpm_gpio))
-		gpio_set_value(sc->sc_lpm_gpio, 0);
 	sc_info("sc8562 probe fail\n!");
 	return ret;
 }
