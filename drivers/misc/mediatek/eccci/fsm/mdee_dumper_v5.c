@@ -18,6 +18,8 @@
 #include "modem_sys.h"
 #include "ccci_fsm_internal.h"
 
+#define MODEM_DUMP_FLAG
+
 #ifndef DB_OPT_DEFAULT
 #define DB_OPT_DEFAULT    (0)	/* Dummy macro define to avoid build error */
 #endif
@@ -141,6 +143,12 @@ static void mdee_output_debug_info_to_buf(struct ccci_fsm_ee *mdee,
 	char *ex_info_temp = NULL;
 	int ret = 0;
 	int val = 0;
+#ifdef MODEM_DUMP_FLAG
+    int result;
+    int i;
+    char *envp[6];
+    static struct platform_device *pldev = NULL;
+#endif
 
 	switch (debug_info->type) {
 	case MD_EX_CLASS_ASSET:
@@ -162,6 +170,25 @@ static void mdee_output_debug_info_to_buf(struct ccci_fsm_ee *mdee,
 			debug_info->dump_assert.parameters[0],
 			debug_info->dump_assert.parameters[1],
 			debug_info->dump_assert.parameters[2]);
+#ifdef MODEM_DUMP_FLAG
+        envp[0] = kasprintf(GFP_KERNEL, "FILENAME=%s", debug_info->dump_assert.file_name);
+        envp[1] = kasprintf(GFP_KERNEL, "LINE=%d", debug_info->dump_assert.line_num);
+        envp[2] = kasprintf(GFP_KERNEL, "PART0=0x%08x", debug_info->dump_assert.parameters[0]);
+        envp[3] = kasprintf(GFP_KERNEL, "PART1=0x%08x", debug_info->dump_assert.parameters[1]);
+        envp[4] = kasprintf(GFP_KERNEL, "PART2=0x%08x", debug_info->dump_assert.parameters[2]);
+        envp[5] = NULL;
+        pldev = ccci_get_modem()->plat_dev;
+        if (pldev) {
+            CCCI_ERROR_LOG(0, FSM, "fire an uevent for subsys crash! ++ \n");
+            result = kobject_uevent_env(&pldev->dev.kobj, KOBJ_CHANGE, envp);
+            CCCI_ERROR_LOG(0, FSM, "fire an uevent for subsys crash! -- %d\n", result);
+            for (i = 0; envp[i] != NULL; ++i) {
+                kfree(envp[i]);
+            }
+        } else {
+            CCCI_ERROR_LOG(0, FSM, "fire an uevent for subsys crash pldev is null");
+        }
+#endif
 		break;
 	case MD_EX_CLASS_FATAL:
 		/* fatal:  */
