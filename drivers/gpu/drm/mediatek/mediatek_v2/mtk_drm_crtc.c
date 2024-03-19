@@ -1828,6 +1828,10 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 	/*Wait TE, then set hbm cmd*/
 	if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
 		comp->funcs->io_cmd(comp, NULL, DSI_HBM_WAIT, NULL);
+		if (fps == 90) {
+			usleep_range(5500, 6000);
+		}
+
 		if (fps == 60) {
 			usleep_range(8400, 8900);
 		}
