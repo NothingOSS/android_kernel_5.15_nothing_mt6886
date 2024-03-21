@@ -192,23 +192,31 @@ static void unregister_readahead_hooks(void)
 	return;
 }
 
+static atomic_t get_ra_lock = ATOMIC_INIT(0);
+
 static int get_readahead_files_main(struct seq_file *s, void *unused) {
 	struct path_table_struct *entry;
 	struct hlist_node *tmp;
 	int i;
 	int count = 0;
 
-	hash_for_each_safe(path_hash_table, i, tmp, entry, nodex) {
-		seq_printf(s, "%s %llu %lu %llu\n", entry->nt_full_path, entry->value, entry->nt_ino, entry->nt_file_size);
-		hash_del(&entry->nodex);
-		kfree(entry);
-		insert_count--;
-		count++;
-		if(count >= 30) {
-			NT_frag_err_print("insert_count go out\n");
-			return 0;
+
+	if (atomic_cmpxchg(&get_ra_lock, 0, 1) == 0) {
+		hash_for_each_safe(path_hash_table, i, tmp, entry, nodex) {
+			seq_printf(s, "%s %llu %lu %llu\n", entry->nt_full_path, entry->value, entry->nt_ino, entry->nt_file_size);
+			hash_del(&entry->nodex);
+			kfree(entry);
+			insert_count--;
+			count++;
+			if(count >= 30) {
+				NT_frag_err_print("insert_count go out\n");
+				atomic_set(&get_ra_lock, 0);
+				return 0;
+			}
 		}
+		atomic_set(&get_ra_lock, 0);
 	}
+
 	return 0;
 }
 
