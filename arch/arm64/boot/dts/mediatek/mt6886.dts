@@ -12378,7 +12378,7 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 };
 
 &memory_ssmr_features {
-	svp-region-based-size = <0 0x3000000>;
+	svp-region-based-size = <0 0x6000000>;
 	svp-page-based-size = <0 0x1d000000>;
 	tui-size = <0 0>;
 	wfd-region-based-size = <0 0>;
