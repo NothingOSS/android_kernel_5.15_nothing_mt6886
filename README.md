@@ -4,6 +4,12 @@
   - Kernel modules path
      - vendor/mediatek/kernel_modules/
 
+2. OS 2.5.4.a
+  - Update TP firmware and fix issue
+  - Improve power/charging mechanism and fix issue
+  - Fix Display issue
+  - Update cust.dtsi
+
 # How do I submit patches to Android Common Kernels
 
 1. BEST: Make all of your changes to upstream Linux. If appropriate, backport to the stable releases.
