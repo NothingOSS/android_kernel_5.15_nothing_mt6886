@@ -57,8 +57,30 @@
 #include <linux/of_address.h>
 #include <linux/reboot.h>
 #include <linux/time.h>
+#include "nt_chg.h"
 #include "mtk_charger.h"
 #include "mtk_pe5.h"
+
+static struct nt_chg_info *get_nt_chg_entry(void)
+{
+	static struct nt_chg_info *nt_chg = NULL;
+	struct power_supply *psy;
+
+	if (nt_chg == NULL) {
+		psy = power_supply_get_by_name("nt-chg");
+		if (psy == NULL) {
+			pr_err("[%s]psy is not rdy\n", __func__);
+			return NULL;
+		}
+
+		nt_chg = (struct nt_chg_info *)power_supply_get_drvdata(psy);
+		if (nt_chg == NULL) {
+			pr_err("[%s]nt_chg_info is not rdy\n", __func__);
+			return NULL;
+		}
+	}
+	return nt_chg;
+}
 
 static int _uA_to_mA(int uA)
 {
@@ -456,6 +478,159 @@ static bool mtk_switch_check_charging_time(struct mtk_charger *info)
 	}
 	return true;
 }
+
+extern int get_pd_usb_connected(void);
+#define FCC_MAX_UA 3000*1000
+
+static int usb_icl[] = {
+   300, 500, 900, 1200, 1350, 1500, 2000, 2400, 3000,
+};
+
+void nt_aicl_enable(bool enable) {
+	//do nothing;
+}
+
+static void nt_input_current_limit_write(struct mtk_charger *info, int value)
+{
+	int i = 0;
+	int chg_vol = 0;
+	int aicl_point = 0;
+	int batt_volt = 0;
+	struct charger_device *chg_dev = NULL;
+	static int pre_vaule = -1;
+
+
+	if (pre_vaule == value) {
+		//chr_info("ignore seem value,usb input max current limit=%d \n", value);
+		//return;
+	}
+	pre_vaule = value;
+
+	if (!info && !info->chg1_dev) {
+		printk(KERN_ERR "[%s]: info not ready!\n", __func__);
+		return;
+	}
+	chr_info("usb input max current limit=%d setting %02x\n", value, i);
+	chg_dev = info->chg1_dev;
+
+	if (value < 500000) {
+		i = 0;
+		goto aicl_end;
+	}
+	batt_volt = get_battery_voltage(info);
+	chr_info("batt_volt= %d\n", batt_volt);
+	chg_vol = get_vbus(info);
+	if (chg_vol > 7600) {
+		aicl_point = 7600;
+	} else {
+		if (batt_volt > 4100 )
+			aicl_point = 4550;
+		else
+			aicl_point = 4500;
+	}
+
+	nt_aicl_enable(false);
+
+	i = 1; /* 500 */
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	charger_dev_set_charging_current(info->chg1_dev, FCC_MAX_UA);
+	msleep(90);
+	chg_vol = get_vbus(info);
+	if (chg_vol < aicl_point) {
+		chr_info( "use 500 here\n");
+		goto aicl_end;
+	} else if (value < 900000)
+		goto aicl_end;
+
+	i = 2; /* 900 */
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	msleep(90);
+	chg_vol = get_vbus(info);
+	if (chg_vol < aicl_point) {
+		i = i - 1;
+		goto aicl_pre_step;
+	} else if (value < 1200000)
+		goto aicl_end;
+
+	i = 3; /* 1200 */
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	msleep(90);
+	chg_vol = get_vbus(info);
+	if (chg_vol < aicl_point) {
+		i = i - 1;
+		goto aicl_pre_step;
+	} else if (value < 1350000)
+		goto aicl_end;
+
+	i = 4; /* 1350 */
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	msleep(90);
+	chg_vol = get_vbus(info);
+	if (chg_vol < aicl_point) {
+		i = i - 2;
+		goto aicl_pre_step;
+	} else if (value < 1500000)
+		goto aicl_end;
+
+	i = 5; /* 1500 */
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	msleep(90);
+	chg_vol = get_vbus(info);
+	if (chg_vol < aicl_point) {
+		i = i - 3; //We DO NOT use 1.2A here
+		goto aicl_pre_step;
+	} else if (value < 1500000) {
+		i = i - 2; //We use 1.2A here
+		goto aicl_end;
+	} else if (value < 2000000)
+		goto aicl_end;
+
+	i = 6; /* 2000 */
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	msleep(90);
+	chg_vol = get_vbus(info);
+	if (chg_vol < aicl_point) {
+		i = i - 1;
+		goto aicl_pre_step;
+	} else if (value < 2400000)
+	goto aicl_end;
+
+	i = 7; /* 2400 */
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	msleep(90);
+	chg_vol = get_vbus(info);
+	if (chg_vol < aicl_point) {
+		i = i - 1;
+		goto aicl_pre_step;
+	} else if (value < 3000000)
+			goto aicl_end;
+
+	i = 8; /* 3000 */
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	msleep(90);
+	chg_vol = get_vbus(info);
+	if (chg_vol < aicl_point) {
+		i = i - 1;
+		goto aicl_pre_step;
+	} else if (value >= 3000000)
+		goto aicl_end;
+
+aicl_pre_step:
+	chr_info("usb input max current limit aicl chg_vol=%d i[%d]=%d sw_aicl_point:%d aicl_pre_step\n", chg_vol, i, usb_icl[i], aicl_point);
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	goto aicl_rerun;
+aicl_end:
+	chr_info("usb input max current limit aicl chg_vol=%d i[%d]=%d sw_aicl_point:%d aicl_end\n", chg_vol, i, usb_icl[i], aicl_point);
+	charger_dev_set_input_current(chg_dev,	usb_icl[i] * 1000);
+	goto aicl_rerun;
+aicl_rerun:
+	nt_aicl_enable(true);
+	if (g_nt_chg) {
+		charger_dev_get_input_current(chg_dev, &g_nt_chg->pre_aicl_limmit);
+		chr_info("usb input max current limit aicl reg value is %d\n", g_nt_chg->pre_aicl_limmit);
+	}
+}
+
 static int do_algorithm(struct mtk_charger *info)
 {
 	struct chg_alg_device *alg;
@@ -473,6 +648,7 @@ static int do_algorithm(struct mtk_charger *info)
 	int val = 0;
 	int lst_rnd_alg_idx = info->lst_rnd_alg_idx;
 	ktime_t now_time = 0;
+	int aicl = -1;
 
 	pdata = &info->chg_data[CHG1_SETTING];
 	charger_dev_is_charging_done(info->chg1_dev, &chg_done);
@@ -603,8 +779,27 @@ static int do_algorithm(struct mtk_charger *info)
 	info->is_chg_done = chg_done;
 
 	if (is_basic == true) {
-		charger_dev_set_input_current(info->chg1_dev,
+		/*charger_dev_set_input_current(info->chg1_dev,
 			pdata->input_current_limit);
+		*/
+		if (get_pd_usb_connected() || (info->aging_mode == true)) {
+			charger_dev_set_input_current(info->chg1_dev,
+				pdata->input_current_limit);
+		} else {
+			g_nt_chg = get_nt_chg_entry();
+			charger_dev_get_input_current(info->chg1_dev, &aicl);
+			if (g_nt_chg) {
+				if (g_nt_chg && g_nt_chg->pre_input_current_limmit != pdata->input_current_limit) {
+					nt_input_current_limit_write(info, pdata->input_current_limit);
+				} else if (aicl != g_nt_chg->pre_aicl_limmit){
+						nt_input_current_limit_write(info, pdata->input_current_limit);
+				}
+				g_nt_chg->pre_input_current_limmit = pdata->input_current_limit;
+			} else {
+				charger_dev_set_input_current(info->chg1_dev,
+				pdata->input_current_limit);
+			}
+		}
 		charger_dev_set_charging_current(info->chg1_dev,
 			pdata->charging_current_limit);
 		info->lst_rnd_alg_idx = -1;

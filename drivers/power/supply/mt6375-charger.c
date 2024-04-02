@@ -755,6 +755,9 @@ static inline int mt6375_chg_field_set(struct mt6375_chg_data *ddata,
 {
 	mt_dbg(ddata->dev, "%s, val=%d\n", mt6375_chg_fields[fd].name,
 	       val);
+	if (F_IAICR == fd || F_VMIVR == fd || F_CHG_EN == fd || F_CC == fd || F_CV == fd || fd == F_BUCK_EN) {
+		pr_info("%s, val=%d\n", mt6375_chg_fields[fd].name, val);
+	}
 	val = mt6375_chg_val_toreg(mt6375_chg_fields[fd].range, val);
 	return regmap_field_write(ddata->rmap_fields[fd], val);
 }

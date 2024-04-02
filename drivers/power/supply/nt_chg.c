@@ -499,6 +499,9 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			nci->chg_type = 0;
 			nci->chg_vol_max = 0;
 			nci->chg_icl_max = 0;
+			_wake_up_nt_charger(nci);
+			nci->pre_input_current_limmit = -1;
+			nci->pre_aicl_limmit = -1;
 		} else if ((noti->typec_state.old_state == TYPEC_ATTACHED_SNK ||
 		    noti->typec_state.old_state == TYPEC_ATTACHED_CUSTOM_SRC ||
 		    noti->typec_state.old_state == TYPEC_ATTACHED_NORP_SRC ||
@@ -509,6 +512,9 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			nci->chg_type = 0;
 			nci->chg_vol_max = 0;
 			nci->chg_icl_max = 0;
+			_wake_up_nt_charger(nci);
+			nci->pre_input_current_limmit = -1;
+			nci->pre_aicl_limmit = -1;
 		}
 		break;
 	case TCP_NOTIFY_WD0_STATE:
@@ -1806,6 +1812,8 @@ static int nt_chg_probe(struct platform_device *pdev)
 	nci->ship_mode_en = false;
 	nci->otg_enable = OTG_DISABLE_MODE;
 	nci->charger_thread_polling = true;
+	nci->pre_input_current_limmit = -1;
+	nci->pre_aicl_limmit = -1;
 	nci->fake_soc = FAKE_BATT_MAGIC;
 	nci->fake_tbat = FAKE_BATT_MAGIC;
 	nci->fake_ibat = FAKE_BATT_MAGIC;

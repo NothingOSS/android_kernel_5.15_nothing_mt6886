@@ -150,6 +150,8 @@ struct nt_chg_info {
 	int cmd_discharging;
 	int fcc;
 	int is_aging_test;
+	int pre_input_current_limmit;
+	int pre_aicl_limmit;
 	bool is_hvcharger;
 	int sc_input_current;
 	int sc_charger_current;
@@ -221,5 +223,6 @@ static struct notify_info g_abnormal_info[] = {
 static struct proc_dir_entry *chg_proc_dir;
 static struct proc_dir_entry *chg_usb_proc_dir;
 #endif
+void _wake_up_nt_charger(struct nt_chg_info *nci);
 extern struct nt_chg_info *g_nt_chg;
 
