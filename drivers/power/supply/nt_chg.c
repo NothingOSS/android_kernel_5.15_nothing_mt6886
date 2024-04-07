@@ -30,6 +30,20 @@ static int _uA_to_mA(int uA)
 		return uA / 1000;
 }
 
+const char * const POWER_SUPPLY_USB_TYPE_TEXT[] = {
+	[POWER_SUPPLY_USB_TYPE_UNKNOWN]		= "Unknown",
+	[POWER_SUPPLY_USB_TYPE_SDP]		= "SDP",
+	[POWER_SUPPLY_USB_TYPE_DCP]		= "DCP",
+	[POWER_SUPPLY_USB_TYPE_CDP]		= "CDP",
+	[POWER_SUPPLY_USB_TYPE_ACA]		= "ACA",
+	[POWER_SUPPLY_USB_TYPE_C]		= "C",
+	[POWER_SUPPLY_USB_TYPE_PD]		= "PD",
+	[POWER_SUPPLY_USB_TYPE_PD_DRP]		= "PD_DRP",
+	[POWER_SUPPLY_USB_TYPE_PD_PPS]		= "PD_PPS",
+	[POWER_SUPPLY_USB_TYPE_APPLE_BRICK_ID]	= "BrickID",
+	[POWER_SUPPLY_USB_TYPE_APPLE_BRICK_ID+1]	= "PE",
+};
+
 static struct mtk_battery *get_battery_entry(void)
 {
 	struct mtk_gauge *gauge;
@@ -350,7 +364,7 @@ static int chg_check_ibus(struct nt_chg_info *nci)
 			ibus += dvchg;
 		}
 	}
-	return ibus / 1000;
+	return ibus;
 }
 
 static int chg_check_battery_info(struct nt_chg_info *nci,enum power_supply_property psp)
@@ -483,6 +497,8 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			pr_info("%s:[NT] USB Plug in, pol = %d\n", __func__,	noti->typec_state.polarity);
 			nci->typec_attach = true;
 			nci->chg_type = 0;
+			nci->chg_vol_max = 0;
+			nci->chg_icl_max = 0;
 		} else if ((noti->typec_state.old_state == TYPEC_ATTACHED_SNK ||
 		    noti->typec_state.old_state == TYPEC_ATTACHED_CUSTOM_SRC ||
 		    noti->typec_state.old_state == TYPEC_ATTACHED_NORP_SRC ||
@@ -491,6 +507,8 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			pr_info("%s:[NT] USB Plug out\n", __func__);
 			nci->typec_attach = false;
 			nci->chg_type = 0;
+			nci->chg_vol_max = 0;
+			nci->chg_icl_max = 0;
 		}
 		break;
 	case TCP_NOTIFY_WD0_STATE:
@@ -1190,6 +1208,29 @@ static int nt_resistance_proc_show(struct seq_file *m, void *v)
 }
 PROC_FOPS_RO(nt_resistance);
 
+static int maxchargingvoltage_proc_show(struct seq_file *m, void *v)
+{
+	struct nt_chg_info *nci = m->private;
+
+	pr_info("%s: maxchargingvoltage: %d \n", __func__,nci->chg_vol_max);
+	seq_printf(m, "%d\n", nci->chg_vol_max);
+	return 0;
+}
+
+PROC_FOPS_RO(maxchargingvoltage);
+
+static int maxchargingcurrent_proc_show(struct seq_file *m, void *v)
+{
+	struct nt_chg_info *nci = m->private;
+
+	pr_info("%s: maxchargingcurrent: %d \n", __func__,nci->chg_icl_max);
+	seq_printf(m, "%d\n", nci->chg_icl_max);
+	return 0;
+}
+
+PROC_FOPS_RO(maxchargingcurrent);
+
+
 const struct nt_proc entries[] = {
 	PROC_ENTRY(usb_charger_en),
 	PROC_ENTRY(voltage_adc),
@@ -1215,6 +1256,8 @@ const struct nt_proc entries[] = {
 	PROC_ENTRY(nt_qmax),
 	PROC_ENTRY(nt_quse),
 	PROC_ENTRY(nt_resistance),
+	PROC_ENTRY(maxchargingvoltage),
+	PROC_ENTRY(maxchargingcurrent),
 };
 #endif
 
@@ -1642,6 +1685,9 @@ static int nt_charger_routine_thread(void *arg)
 		if(pdata)
 			icl = _uA_to_mA(pdata->input_current_limit);
 		ibus = chg_check_ibus(nci);
+		if (ibus > nci->chg_icl_max) {
+			nci->chg_icl_max = ibus;
+		}
 		chg_type = chg_check_pmic_info(nci,POWER_SUPPLY_PROP_TYPE);
 		soc_pre = soc;
 		soc = chg_check_battery_info(nci,POWER_SUPPLY_PROP_CAPACITY);
@@ -1769,6 +1815,8 @@ static int nt_chg_probe(struct platform_device *pdev)
 	nci->pre_nt_cam = -1;
 	nci->cam_on_off = NT_CAM_OFF;
 	nci->is_hvcharger = false;
+	nci->chg_vol_max = 0;
+	nci->chg_icl_max = 0;
 	nt_charger_init_timer(nci);
 
 	nci->chgpsy = power_supply_get_by_name("mtk-master-charger");

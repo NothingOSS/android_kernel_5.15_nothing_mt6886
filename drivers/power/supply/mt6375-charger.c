@@ -26,6 +26,8 @@
 #include "mtk_charger.h"
 #include "nt_chg.h"
 
+struct nt_chg_info *g_nt_chg = NULL;
+EXPORT_SYMBOL(g_nt_chg);
 static bool dbg_log_en;
 module_param(dbg_log_en, bool, 0644);
 #define mt_dbg(dev, fmt, ...) \

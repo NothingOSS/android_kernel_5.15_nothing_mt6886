@@ -61,6 +61,28 @@
 #include <linux/of_platform.h>
 
 #include "mtk_charger.h"
+#include "nt_chg.h"
+
+static struct nt_chg_info *get_nt_chg_entry(void)
+{
+	static struct nt_chg_info *nt_chg = NULL;
+	struct power_supply *psy;
+
+	if (nt_chg == NULL) {
+		psy = power_supply_get_by_name("nt-chg");
+		if (psy == NULL) {
+			pr_err("[%s]psy is not rdy\n", __func__);
+			return NULL;
+		}
+
+		nt_chg = (struct nt_chg_info *)power_supply_get_drvdata(psy);
+		if (nt_chg == NULL) {
+			pr_err("[%s]nt_chg_info is not rdy\n", __func__);
+			return NULL;
+		}
+	}
+	return nt_chg;
+}
 
 int get_uisoc(struct mtk_charger *info)
 {
@@ -213,6 +235,10 @@ int get_vbus(struct mtk_charger *info)
 	} else
 		vchr /= 1000;
 
+	g_nt_chg = get_nt_chg_entry();
+	if (g_nt_chg && (vchr * 1000 > g_nt_chg->chg_vol_max)) {
+		g_nt_chg->chg_vol_max = vchr * 1000;
+	}
 	return vchr;
 }
 
@@ -240,6 +266,11 @@ int get_ibus(struct mtk_charger *info)
 	ret = charger_dev_get_ibus(info->chg1_dev, &ibus);
 	if (ret < 0)
 		chr_err("%s: get ibus failed: %d\n", __func__, ret);
+
+	g_nt_chg = get_nt_chg_entry();
+	if (g_nt_chg && (ibus > g_nt_chg->chg_icl_max)) {
+		g_nt_chg->chg_icl_max = ibus;
+	}
 
 	return ibus / 1000;
 }

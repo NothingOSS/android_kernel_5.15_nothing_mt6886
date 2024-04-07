@@ -23,7 +23,7 @@ struct nt_proc {
 	const char *name;
 	const struct proc_ops *fops;
 };
-int  g_nt_cp_ctrl  = -400;
+static int  g_nt_cp_ctrl  = -400;
 
 #define PROC_FOPS_RO(name)																						\
 static int name ## _proc_open(struct inode *inode, struct file *file)	\
@@ -175,6 +175,8 @@ struct nt_chg_info {
 	int cam_on_off;
 	int pre_nt_cam;
 	int cam_lmt;
+	int chg_vol_max;
+	int chg_icl_max;
 };
 
 static struct notify_info g_abnormal_info[] = {
@@ -200,20 +202,6 @@ static struct notify_info g_abnormal_info[] = {
 	{NT_NOTIFY_GAUGE_I2C_ERR ,	"[fg i2c err]"},
 };
 
-const char * const POWER_SUPPLY_USB_TYPE_TEXT[] = {
-	[POWER_SUPPLY_USB_TYPE_UNKNOWN]		= "Unknown",
-	[POWER_SUPPLY_USB_TYPE_SDP]		= "SDP",
-	[POWER_SUPPLY_USB_TYPE_DCP]		= "DCP",
-	[POWER_SUPPLY_USB_TYPE_CDP]		= "CDP",
-	[POWER_SUPPLY_USB_TYPE_ACA]		= "ACA",
-	[POWER_SUPPLY_USB_TYPE_C]		= "C",
-	[POWER_SUPPLY_USB_TYPE_PD]		= "PD",
-	[POWER_SUPPLY_USB_TYPE_PD_DRP]		= "PD_DRP",
-	[POWER_SUPPLY_USB_TYPE_PD_PPS]		= "PD_PPS",
-	[POWER_SUPPLY_USB_TYPE_APPLE_BRICK_ID]	= "BrickID",
-	[POWER_SUPPLY_USB_TYPE_APPLE_BRICK_ID+1]	= "PE",
-};
-
 #define DUMP_MSG_BUF_SIZE		  (512)
 /*Attach 10s*/
 #define CHG_THREAD_INTERVAL_A	  (10)
@@ -233,5 +221,5 @@ const char * const POWER_SUPPLY_USB_TYPE_TEXT[] = {
 static struct proc_dir_entry *chg_proc_dir;
 static struct proc_dir_entry *chg_usb_proc_dir;
 #endif
-struct nt_chg_info *g_nt_chg = NULL;
+extern struct nt_chg_info *g_nt_chg;
 
