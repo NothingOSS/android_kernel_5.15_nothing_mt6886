@@ -918,20 +918,28 @@ int mtk_aie_vidioc_qbuf(struct file *file, void *priv,
 				dev_info(fd->dev, "%s, planes is error\n", __func__);
 				return -ENOMEM;
 			}
+
 			fd->dmabuf = dma_buf_get(buf->m.planes[buf->length-1].m.fd);
-			if (IS_ERR(fd->dmabuf)) {
+			if (IS_ERR(fd->dmabuf) || fd->dmabuf == NULL) {
 				dev_info(fd->dev, "%s, dma buf get failed\n", __func__);
 				return -ENOMEM;
 			}
+
 			dma_buf_begin_cpu_access(fd->dmabuf, DMA_BIDIRECTIONAL);
 
-			ret = (u64)dma_buf_vmap(fd->dmabuf, &fd->map);
+			ret = dma_buf_vmap(fd->dmabuf, &fd->map);
 			if (ret) {
 				dev_info(fd->dev, "%s, map kernel va failed\n", __func__);
 				ret = -ENOMEM;
 				goto ERROR;
 			}
 			fd->kva = (unsigned long long)fd->map.vaddr;
+
+			if (sizeof(g_user_param) > fd->dmabuf->size) {
+				dev_info(fd->dev, "%s, memcpy over buffer size (%d/%d)\n",
+					__func__, sizeof(g_user_param), fd->dmabuf->size);
+				return -ENOMEM;
+			}
 
 			memcpy((char *)&g_user_param, (char *)fd->kva, sizeof(g_user_param));
 			fd->base_para->rpn_anchor_thrd = (signed short)
