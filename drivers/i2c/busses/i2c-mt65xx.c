@@ -104,6 +104,7 @@
 #define SHADOW_REG_MODE			(0x1 << 1)
 #define I2C_CCU_INTR_EN         0x2
 #define I2C_MCU_INTR_EN         0x1
+#define I2C_CH3_INTR_EN         0x4
 #define I2C_FIFO_DATA_LEN_MASK	0x001f
 #define MAX_POLLING_CNT		10
 
@@ -299,6 +300,7 @@ struct mtk_i2c {
 	unsigned int clk_src_in_hz;
 	unsigned int ch_offset_i2c;
 	unsigned int ch_offset_scp;
+	unsigned int ch_offset_ch3;
 	unsigned int ch_offset_dma;
 	enum mtk_trans_op op;
 	u16 timing_reg;
@@ -582,6 +584,18 @@ static void mtk_i2c_writew_scp(struct mtk_i2c *i2c, u16 val,
 	writew(val, i2c->base + i2c->ch_offset_scp + i2c->dev_comp->regs[reg]);
 }
 
+static u16 mtk_i2c_readw_ch3(struct mtk_i2c *i2c, enum I2C_REGS_OFFSET reg)
+{
+	return readw(i2c->base + i2c->ch_offset_ch3 + i2c->dev_comp->regs[reg]);
+}
+
+static void mtk_i2c_writew_ch3(struct mtk_i2c *i2c, u16 val,
+			   enum I2C_REGS_OFFSET reg)
+{
+	writew(val, i2c->base + i2c->ch_offset_ch3 + i2c->dev_comp->regs[reg]);
+}
+
+
 static int mtk_i2c_clock_enable(struct mtk_i2c *i2c)
 {
 	int ret;
@@ -663,7 +677,7 @@ int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
 	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
 		i2c->clk_ex_flag = 1;
 		spin_lock_irqsave(&i2c->multi_host_lock, flags);
-		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0) {
+		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0x20) {
 			mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
 			/* Make sure shadow reg mode is ready before writing register */
 			mb();
@@ -698,21 +712,26 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 	u16 control_reg;
 	u16 intr_stat_reg;
 	u16 intr_stat_reg_scp;
+	u16 intr_stat_reg_ch3;
 	unsigned long flags;
 
 	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
 		spin_lock_irqsave(&i2c->multi_host_lock, flags);
-		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0) {
+		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0x20) {
 			mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
 			/* Make sure shadow reg mode is ready before writing register */
 			mb();
 			mtk_i2c_writew(i2c, I2C_MCU_INTR_EN, OFFSET_MCU_INTR);
 			mtk_i2c_writew_scp(i2c, I2C_CCU_INTR_EN, OFFSET_MCU_INTR);
+			mtk_i2c_writew_ch3(i2c, I2C_CH3_INTR_EN, OFFSET_MCU_INTR);
 			mtk_i2c_writew(i2c, i2c->ac_timing.htiming, OFFSET_TIMING);
 		}
 		intr_stat_reg_scp = mtk_i2c_readw_scp(i2c, OFFSET_INTR_STAT);
+		intr_stat_reg_ch3 = mtk_i2c_readw_ch3(i2c, OFFSET_INTR_STAT);
 		if (intr_stat_reg_scp & I2C_CONFERR)
 			mtk_i2c_writew_scp(i2c, I2C_CONFERR, OFFSET_INTR_STAT);
+		if (intr_stat_reg_ch3 & I2C_CONFERR)
+			mtk_i2c_writew_ch3(i2c, I2C_CONFERR, OFFSET_INTR_STAT);
 		spin_unlock_irqrestore(&i2c->multi_host_lock, flags);
 	}
 
@@ -1811,9 +1830,11 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 	of_property_read_u32(np, "clk_src_in_hz", &i2c->clk_src_in_hz);
 	of_property_read_u32(np, "ch-offset-i2c", &i2c->ch_offset_i2c);
 	of_property_read_u32(np, "ch-offset-scp", &i2c->ch_offset_scp);
+	of_property_read_u32(np, "ch-offset-ch3", &i2c->ch_offset_ch3);
 	of_property_read_u32(np, "ch-offset-dma", &i2c->ch_offset_dma);
-	dev_info(i2c->dev, "clk_src=%d,ch_offset_i2c=0x%x, ch_offset_dma=0x%x, ch_offset_scp=0x%x\n",
-			i2c->clk_src_in_hz, i2c->ch_offset_i2c, i2c->ch_offset_dma, i2c->ch_offset_scp);
+	dev_info(i2c->dev, "clk_src=%d,ch_offset_i2c=0x%x, ch_offset_dma=0x%x, ch_offset_scp=0x%x, ch_offset_ch3=0x%x\n",
+			i2c->clk_src_in_hz, i2c->ch_offset_i2c, i2c->ch_offset_dma, i2c->ch_offset_scp,
+			i2c->ch_offset_ch3);
 	i2c->have_pmic = of_property_read_bool(np, "mediatek,have-pmic");
 	i2c->use_push_pull =
 		of_property_read_bool(np, "mediatek,use-push-pull");
