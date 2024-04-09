@@ -483,6 +483,9 @@ static u32 frame_calc_layer_hrt(struct mml_drm_ctx *ctx, struct mml_frame_info *
 				info->src.width, info->src.height) * 2;
 	}
 
+	if (layer_w == 0 || layer_h == 0)
+		return (u32)hrt;
+
 	/* calculate panel ratio, v-blanking overhead, fps */
 	hrt = hrt * ctx->panel_pixel / layer_w / layer_h * 122 / 100 * MML_HRT_FPS / 1000;
 
