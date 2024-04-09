@@ -3745,14 +3745,22 @@ static int RPO_rule(struct drm_crtc *crtc,
 		if (!is_rsz_valid(c))
 			break;
 
+		/* dual pipe check every rsz layers */
+		/* single pipe only check the second layer */
+		if (mtk_crtc->is_dual_pipe) {
+			if (same_ratio_limitation(crtc, c, RATIO_LIMIT,
+				disp_w, disp_h))
+				break;
+		} else {
+			if (ref_layer && same_ratio_limitation(crtc, c, RATIO_LIMIT,
+				disp_w, disp_h))
+				break;
+		}
+
 		if (!ref_layer)
 			ref_layer = c;
 		else if (is_same_ratio(ref_layer, c) <= 0 &&
 				is_same_ratio(c, ref_layer) <= 0)
-			break;
-
-		if (same_ratio_limitation(crtc, c, RATIO_LIMIT,
-					disp_w, disp_h))
 			break;
 
 		mtk_rect_make(&src_layer_roi,
