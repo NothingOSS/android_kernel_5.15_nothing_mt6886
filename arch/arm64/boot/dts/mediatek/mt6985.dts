@@ -5578,6 +5578,7 @@
 			clock-div = <1>;
 			ch-offset-i2c = <0x100>;
 			ch-offset-scp = <0x200>;
+			ch-offset-ch3 = <0x300>;
 			scl-gpio-id = <185>;
 			sda-gpio-id = <186>;
 		};
@@ -5647,6 +5648,7 @@
 			clock-div = <1>;
 			ch-offset-i2c = <0x100>;
 			ch-offset-scp = <0x200>;
+			ch-offset-ch3 = <0x300>;
 			scl-gpio-id = <181>;
 			sda-gpio-id = <182>;
 		};
@@ -5662,6 +5664,7 @@
 			clock-div = <1>;
 			ch-offset-i2c = <0x100>;
 			ch-offset-scp = <0x200>;
+			ch-offset-ch3 = <0x300>;
 			scl-gpio-id = <179>;
 			sda-gpio-id = <180>;
 		};
