@@ -3277,6 +3277,17 @@ static void mdp_lock_wake_lock(bool lock)
 	CMDQ_SYSTRACE_END();
 }
 
+void cmdq_check_wake_lock(void)
+{
+	s32 clock_count;
+
+	clock_count = atomic_read(&cmdq_thread_usage);
+
+	if (clock_count == 0) {
+		CMDQ_ERR("wake_lock is disable!!!\n");
+	}
+}
+
 static void cmdq_core_clk_enable(struct cmdqRecStruct *handle)
 {
 	s32 clock_count;

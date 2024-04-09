@@ -2567,6 +2567,8 @@ static void mdp_update_voltage(u32 thread_id, u64 freq, bool is_mdp)
 	u32 i;
 	unsigned long max_freq = 0;
 
+	cmdq_check_wake_lock();
+
 	CMDQ_LOG_PMQOS("%s thread %u freq %llu, is_mdp %u\n",
 		__func__, thread_id, freq, is_mdp);
 
