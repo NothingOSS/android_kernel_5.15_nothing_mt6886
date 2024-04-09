@@ -4594,7 +4594,6 @@ static void DPE_EnableClock(bool En)
 		spin_lock(&(DPEInfo.SpinLockDPE));
 		switch (g_u4EnableClockCount) {
 		case 0:
-			g_u4EnableClockCount++;
 			spin_unlock(&(DPEInfo.SpinLockDPE));
 #if !IS_ENABLED(CONFIG_MTK_LEGACY) && IS_ENABLED(CONFIG_COMMON_CLK) /*CCF*/
 #ifndef EP_NO_CLKMGR
@@ -4619,6 +4618,9 @@ static void DPE_EnableClock(bool En)
 			/* enable_clock(MT_CG_IMAGE_FD, "CAMERA"); */
 			enable_clock(MT_CG_IMAGE_LARB2_SMI, "CAMERA");
 #endif
+			spin_lock(&(DPEInfo.SpinLockDPE));
+			g_u4EnableClockCount++;
+			spin_unlock(&(DPEInfo.SpinLockDPE));
 			break;
 		default:
 			g_u4EnableClockCount++;
