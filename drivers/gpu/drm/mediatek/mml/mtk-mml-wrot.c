@@ -1960,27 +1960,60 @@ static s32 wrot_wait(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static u32 wrot_calc_ir_out(struct mml_task *task, struct mml_comp_config *ccfg)
+{
+	const struct mml_frame_config *cfg = task->config;
+	const struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	const struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
+	const u32 outw = cfg->dl_out[ccfg->pipe].width;
+	const u32 outh = cfg->dl_out[ccfg->pipe].height;
+	u32 srcw, srch, inw, inh, pixel;
+
+	/* IR mode always rotate 90 or 270 */
+	srcw = dest->crop.r.height;
+	srch = dest->crop.r.width;
+
+	inw = srcw * outw / dest->data.width;
+	inh = srch * outh / dest->data.height;
+
+	pixel = (max(inw, outw) + cfg->dl_out[ccfg->pipe].left) *
+		(max(inh, outh) + dest->crop.r.left);
+
+	mml_msg("%s pipe %u in %u %u out %u %u pixel %u",
+		__func__, ccfg->pipe, inw, inh, outw, outh, pixel);
+
+	return pixel;
+}
+
 static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	u32 pixel = wrot_frm->pixel_acc;
 
 	/* accmulate data size and use max pixel */
 	cache->total_datasize += wrot_frm->datasize;
 	cache->max_pixel = max(cache->max_pixel, wrot_frm->pixel_acc);
 
-	mml_msg("%s task %p pipe %hhu data %u pixel %u eol %u",
-		__func__, task, ccfg->pipe, wrot_frm->datasize, wrot_frm->pixel_acc,
-		wrot_frm->wdone_cnt);
-
 	if (task->config->info.mode == MML_MODE_RACING) {
 		struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 
 		/* clear path sel back to dram */
-		cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, wrot->smi_larb_con,
-			0, GENMASK(19, 16));
+		if (!mml_slt)
+			cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, wrot->smi_larb_con,
+				0, GENMASK(19, 16));
+		/* also help check inline rotate case ddp addon path throughput */
+		pixel = wrot_calc_ir_out(task, ccfg);
+		if (pixel > cache->max_pixel) {
+			cache->max_pixel = pixel;
+			mml_msg("%s update max pixel to IR %u", __func__, pixel);
+		}
 	}
+
+	mml_msg("%s task %p pipe %hhu data %u pixel %u eol %u",
+		__func__, task, ccfg->pipe, wrot_frm->datasize, cache->max_pixel,
+		wrot_frm->wdone_cnt);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (unlikely(mml_wrot_crc)) {
