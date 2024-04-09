@@ -142,6 +142,21 @@ void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 		trace_sched_find_busiest_group(src_cpu, dst_cpu, *out_balance, fbg_reason);
 	}
 }
+static inline unsigned long cpu_util_without_removed(int cpu)
+{
+	struct cfs_rq *cfs_rq;
+	unsigned int util,min_uitl = 0;
+
+	cfs_rq = &cpu_rq(cpu)->cfs;
+	util = READ_ONCE(cfs_rq->avg.util_avg);
+	if (cfs_rq->removed.nr)
+		util -=cfs_rq->removed.util_avg;
+
+	max(util,min_uitl);
+	if (sched_feat(UTIL_EST) && is_util_est_enable())
+		util = max(util, READ_ONCE(cfs_rq->avg.util_est.enqueued));
+	return min_t(unsigned long,util,capacity_orig_of(cpu));
+}
 
 void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 {
@@ -166,7 +181,7 @@ void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 	}
 
 	for_each_cpu(i, perf_domain_span(pd)) {
-		sum_util += cpu_util(i);
+		sum_util += cpu_util_without_removed(i);
 		sum_cap += capacity_of(i);
 	}
 
