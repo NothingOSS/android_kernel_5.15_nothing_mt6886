@@ -573,7 +573,11 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 	ret = of_property_read_string(dev->of_node, "tcpc", &tcpc_name);
 	if (of_property_read_bool(dev->of_node, "mediatek,u2") && ret == 0
 		&& strcmp(tcpc_name, "type_c_port0") == 0) {
-		mtk_usb_extcon_procfs_init(extcon);
+		u32 prop_value;
+		if (!of_property_read_u32(dev->of_node, "mediatek,u2", &prop_value) && !prop_value)
+			dev_info(dev, "mediatek,u2 is false explicitly\n");
+		else
+			mtk_usb_extcon_procfs_init(extcon);
 	}
 #endif
 
