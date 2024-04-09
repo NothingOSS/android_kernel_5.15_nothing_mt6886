@@ -787,7 +787,13 @@ static void mtk_cam_vb2_buf_queue(struct vb2_buffer *vb)
 
 	dma_port = node->desc.dma_port;
 	pipe_id = node->uid.pipe_id;
+
 	req_stream_data = mtk_cam_req_get_s_data(req, pipe_id, 0);
+	if (!req_stream_data) {
+		dev_info(dev, "%s get s_data failed\n", __func__);
+		return;
+	}
+
 	frame_param = &req_stream_data->frame_params;
 	raw_pipline = mtk_cam_dev_get_raw_pipeline(cam, pipe_id);
 	if (raw_pipline) {
