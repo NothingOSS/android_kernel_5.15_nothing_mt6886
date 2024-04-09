@@ -3923,7 +3923,7 @@ static int fbt_get_separatecap(int pid, unsigned long long buffer_id,
 		return ret;
 
 	/* if not getting proper cl_loading, go back to default way */
-	if (cl_loading && clusnum > 1) {
+	if (cl_loading && clusnum > 1 && max_cap_cluster < clusnum) {
 		*aa_b = cl_loading[max_cap_cluster];
 		*aa_m = cl_loading[sec_cap_cluster];
 	} else {
