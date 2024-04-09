@@ -912,6 +912,11 @@ int mtk_aie_vidioc_qbuf(struct file *file, void *priv,
 
 	int ret = 0;
 
+	if (buf == NULL) {
+		dev_info(fd->dev, "%s, v4l2_buffer buf is null\n", __func__);
+		return -ENOMEM;
+	}
+
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) { /*IMG & data*/
 		if (!fd->map_count) {
 			if (buf->length - 1 <= 0 || IS_ERR_OR_NULL(buf->m.planes)) {
