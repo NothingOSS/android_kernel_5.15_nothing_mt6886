@@ -48,8 +48,8 @@ int pps_get_log_level(void)
 #define PPS_MEASURE_R_AVG_TIMES	10
 #define PPS_VSYS_UPPER_BOUND            4700    /* mV */
 #define PPS_VSYS_UPPER_BOUND_GAP        40      /* mV */
-#define PPS_CV_UPPER_GAP        10      /* mV */
-#define PPS_CV_DOWN_GAP         30      /* mV */
+#define PPS_CV_UPPER_GAP        5      /* mV */
+#define PPS_CV_DOWN_GAP         35      /* mV */
 #define PPS_IEOC_CURR	800  /* mA */
 
 #define PPS_HWERR_NOTIFY \

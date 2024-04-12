@@ -68,8 +68,8 @@ int pe50_get_log_level(void)
 #define PE50_VSYS_UPPER_BOUND            4700    /* mV */
 #define PE50_VSYS_UPPER_BOUND_GAP        40      /* mV */
 
-#define PE50_CV_UPPER_GAP        10      /* mV */
-#define PE50_CV_DOWN_GAP         30      /* mV */
+#define PE50_CV_UPPER_GAP        5      /* mV */
+#define PE50_CV_DOWN_GAP         35      /* mV */
 #define PE50_IEOC_CURR	800  /* mA */
 #define NT_INVALID_DATA  -400
 #define NT_CTRL_MODE  101

@@ -292,9 +292,9 @@ static bool select_charging_current_limit(struct mtk_charger *info,
 			}
 			*/
 			if (info->sw_jeita.sm == TEMP_T1_TO_T2) {/* 0~10 */
-				pdata->charging_current_limit = min(1500000 , pdata->charging_current_limit);
+				pdata->charging_current_limit = min(1476000 , pdata->charging_current_limit);
 			}else if (info->sw_jeita.sm == TEMP_T3_TO_T4) {/* 45~60 */
-				pdata->charging_current_limit = min(1750000 , pdata->charging_current_limit);
+				pdata->charging_current_limit = min(1722000 , pdata->charging_current_limit);
 			}else if(info->sw_jeita.sm == TEMP_BELOW_T0 || info->sw_jeita.sm == TEMP_ABOVE_T4){/* >60 || <0 */
 				pdata->charging_current_limit = 0;
 			}else if(info->sw_jeita.sm == TEMP_T2_TO_T3){
