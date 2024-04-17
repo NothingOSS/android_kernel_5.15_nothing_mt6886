@@ -13,6 +13,14 @@
 3. OS 2.5.4.b
   - No update
 
+4. OS.2.5.5
+  - Fix PD charger issue
+  - Fix camera issue
+  - Update display driver
+  - Fix smart GC2.0 issue
+  - Update svp mem setting
+  - Add modem crash reason report for MTK
+
 # How do I submit patches to Android Common Kernels
 
 1. BEST: Make all of your changes to upstream Linux. If appropriate, backport to the stable releases.
