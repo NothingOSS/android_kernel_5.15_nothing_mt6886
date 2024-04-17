@@ -294,6 +294,11 @@ static int find_dir_sub(struct dir_context *ctx, const char *name, int namlen,
 	int ret = 0;
 	int is_dir = subdir_info->target_is_dir;
 
+	if (namlen >= F2FS_NAME_LEN) {
+		ret = -F2FS_NAME_LEN;
+		goto ERR_OUT;
+	}
+
 	if (strlen(subdir_info->target_name) != namlen)
 		goto OUT;
 
