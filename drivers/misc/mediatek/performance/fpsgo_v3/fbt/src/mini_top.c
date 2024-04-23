@@ -616,8 +616,10 @@ static void minitop_nominate_work(struct work_struct *work)
 	sort(tu, nr_cpus, sizeof(struct tid_util), __util_cmp, NULL);
 
 
-	if (!minitop_if_active_then_lock())
+	if (!minitop_if_active_then_lock()) {
+		kfree(tu);
 		return;
+	}
 	/*
 	 * Scheduler callback is hooked on sched-tick, which may enter
 	 * NOHZ and no more callback will be seen until leaving NOHZ.
