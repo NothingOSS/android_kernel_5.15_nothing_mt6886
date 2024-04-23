@@ -91,6 +91,19 @@ int mtk_regmap_write(struct regmap *map, int reg, unsigned int val)
 }
 EXPORT_SYMBOL(mtk_regmap_write);
 
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY)
+static void ultra_stop_memif (struct mtk_base_afe *afe)
+{
+	int ret = 0;
+
+	pr_info("%s, notify_ultra_afe_hw_free\n", __func__);
+	ret = notify_ultra_afe_hw_free(NOTIFIER_ULTRA_AFE_HW_FREE, NULL);
+	if (ret != NOTIFY_STOP)
+		dev_info(afe->dev, "%s(),NOTIFIER_ULTRA_AFE_HW_FREE ipi send ret: %d\n",
+			 __func__, ret);
+}
+#endif
+
 int mtk_afe_fe_startup(struct snd_pcm_substream *substream,
 		       struct snd_soc_dai *dai)
 {
@@ -410,6 +423,11 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 #if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	afe_pcm_ipi_to_scp(AUDIO_DSP_TASK_PCM_HWFREE,
 			   substream, NULL, dai, afe);
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY)
+	if (memif->scp_ultra_enable)
+		ultra_stop_memif(afe);
 #endif
 
 	if (memif->using_sram == 0 && afe->release_dram_resource)

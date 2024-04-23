@@ -12,6 +12,7 @@
 #include <asm/arch_timer.h>
 #include <sound/soc.h>
 #include <linux/pm_runtime.h>
+#include "mtk-afe-external.h"
 
 #include "audio_ultra_msg_id.h"
 #include "mtk-scp-ultra-mem-control.h"
@@ -44,6 +45,7 @@ static bool ultra_ipi_wait;
 static struct wakeup_source *ultra_suspend_lock;
 static bool pcm_dump_switch;
 static bool pcm_dump_on;
+static bool afe_hw_free; // if afe hw free and call stop by notify, set yes to avoid stop again
 static const char *const mtk_scp_ultra_dump_str[] = {
 	"Off",
 	"On"};
@@ -136,6 +138,98 @@ static struct notifier_block usnd_scp_recover_notifier = {
 };
 #endif  /* #ifdef CONFIG_MTK_TINYSYS_SCP_SUPPORT */
 
+static int ultra_stop_memif_and_irq(struct mtk_base_scp_ultra *scp_ultra)
+{
+	struct mtk_base_scp_ultra_mem *ultra_mem = &scp_ultra->ultra_mem;
+	struct mtk_base_afe *afe = get_afe_base();
+	struct mtk_base_afe_memif *memif =
+		&afe->memif[ultra_mem->ultra_dl_memif_id];
+	struct mtk_base_afe_memif *memiful =
+		&afe->memif[ultra_mem->ultra_ul_memif_id];
+	int irq_id_dl = memif->irq_usage;
+	struct mtk_base_afe_irq *irqs_dl = &afe->irqs[irq_id_dl];
+	const struct mtk_base_irq_data *irq_data_dl = irqs_dl->irq_data;
+	int irq_id_ul = memiful->irq_usage;
+	struct mtk_base_afe_irq *irqs_ul = &afe->irqs[irq_id_ul];
+	const struct mtk_base_irq_data *irq_data_ul = irqs_ul->irq_data;
+
+	dev_info(scp_ultra->dev, "%s() dl_if=%d,ul_if=%d, usnd_state=%d\n",
+		 __func__,
+		 ultra_mem->ultra_dl_memif_id,
+		 ultra_mem->ultra_ul_memif_id,
+		 scp_ultra->usnd_state);
+
+	if ((scp_ultra->usnd_state == SCP_ULTRA_STATE_OFF) ||
+			(afe_hw_free == true)) {
+		dev_info(scp_ultra->dev, "%s() ignore, state is off\n",
+			 __func__);
+		return 0;
+	}
+
+	// stop dl memif
+	ultra_memif_set_disable_hw_sema(afe, ultra_mem->ultra_dl_memif_id);
+	// stop ul memif
+	ultra_memif_set_disable_hw_sema(afe, ultra_mem->ultra_ul_memif_id);
+	// stop dl irq
+	ultra_irq_set_disable_hw_sema(afe,
+				      irq_data_dl,
+				      ultra_mem->ultra_dl_memif_id);
+
+	// stop ul irq
+	ultra_irq_set_disable_hw_sema(afe,
+				      irq_data_ul,
+				      ultra_mem->ultra_ul_memif_id);
+
+	// clear pending dl irq
+	regmap_write(afe->regmap, irq_data_dl->irq_clr_reg,
+		     1 << irq_data_dl->irq_clr_shift);
+
+	// clear pending ul irq
+	regmap_write(afe->regmap, irq_data_ul->irq_clr_reg,
+		     1 << irq_data_ul->irq_clr_shift);
+
+	// Set dl&ul irq to ap
+	set_afe_dl_irq_target(false);
+	set_afe_ul_irq_target(false);
+
+	// stop scp
+	if (scp_ultra->usnd_state == SCP_ULTRA_STATE_START) {
+		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_STOP,
+			       true,
+			       0,
+			       NULL,
+			       ULTRA_IPI_NEED_ACK);
+		scp_ultra->usnd_state = SCP_ULTRA_STATE_STOP;
+	}
+	return 0;
+}
+
+int notify_ultra_afe_hw_free_event(struct notifier_block *nb, unsigned long event, void *v)
+{
+	int status = NOTIFY_STOP;//NOTIFY_DONE; //default don't care it.
+	struct mtk_base_scp_ultra *scp_ultra = get_scp_ultra_base();
+
+	if (event == NOTIFIER_ULTRA_AFE_HW_FREE) {
+		pr_info("%s(), ultra received afe hw free event.\n", __func__);
+		if ((scp_ultra->usnd_state == SCP_ULTRA_STATE_OFF) ||
+				(scp_ultra->usnd_state == SCP_ULTRA_STATE_STOP)) {
+			pr_info("%s(), ultra already stopped, do nothing.\n", __func__);
+			return status;
+		}
+		if (ultra_stop_memif_and_irq(scp_ultra) == 0) {
+			afe_hw_free = true;
+			status = NOTIFY_STOP;
+			}
+		else
+			status = NOTIFY_BAD;
+	}
+	return status;
+}
+
+/* define ultrasound IPI notifier_block */
+static struct notifier_block ultra_afe_hw_free_notifier = {
+	.notifier_call = notify_ultra_afe_hw_free_event,
+};
 
 void ultra_ipi_rx_internal(unsigned int msg_id, void *msg_data)
 {
@@ -515,6 +609,7 @@ static int mtk_scp_ultra_pcm_open(struct snd_soc_component *component,
 
 	ultra_mem->ultra_dl_memif_id = scp_ultra_memif_dl_id;
 	ultra_mem->ultra_ul_memif_id = scp_ultra_memif_ul_id;
+        afe_hw_free = false;
 
 	memcpy((void *)(&(runtime->hw)), (void *)scp_ultra->mtk_scp_hardware,
 			sizeof(struct snd_pcm_hardware));
@@ -624,66 +719,12 @@ static int mtk_scp_ultra_pcm_stop(struct snd_soc_component *component,
 {
 	struct mtk_base_scp_ultra *scp_ultra =
 		snd_soc_component_get_drvdata(component);
-	struct mtk_base_scp_ultra_mem *ultra_mem = &scp_ultra->ultra_mem;
-	struct mtk_base_afe *afe = get_afe_base();
-	struct mtk_base_afe_memif *memif =
-		&afe->memif[ultra_mem->ultra_dl_memif_id];
-	struct mtk_base_afe_memif *memiful =
-		&afe->memif[ultra_mem->ultra_ul_memif_id];
-	int irq_id_dl = memif->irq_usage;
-	struct mtk_base_afe_irq *irqs_dl = &afe->irqs[irq_id_dl];
-	const struct mtk_base_irq_data *irq_data_dl = irqs_dl->irq_data;
-	int irq_id_ul = memiful->irq_usage;
-	struct mtk_base_afe_irq *irqs_ul = &afe->irqs[irq_id_ul];
-	const struct mtk_base_irq_data *irq_data_ul = irqs_ul->irq_data;
-
-	dev_info(scp_ultra->dev, "%s() dl_if=%d,ul_if=%d\n",
-		 __func__,
-		 ultra_mem->ultra_dl_memif_id,
-		 ultra_mem->ultra_ul_memif_id);
-
-	if (scp_ultra->usnd_state == SCP_ULTRA_STATE_OFF) {
-		dev_info(scp_ultra->dev, "%s() ignore, state is off\n",
-			 __func__);
+	if (scp_ultra == NULL) {
+		pr_info("%s audio_afe == NULL", __func__);
 		return 0;
 	}
-
-	pm_runtime_get_sync(afe->dev);
-	if (scp_ultra->usnd_state == SCP_ULTRA_STATE_START) {
-		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_STOP,
-			       true,
-			       0,
-			       NULL,
-			       ULTRA_IPI_NEED_ACK);
-		scp_ultra->usnd_state = SCP_ULTRA_STATE_STOP;
-	}
-
-	/* stop dl memif */
-	ultra_memif_set_disable_hw_sema(afe, ultra_mem->ultra_dl_memif_id);
-	/* stop ul memif */
-	ultra_memif_set_disable_hw_sema(afe, ultra_mem->ultra_ul_memif_id);
-	/* stop dl irq */
-	ultra_irq_set_disable_hw_sema(afe,
-				      irq_data_dl,
-				      ultra_mem->ultra_dl_memif_id);
-
-	/* stop ul irq */
-	ultra_irq_set_disable_hw_sema(afe,
-				      irq_data_ul,
-				      ultra_mem->ultra_ul_memif_id);
-
-	/* clear pending dl irq */
-	regmap_write(afe->regmap, irq_data_dl->irq_clr_reg,
-		     1 << irq_data_dl->irq_clr_shift);
-
-	/* clear pending ul irq */
-	regmap_write(afe->regmap, irq_data_ul->irq_clr_reg,
-		     1 << irq_data_ul->irq_clr_shift);
-
-	/* Set dl&ul irq to ap */
-	set_afe_dl_irq_target(false);
-	set_afe_ul_irq_target(false);
-	pm_runtime_put_sync(afe->dev);
+	pr_info("%s. stop ultra in component stop", __func__);
+	ultra_stop_memif_and_irq(scp_ultra);
 	return 0;
 }
 
@@ -773,13 +814,20 @@ static int mtk_scp_ultra_pcm_new(struct snd_soc_component *component)
 	ultra_suspend_lock = aud_wake_lock_init(NULL, "ultra wakelock");
 	pcm_dump_switch = false;
 	scp_ultra->usnd_state = SCP_ULTRA_STATE_IDLE;
-
+	register_ultra_afe_hw_free_notifier(&ultra_afe_hw_free_notifier);
 	return ret;
+}
+
+static void mtk_scp_ultra_pcm_remove(struct snd_soc_component *component)
+{
+	pr_info("ultra remove");
+	unregister_ultra_afe_hw_free_notifier(&ultra_afe_hw_free_notifier);
 }
 
 const struct snd_soc_component_driver mtk_scp_ultra_pcm_platform = {
 	.name = ULTRA_PCM_NAME,
 	.probe = mtk_scp_ultra_pcm_new,
+	.remove = mtk_scp_ultra_pcm_remove,
 	.open = mtk_scp_ultra_pcm_open,
 	.close = mtk_scp_ultra_pcm_close,
 	.hw_params = mtk_scp_ultra_pcm_hw_params,
