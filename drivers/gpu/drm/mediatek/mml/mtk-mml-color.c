@@ -315,7 +315,7 @@ s32 i;
 		}
 
 		result = get_color_comp_config_result(task);
-		if (!result || !color_frm->config_success) {
+		if (!result || !color_frm->config_success || !result->color_reg_cnt) {
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;
