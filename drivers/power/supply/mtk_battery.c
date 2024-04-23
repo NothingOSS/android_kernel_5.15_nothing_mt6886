@@ -735,6 +735,7 @@ static int battery_psy_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_FULL_NOW:
 		/* full or unknown must return 0 */
+		/*
 		ret = check_cap_level(bs_data->bat_capacity);
 		if ((ret == POWER_SUPPLY_CAPACITY_LEVEL_FULL) ||
 			(ret == POWER_SUPPLY_CAPACITY_LEVEL_UNKNOWN))
@@ -761,6 +762,8 @@ static int battery_psy_get_property(struct power_supply *psy,
 					current_now, q_max_now);
 			val->intval = abs(time_to_full);
 		}
+		*/
+		val->intval = -1;
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
