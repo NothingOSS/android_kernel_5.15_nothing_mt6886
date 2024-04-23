@@ -1591,6 +1591,7 @@ static struct snd_soc_dai_link mt6985_mt6338_dai_links[] = {
 	{
 		.name = "Hostless_UL2",
 		.no_pcm = 1,
+		.dpcm_playback = 1,
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
 		SND_SOC_DAILINK_REG(hostless_ul2),

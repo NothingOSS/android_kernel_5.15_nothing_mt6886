@@ -341,6 +341,26 @@ static const struct snd_kcontrol_new mtk_stf_ch2_mix[] = {
 				    I_ADDA_UL_CH2, 1, 0),
 };
 
+static const char * const adda_mux_map[] = {
+	"Normal", "Dummy_Widget",
+};
+
+static int adda_mux_map_value[] = {
+	0, 1,
+};
+
+static SOC_VALUE_ENUM_SINGLE_AUTODISABLE_DECL(adda_mux_map_enum,
+					      SND_SOC_NOPM,
+					      0,
+					      1,
+					      adda_mux_map,
+					      adda_mux_map_value);
+
+static const struct snd_kcontrol_new adda_out_mux_control =
+	SOC_DAPM_ENUM("ADDA Out Select", adda_mux_map_enum);
+static const struct snd_kcontrol_new adda_in_mux_control =
+	SOC_DAPM_ENUM("ADDA In Select", adda_mux_map_enum);
+
 enum {
 	SUPPLY_SEQ_ADDA_AFE_ON,
 	SUPPLY_SEQ_ADDA_DL_ON,
@@ -1254,6 +1274,16 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			   mtk_stf_ch2_mix,
 			   ARRAY_SIZE(mtk_stf_ch2_mix)),
 	SND_SOC_DAPM_OUTPUT("STF_OUTPUT"),
+
+	/* allow i2s on without codec on */
+	SND_SOC_DAPM_OUTPUT("ADDA_DUMMY_OUT"),
+	SND_SOC_DAPM_MUX("ADDA_Out_Mux",
+			 SND_SOC_NOPM, 0, 0, &adda_out_mux_control),
+
+	SND_SOC_DAPM_INPUT("ADDA_DUMMY_IN"),
+	SND_SOC_DAPM_MUX("ADDA_In_Mux",
+			 SND_SOC_NOPM, 0, 0, &adda_in_mux_control),
+
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
 
 	/* clock */
@@ -1436,6 +1466,14 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"STF_OUTPUT", NULL, "Sidetone Filter"},
 	{"ADDA Playback", NULL, "Sidetone Filter"},
 	{"ADDA CH34 Playback", NULL, "Sidetone Filter"},
+
+	/* allow i2s on without codec on */
+	{"ADDA Capture", NULL, "ADDA_In_Mux"},
+	{"ADDA_In_Mux", "Dummy_Widget", "ADDA_DUMMY_IN"},
+
+	{"ADDA_Out_Mux", "Dummy_Widget", "ADDA Playback"},
+	{"ADDA_DUMMY_OUT", NULL, "ADDA_Out_Mux"},
+
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
 
 	/* clk */

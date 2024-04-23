@@ -2266,6 +2266,7 @@ static const struct snd_soc_dapm_widget mt6985_memif_widgets[] = {
 	SND_SOC_DAPM_INPUT("UL6_VIRTUAL_INPUT"),
 
 	SND_SOC_DAPM_OUTPUT("DL_TO_DSP"),
+	SND_SOC_DAPM_OUTPUT("DL6_VIRTUAL_OUTPUT"),
 };
 
 static const struct snd_soc_dapm_route mt6985_memif_routes[] = {
