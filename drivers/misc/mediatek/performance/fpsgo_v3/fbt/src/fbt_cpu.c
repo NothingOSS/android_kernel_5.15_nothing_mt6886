@@ -3227,7 +3227,8 @@ static void fbt_do_boost(unsigned int blc_wt, int pid,
 		base_opp[cluster] = clus_opp[cluster];
 	}
 
-	if (cluster_num == 1 || pld[max_cap_cluster].max == -1
+	if (cluster_num == 1
+		|| (max_cap_cluster < cluster_num && pld[max_cap_cluster].max == -1)
 		|| bhr_opp == (nr_freq_cpu - 1))
 		fbt_set_hard_limit_locked(FPSGO_HARD_NONE, pld);
 	else {
