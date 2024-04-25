@@ -1187,9 +1187,7 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 	case ATTACH_TYPE_TYPEC:
 		if (!ddata->bc12_dn) {
 			bc12_en = true;
-			//rpt_psy = false;
-			ddata->psy_desc.type = POWER_SUPPLY_TYPE_USB_DCP;
-			ddata->psy_usb_type = POWER_SUPPLY_USB_TYPE_DCP;
+			rpt_psy = false;
 			goto out;
 		}
 		ret = mt6375_chg_field_get(ddata, F_PORT_STAT, &val);
