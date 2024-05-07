@@ -76,9 +76,11 @@ int venc_if_get_param(struct mtk_vcodec_ctx *ctx, enum venc_get_param_type type,
 {
 	struct venc_inst *inst = NULL;
 	int ret = 0;
-	int drv_handle_exist = 1;
+	bool drv_handle_exist = true;
+	bool is_query_cap = (type == GET_PARAM_VENC_CAP_SUPPORTED_FORMATS ||
+			     type == GET_PARAM_VENC_CAP_FRAME_SIZES);
 
-	if (!ctx->drv_handle) {
+	if (!ctx->drv_handle && is_query_cap) {
 		inst = kzalloc(sizeof(struct venc_inst), GFP_KERNEL);
 		if (!inst)
 			return -ENOMEM;
@@ -86,20 +88,21 @@ int venc_if_get_param(struct mtk_vcodec_ctx *ctx, enum venc_get_param_type type,
 		ctx->drv_handle = (unsigned long)(inst);
 		ctx->enc_if = get_data_path_ptr();
 		mtk_vcodec_add_ctx_list(ctx);
-		drv_handle_exist = 0;
+		drv_handle_exist = false;
 		mtk_v4l2_debug(0, "%s init drv_handle = 0x%lx",
 			__func__, ctx->drv_handle);
 	}
-	if (ctx->enc_if)
+	if (ctx->enc_if && ctx->drv_handle)
 		ret = ctx->enc_if->get_param(ctx->drv_handle, type, out);
 	else
 		ret = -EINVAL;
 
 	if (!drv_handle_exist) {
+		inst->vcu_inst.abort = true;
 		mtk_vcodec_del_ctx_list(ctx);
+		if (ctx->drv_handle == (unsigned long)inst)
+			ctx->drv_handle = 0;
 		kfree(inst);
-		ctx->drv_handle = 0;
-		ctx->enc_if = NULL;
 	}
 
 	return ret;
@@ -110,9 +113,12 @@ int venc_if_set_param(struct mtk_vcodec_ctx *ctx,
 {
 	struct venc_inst *inst = NULL;
 	int ret = 0;
-	int drv_handle_exist = 1;
+	bool drv_handle_exist = true;
+	bool is_set_prop = (type == VENC_SET_PARAM_PROPERTY ||
+			    type == VENC_SET_PARAM_VCP_LOG_INFO ||
+			    type == VENC_SET_PARAM_VCU_VPUD_LOG);
 
-	if (!ctx->drv_handle) {
+	if (!ctx->drv_handle && is_set_prop) {
 		inst = kzalloc(sizeof(struct venc_inst), GFP_KERNEL);
 		if (!inst)
 			return -ENOMEM;
@@ -120,20 +126,21 @@ int venc_if_set_param(struct mtk_vcodec_ctx *ctx,
 		ctx->drv_handle = (unsigned long)(inst);
 		ctx->enc_if = get_data_path_ptr();
 		mtk_vcodec_add_ctx_list(ctx);
-		drv_handle_exist = 0;
+		drv_handle_exist = false;
 		mtk_v4l2_debug(0, "%s init drv_handle = 0x%lx",
 			__func__, ctx->drv_handle);
 	}
-	if (ctx->enc_if)
+	if (ctx->enc_if && ctx->drv_handle)
 		ret = ctx->enc_if->set_param(ctx->drv_handle, type, in);
 	else
 		ret = -EINVAL;
 
 	if (!drv_handle_exist) {
+		inst->vcu_inst.abort = true;
 		mtk_vcodec_del_ctx_list(ctx);
+		if (ctx->drv_handle == (unsigned long)inst)
+			ctx->drv_handle = 0;
 		kfree(inst);
-		ctx->drv_handle = 0;
-		ctx->enc_if = NULL;
 	}
 
 	return ret;

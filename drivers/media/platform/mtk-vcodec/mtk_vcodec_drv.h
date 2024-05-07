@@ -587,6 +587,7 @@ struct mtk_vcodec_ctx {
 	enum mtk_instance_type type;
 	struct mtk_vcodec_dev *dev;
 	struct list_head list;
+	unsigned int add_list_cnt;
 
 	struct v4l2_fh fh;
 	struct v4l2_m2m_ctx *m2m_ctx;

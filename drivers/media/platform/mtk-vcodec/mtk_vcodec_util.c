@@ -310,7 +310,9 @@ void mtk_vcodec_add_ctx_list(struct mtk_vcodec_ctx *ctx)
 {
 	if (ctx != NULL) {
 		mutex_lock(&ctx->dev->ctx_mutex);
-		list_add(&ctx->list, &ctx->dev->ctx_list);
+		if (!ctx->add_list_cnt)
+			list_add(&ctx->list, &ctx->dev->ctx_list);
+		ctx->add_list_cnt++;
 		mtk_vcodec_alive_checker_init(ctx->dev);
 		mutex_unlock(&ctx->dev->ctx_mutex);
 	}
@@ -321,7 +323,9 @@ void mtk_vcodec_del_ctx_list(struct mtk_vcodec_ctx *ctx)
 {
 	if (ctx != NULL) {
 		mutex_lock(&ctx->dev->ctx_mutex);
-		list_del_init(&ctx->list);
+		ctx->add_list_cnt--;
+		if (!ctx->add_list_cnt)
+			list_del_init(&ctx->list);
 		mtk_vcodec_alive_checker_deinit(ctx->dev);
 		mutex_unlock(&ctx->dev->ctx_mutex);
 	}
