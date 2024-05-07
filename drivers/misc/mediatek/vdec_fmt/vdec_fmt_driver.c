@@ -803,17 +803,21 @@ static int fmt_gce_wait_callback(unsigned long arg)
 		return -EINVAL;
 	}
 
-	if (IS_ERR_OR_NULL(fmt->gce_task[taskid].pkt_ptr)) {
-		fmt_err("invalid pkt_prt %p", fmt->gce_task[taskid].pkt_ptr);
-		return -EINVAL;
-	}
-
+	mutex_lock(fmt->mux_cmdq_pkt[identifier]);
 	if (atomic_read(&fmt->gce_task_wait_cnt[taskid]) > 0) {
 		fmt_err("GCE taskid %d is already waiting, wait task cnt %d", taskid,
 			atomic_read(&fmt->gce_task_wait_cnt[taskid]));
+		mutex_unlock(fmt->mux_cmdq_pkt[identifier]);
 		return -EINVAL;
 	}
 	atomic_inc(&fmt->gce_task_wait_cnt[taskid]);
+	if (IS_ERR_OR_NULL(fmt->gce_task[taskid].pkt_ptr)) {
+		fmt_err("invalid pkt_prt %p", fmt->gce_task[taskid].pkt_ptr);
+		atomic_dec(&fmt->gce_task_wait_cnt[taskid]);
+		mutex_unlock(fmt->mux_cmdq_pkt[identifier]);
+		return -EINVAL;
+	}
+
 	ret = cmdq_pkt_wait_complete(fmt->gce_task[taskid].pkt_ptr);
 
 	if (ret != 0L) {
@@ -821,6 +825,7 @@ static int fmt_gce_wait_callback(unsigned long arg)
 			fmt_debug(0, "wait before flush, id %d taskid %d pkt_ptr %p",
 			identifier, taskid, fmt->gce_task[taskid].pkt_ptr);
 			atomic_dec(&fmt->gce_task_wait_cnt[taskid]);
+			mutex_unlock(fmt->mux_cmdq_pkt[identifier]);
 			return -EINVAL;
 		} else if (ret == -ETIMEDOUT)
 			fmt_debug(0, "wait timeout, id %d taskid %d pkt_ptr %p",
@@ -850,6 +855,9 @@ static int fmt_gce_wait_callback(unsigned long arg)
 				fmt_err("fmt_clock_off failed!%d",
 				ret);
 				atomic_dec(&fmt->gce_task_wait_cnt[taskid]);
+				mutex_unlock(&fmt->mux_fmt);
+				mutex_unlock(fmt->mux_gce_th[identifier]);
+				mutex_unlock(fmt->mux_cmdq_pkt[identifier]);
 				return -EINVAL;
 			}
 	}
@@ -862,6 +870,7 @@ static int fmt_gce_wait_callback(unsigned long arg)
 	cmdq_pkt_destroy(fmt->gce_task[taskid].pkt_ptr);
 	atomic_dec(&fmt->gce_task_wait_cnt[taskid]);
 	fmt_clear_gce_task(taskid);
+	mutex_unlock(fmt->mux_cmdq_pkt[identifier]);
 
 	return ret;
 }
@@ -1278,6 +1287,13 @@ static int vdec_fmt_probe(struct platform_device *pdev)
 			goto err_device;
 	}
 
+	for (i = 0; i < (int)FMT_CORE_NUM; i++) {
+		fmt->mux_cmdq_pkt[i] = devm_kzalloc(dev,
+		sizeof(struct mutex), GFP_KERNEL);
+		if (fmt->mux_cmdq_pkt[i] == NULL)
+			goto err_device;
+	}
+
 	for (i = 0; i < GCE_EVENT_MAX; i++)
 		fmt_debug(0, "gce event %d id %d", i, fmt->gce_codec_eid[i]);
 
@@ -1290,6 +1306,7 @@ static int vdec_fmt_probe(struct platform_device *pdev)
 	for (i = 0; i < fmt->gce_th_num; i++) {
 		sema_init(&fmt->fmt_sem[i], 1);
 		mutex_init(fmt->mux_gce_th[i]);
+		mutex_init(fmt->mux_cmdq_pkt[i]);
 	}
 	mutex_init(&fmt->mux_fmt);
 	mutex_init(&fmt->mux_task);
