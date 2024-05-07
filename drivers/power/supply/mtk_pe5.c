@@ -3122,7 +3122,8 @@ struct pe50_thermal_data {
 static bool pe50_check_thermal_level(struct pe50_algo_info *info,
 				     struct pe50_thermal_data *tdata)
 {
-	if (tdata->temp >= tdata->temp_level_def[PE50_THERMAL_VERY_HOT]) {
+	//if (tdata->temp >= tdata->temp_level_def[PE50_THERMAL_VERY_HOT]) {
+	if (tdata->temp > tdata->temp_level_def[PE50_THERMAL_VERY_HOT]) {
 		if (tdata->curlmt[PE50_THERMAL_VERY_HOT] == 0)
 			return true;
 		PE50_ERR("%s(%d) is over max(%d)\n", tdata->name, tdata->temp,
@@ -3211,8 +3212,8 @@ static bool pe50_check_tbat_level(struct pe50_algo_info *info,
 				  struct pe50_stop_info *sinfo)
 {
 	int ret, tbat;
-	/*10(very_cold) 10(cold) 10(very_cool) 10(cool) 20(normal) 35(warm) 40(very_warm) 45(hot) 50(very_hot)*/
-	int tbat_curlmt[PE50_THERMAL_MAX]={-1, -1, -1, 1, 1, 1, 1, 1, -1};
+	/*10(very_cold) 10(cold) 10(very_cool) 10(cool) 20(normal) 35(warm) 40(very_warm) 45(hot) 45(very_hot)*/
+	int tbat_curlmt[PE50_THERMAL_MAX]={-1, -1, -1, 1, 1, 1, 1, -1, -1};
 	struct pe50_algo_data *data = info->data;
 	struct pe50_algo_desc *desc = info->desc;
 	struct pe50_thermal_data tdata = {
@@ -3899,6 +3900,11 @@ static int pe50_is_algo_ready(struct chg_alg_device *alg)
 	*/
 	struct pe50_algo_data *data = NULL;
 	struct pe50_algo_desc *desc = NULL;
+	struct pe50_stop_info sinfo = {
+		.reset_ta = true,
+		.hardreset_ta = false,
+	};
+
 	if (info == NULL)
 		return ALG_INIT_FAIL;
 	data = info->data;
@@ -3964,7 +3970,10 @@ static int pe50_is_algo_ready(struct chg_alg_device *alg)
 			goto out;
 		}
 	}
-
+	if (!pe50_check_tbat_level(info, &sinfo)) {
+		ret = ALG_NOT_READY;
+		goto out;
+	}
 	if (!pe50_is_ta_rdy(info)) {
 		ret = pe50_hal_is_pd_adapter_ready(alg);
 		if(ALG_READY == ret){
@@ -4361,6 +4370,7 @@ static int pe50_probe(struct platform_device *pdev)
 	atomic_set(&data->wakeup_thread, 0);
 	atomic_set(&data->stop_thread, 0);
 	data->state = PE50_ALGO_STOP;
+	data->tbat_level = PE50_THERMAL_NORMAL;
 	alarm_init(&data->timer, ALARM_REALTIME, pe50_algo_timer_cb);
 	data->task = kthread_run(pe50_algo_threadfn, info, "pe50_algo_task");
 	if (IS_ERR(data->task)) {

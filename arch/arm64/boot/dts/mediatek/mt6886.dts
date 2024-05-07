@@ -3459,8 +3459,8 @@
 		tta_level_def = <0 0 0 0 25 50 60 70 80>;
 		tta_curlmt = <0 0 0 0 0 300 600 900 (-1)>;
 		tta_recovery_area = <3>;
-		tbat_level_def = <10 10 10 10 20 35 40 45 50>;
-		tbat_curlmt = <(-1) (-1) (-1) 0 0 0 0 0 (-1)>;
+		tbat_level_def = <10 10 10 10 20 35 40 45 45>;
+		tbat_curlmt = <(-1) (-1) (-1) 0 0 0 0 (-1) (-1)>;
 		/*very warm 40~45*/
 		tbat_t3_to_t4_cv = <4280 4410 4480 4510 4530>;
 		tbat_t3_to_t4_curlmt = <0 375 625 1000 1375>;
@@ -3524,8 +3524,8 @@
 		tta_level_def = <0 0 0 0 25 50 60 70 80>;
 		tta_curlmt = <0 0 0 0 0 300 600 900 (-1)>;
 		tta_recovery_area = <3>;
-		tbat_level_def = <10 10 10 10 20 35 40 45 50>;
-		tbat_curlmt = <(-1) (-1) (-1) 0 0 0 0 0 (-1)>;
+		tbat_level_def = <10 10 10 10 20 35 40 45 45>;
+		tbat_curlmt = <(-1) (-1) (-1) 0 0 0 0 (-1) (-1)>;
 		/*very warm 40~45*/
 		tbat_t3_to_t4_cv = <4280 4410 4480 4510 4530>;
 		tbat_t3_to_t4_curlmt = <0 0 0 500 1250>;

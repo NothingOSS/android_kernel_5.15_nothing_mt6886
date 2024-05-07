@@ -3100,7 +3100,7 @@ struct pps_thermal_data {
 static bool pps_check_thermal_level(struct pps_algo_info *info,
 				     struct pps_thermal_data *tdata)
 {
-	if (tdata->temp >= tdata->temp_level_def[PPS_THERMAL_VERY_HOT]) {
+	if (tdata->temp > tdata->temp_level_def[PPS_THERMAL_VERY_HOT]) {
 		if (tdata->curlmt[PPS_THERMAL_VERY_HOT] == 0)
 			return true;
 		PPS_ERR("%s(%d) is over max(%d)\n", tdata->name, tdata->temp,
@@ -3189,8 +3189,8 @@ static bool pps_check_tbat_level(struct pps_algo_info *info,
 				  struct pps_stop_info *sinfo)
 {
 	int ret, tbat;
-	/*10(very_cold) 10(cold) 10(very_cool) 10(cool) 20(normal) 35(warm) 40(very_warm) 45(hot) 50(very_hot)*/
-	int tbat_curlmt[PPS_THERMAL_MAX]={-1, -1, -1, 1, 1, 1, 1, 1, -1};
+	/*10(very_cold) 10(cold) 10(very_cool) 10(cool) 20(normal) 35(warm) 40(very_warm) 45(hot) 45(very_hot)*/
+	int tbat_curlmt[PPS_THERMAL_MAX]={-1, -1, -1, 1, 1, 1, 1, -1, -1};
 	struct pps_algo_data *data = info->data;
 	struct pps_algo_desc *desc = info->desc;
 	struct pps_thermal_data tdata = {
@@ -3874,6 +3874,11 @@ static int pps_is_algo_ready(struct chg_alg_device *alg)
 	*/
 	struct pps_algo_data *data = NULL;
 	struct pps_algo_desc *desc = NULL;
+	struct pps_stop_info sinfo = {
+		.reset_ta = true,
+		.hardreset_ta = false,
+	};
+
 	if (info == NULL)
 		return ALG_INIT_FAIL;
 	data = info->data;
@@ -3929,6 +3934,11 @@ static int pps_is_algo_ready(struct chg_alg_device *alg)
 			data->waiver = true;
 			goto out;
 		}
+	}
+
+	if (!pps_check_tbat_level(info, &sinfo)) {
+		ret = ALG_NOT_READY;
+		goto out;
 	}
 
 	if (!pps_is_ta_rdy(info)) {
@@ -4329,6 +4339,7 @@ static int pps_probe(struct platform_device *pdev)
 	atomic_set(&data->wakeup_thread, 0);
 	atomic_set(&data->stop_thread, 0);
 	data->state = PPS_ALGO_STOP;
+	data->tbat_level = PPS_THERMAL_NORMAL;
 	alarm_init(&data->timer, ALARM_REALTIME, pps_algo_timer_cb);
 	data->task = kthread_run(pps_algo_threadfn, info, "pps_algo_task");
 	if (IS_ERR(data->task)) {

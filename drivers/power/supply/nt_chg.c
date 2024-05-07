@@ -113,6 +113,33 @@ static int check_dvchg_status(void)
 	return 0;
 }
 
+static int check_pps_status(struct nt_chg_info *nci)
+ {
+	struct chg_alg_device *alg = NULL;
+	struct pe50_algo_info *info = NULL;
+	bool is_ok = true;
+
+	pr_err("%s: typec_attach=%d, pd_type=%d\n", __func__,
+			nci->typec_attach, nci->info->pd_type);
+	if (nci->info->pd_type != MTK_PD_CONNECT_PE_READY_SNK_APDO)
+		return is_ok;
+	if (!nci->typec_attach)
+		return is_ok;
+
+	alg = get_chg_alg_by_name("pe5");
+	if(alg) {
+		info = chg_alg_dev_get_drvdata(alg);
+		if (info && info->data) {
+			if ((info->data->state == PE50_ALGO_STOP) && (info->data->finish != true))
+				is_ok = false;
+			pr_err("%s: state=%d, finish=%d\n", __func__, info->data->state,
+				info->data->finish);
+		}
+	}
+
+	return is_ok;
+}
+
 static unsigned int check_abnormal_status(struct nt_chg_info *nci)
 {
 	u8 i;
@@ -211,7 +238,9 @@ static unsigned int check_abnormal_status(struct nt_chg_info *nci)
 	}else if(evt && evt < EVT_HARDRESET){
 		notify_code &= ~NT_NOTIFY_CHARGE_PUMP_ERR;
 	}
-
+	
+	if (!check_pps_status(nci))
+		notify_code |= NT_NOTIFY_CHARGE_PUMP_ERR;
 	pr_info("%s: [nt_abnormal_status] : %d \n",__func__, notify_code);
 	for(i = 0;i < 20; i++){
 		if(g_abnormal_info[i].type & notify_code){
