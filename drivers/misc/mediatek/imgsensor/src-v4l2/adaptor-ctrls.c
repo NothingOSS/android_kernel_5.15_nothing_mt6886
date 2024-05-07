@@ -489,6 +489,12 @@ static int _aov_switch_i2c_bus_scl_aux(struct v4l2_ctrl *ctrl)
 	switch (aux) {
 	case SCL4:
 	{
+		if ((ctx->state[STATE_SCL_AP] == NULL) || IS_ERR(ctx->state[STATE_SCL_AP])) {
+			dev_info(ctx->dev,
+				"[%s] no such state(%s)(fail)\n",
+				__func__, state_names[STATE_SCL_AP]);
+			return -EINVAL;
+		}
 		ret = pinctrl_select_state(ctx->pinctrl, ctx->state[STATE_SCL_AP]);
 		if (ret < 0) {
 			dev_info(ctx->dev,
@@ -504,6 +510,12 @@ static int _aov_switch_i2c_bus_scl_aux(struct v4l2_ctrl *ctrl)
 		break;
 	case SCL7:
 	{
+		if ((ctx->state[STATE_SCL_SCP] == NULL) || IS_ERR(ctx->state[STATE_SCL_SCP])) {
+			dev_info(ctx->dev,
+				"[%s] no such state(%s)(fail)\n",
+				__func__, state_names[STATE_SCL_SCP]);
+			return -EINVAL;
+		}
 		ret = pinctrl_select_state(ctx->pinctrl, ctx->state[STATE_SCL_SCP]);
 		if (ret < 0) {
 			dev_info(ctx->dev,
@@ -538,6 +550,12 @@ static int _aov_switch_i2c_bus_sda_aux(struct v4l2_ctrl *ctrl)
 	switch (aux) {
 	case SDA4:
 	{
+		if ((ctx->state[STATE_SDA_AP] == NULL) || IS_ERR(ctx->state[STATE_SDA_AP])) {
+			dev_info(ctx->dev,
+				"[%s] no such state(%s)(fail)\n",
+				__func__, state_names[STATE_SDA_AP]);
+			return -EINVAL;
+		}
 		ret = pinctrl_select_state(ctx->pinctrl, ctx->state[STATE_SDA_AP]);
 		if (ret < 0) {
 			dev_info(ctx->dev,
@@ -553,6 +571,12 @@ static int _aov_switch_i2c_bus_sda_aux(struct v4l2_ctrl *ctrl)
 		break;
 	case SDA7:
 	{
+		if ((ctx->state[STATE_SDA_SCP] == NULL) || IS_ERR(ctx->state[STATE_SDA_SCP])) {
+			dev_info(ctx->dev,
+				"[%s] no such state(%s)(fail)\n",
+				__func__, state_names[STATE_SDA_SCP]);
+			return -EINVAL;
+		}
 		ret = pinctrl_select_state(ctx->pinctrl, ctx->state[STATE_SDA_SCP]);
 		if (ret < 0) {
 			dev_info(ctx->dev,
