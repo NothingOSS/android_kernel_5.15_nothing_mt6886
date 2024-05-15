@@ -4879,29 +4879,29 @@ int mtk_dsi_esd_read(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 	if ((mtk_dsi_get_vendor_id() == 2) || (mtk_dsi_get_vendor_id() == 3)) {
 		esdcheck_in_ed = 0;
 	}
+
+	if (mtk_dsi_get_vendor_id() == 2 &&  (got_esd_base_val == 1) && is_system_resume == 1)
+	{
+		//printk("[%s] send fe ed\n",__func__);
+		mipi_dsi_dcs_write_gce(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
+		mipi_dsi_dcs_write_gce(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
+		cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(10), CMDQ_GPR_R06);
+		esdcheck_in_ed = 1;
+	}
+
+	if (mtk_dsi_get_vendor_id() == 3  &&  (got_esd_base_val == 1) && is_system_resume == 1)
+	{
+		//printk("[%s] send fe 20\n",__func__);
+		mipi_dsi_dcs_write_gce(dsi, handle, bl_tb1, ARRAY_SIZE(bl_tb1));
+		mipi_dsi_dcs_write_gce(dsi, handle, bl_tb1, ARRAY_SIZE(bl_tb1));
+		cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(10), CMDQ_GPR_R06);
+		esdcheck_in_ed = 1;
+	}
+
 	for (i = 0 ; i < ESD_CHECK_NUM ; i++) {
 
 		if (params->lcm_esd_check_table[i].cmd == 0)
 			break;
-
-		if (mtk_dsi_get_vendor_id() == 2 &&  (got_esd_base_val == 1) && is_system_resume == 1)
-		{
-			printk("[%s] send fe ed\n",__func__);
-			mipi_dsi_dcs_write_gce(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-			mipi_dsi_dcs_write_gce(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-			cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(10), CMDQ_GPR_R06);
-			esdcheck_in_ed = 1;
-		}
-
-		if (mtk_dsi_get_vendor_id() == 3  &&  (got_esd_base_val == 1) && is_system_resume == 1)
-		{
-			printk("[%s] send fe 20\n",__func__);
-
-			mipi_dsi_dcs_write_gce(dsi, handle, bl_tb1, ARRAY_SIZE(bl_tb1));
-			mipi_dsi_dcs_write_gce(dsi, handle, bl_tb1, ARRAY_SIZE(bl_tb1));
-			cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(10), CMDQ_GPR_R06);
-			esdcheck_in_ed = 1;
-		}
 
 		if (is_bdg_supported()) {
 			read_msg.type = (params->lcm_esd_check_table[i].cmd < 0xB0)
@@ -4928,18 +4928,15 @@ int mtk_dsi_esd_read(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 			mtk_dsi_read_gce(comp, handle, &t0, &t1, i, ptr);
 		}
 
-		if (mtk_dsi_get_vendor_id() == 2  && (got_esd_base_val == 1) && is_system_resume == 1)
-		{
-			mipi_dsi_dcs_write_gce(dsi, handle, bl_tb2, ARRAY_SIZE(bl_tb2));
-			mdelay(1);
-		}
-		if (mtk_dsi_get_vendor_id() == 3  && (got_esd_base_val == 1 ) && is_system_resume == 1)
-		{
-			mipi_dsi_dcs_write_gce(dsi, handle, bl_tb2, ARRAY_SIZE(bl_tb2));
-			mdelay(1);
-		}
+	}
 
-
+	if (mtk_dsi_get_vendor_id() == 2  && (got_esd_base_val == 1) && is_system_resume == 1)
+	{
+		mipi_dsi_dcs_write_gce(dsi, handle, bl_tb2, ARRAY_SIZE(bl_tb2));
+	}
+	if (mtk_dsi_get_vendor_id() == 3  && (got_esd_base_val == 1 ) && is_system_resume == 1)
+	{
+		mipi_dsi_dcs_write_gce(dsi, handle, bl_tb2, ARRAY_SIZE(bl_tb2));
 	}
 
 	return 0;
@@ -5000,7 +4997,7 @@ int mtk_dsi_esd_cmp(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 		}
 
 		for (j = 0; j < lcm_esd_tb->count && j < 4; j++) {
-			printk("[%s]chk_val[%d-%d]:%x para_list[%d-%d]:%x\n",__func__,i,j,chk_val[j],i,j,lcm_esd_tb->para_list[j]);
+			//printk("[%s]chk_val[%d-%d]:%x para_list[%d-%d]:%x\n",__func__,i,j,chk_val[j],i,j,lcm_esd_tb->para_list[j]);
 			if (lcm_esd_tb->mask_list[j])
 				chk_val[j] = chk_val[j] & lcm_esd_tb->mask_list[j];
 
