@@ -13,7 +13,6 @@
     hw_rev = <1>;
 };
 
-
 &mobicore{
 	trustonic,real-drv = <1>;
 };
@@ -32,7 +31,7 @@ initcall_debug=1";
 	backlight {
 		led_mode = <6>;
 		gate_enable = <1>;
-		pwm_config = <0 1 1 1 0>;
+		pwm_config = <0 1 0 0 0>;
 	};
 };*/
 &mtk_leds {
@@ -40,7 +39,7 @@ initcall_debug=1";
 
 	backlight {
 		led_mode = <4>;
-		pwm_config = <0 1 1 1 0>;
+		pwm_config = <0 1 0 0 0>;
 	};
 };
 
