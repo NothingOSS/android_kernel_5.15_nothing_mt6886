@@ -919,7 +919,7 @@ int mtk_aie_vidioc_qbuf(struct file *file, void *priv,
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) { /*IMG & data*/
 		if (!fd->map_count) {
-			if (buf->length - 1 <= 0 || IS_ERR_OR_NULL(buf->m.planes)) {
+			if (buf->length <= 1 || IS_ERR_OR_NULL(buf->m.planes)) {
 				dev_info(fd->dev, "%s, planes is error\n", __func__);
 				return -ENOMEM;
 			}
