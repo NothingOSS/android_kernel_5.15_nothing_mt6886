@@ -251,16 +251,21 @@ int ccd_worker_read(struct mtk_ccd *ccd,
 	}
 
 	spin_lock(&mept->pending_sendq.queue_lock);
-	ccd_params = list_first_entry(&mept->pending_sendq.queue,
-				      struct mtk_ccd_params,
-				      list_entry);
-	list_del(&ccd_params->list_entry);
+	ccd_params = list_first_entry_or_null(&mept->pending_sendq.queue,
+					      struct mtk_ccd_params,
+					      list_entry);
+	if (ccd_params != NULL)
+		list_del(&ccd_params->list_entry);
 	spin_unlock(&mept->pending_sendq.queue_lock);
 
-	atomic_dec(&mept->ccd_cmd_sent);
+	if (ccd_params != NULL) {
+		atomic_dec(&mept->ccd_cmd_sent);
+		memcpy(read_obj, &ccd_params->worker_obj, sizeof(*read_obj));
+		kfree(ccd_params);
+	} else {
+		dev_info(ccd->dev, "warn. ccd_params is null\n");
+	}
 
-	memcpy(read_obj, &ccd_params->worker_obj, sizeof(*read_obj));
-	kfree(ccd_params);
 err_ret:
 	kref_put(&mept->ept.refcount, __ept_release);
 err_put:
