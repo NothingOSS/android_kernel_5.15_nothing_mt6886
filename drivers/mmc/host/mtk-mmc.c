@@ -3207,6 +3207,17 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	if (ret)
 		goto release;
 
+	if (host->dvfsrc_vcore_power && host->req_vcore) {
+		if (regulator_set_voltage(host->dvfsrc_vcore_power,
+			host->req_vcore, INT_MAX))
+			pr_info("%s: fail to set vcore to %d\n",
+				__func__, host->req_vcore);
+		else
+			pr_info("%s: success to set vcore to %d\n",
+				__func__, host->req_vcore);
+	}
+	pr_info("[%s]read,vcore=%d", __func__, host->dvfsrc_vcore_power ? regulator_get_voltage(host->dvfsrc_vcore_power) : -1);
+
 	if (host->id == MSDC_SDIO) {
 		ret = request_sdio_eint_irq(host);
 		if (ret)
