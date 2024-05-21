@@ -151,7 +151,7 @@ static int set_reg(struct adaptor_ctx *ctx, void *data, int val)
 	ctx->regulator[idx] = devm_regulator_get_optional(ctx->dev, reg_names[idx]);
 	if (IS_ERR(ctx->regulator[idx])) {
 		ctx->regulator[idx] = NULL;
-		dev_dbg(ctx->dev, "no reg %s\n", reg_names[idx]);
+		dev_info(ctx->dev, "no reg %s\n", reg_names[idx]);
 		return -EINVAL;
 	}
 
@@ -161,7 +161,7 @@ static int set_reg(struct adaptor_ctx *ctx, void *data, int val)
 #endif
 	ret = regulator_set_voltage(reg, val, val);
 	if (ret) {
-		dev_dbg(ctx->dev,
+		dev_info(ctx->dev,
 			"regulator_set_voltage(%s),val(%d),ret(%llu)(fail)\n",
 			reg_names[idx], val, ret);
 	}
@@ -173,7 +173,7 @@ static int set_reg(struct adaptor_ctx *ctx, void *data, int val)
 #endif
 	ret = regulator_enable(reg);
 	if (ret) {
-		dev_dbg(ctx->dev,
+		dev_info(ctx->dev,
 			"regulator_enable(%s),ret(%llu)(fail)\n",
 			reg_names[idx], ret);
 		return ret;
@@ -198,7 +198,7 @@ static int unset_reg(struct adaptor_ctx *ctx, void *data, int val)
 #endif
 	ret = regulator_disable(reg);
 	if (ret) {
-		dev_dbg(ctx->dev,
+		dev_info(ctx->dev,
 			"disable(%s),ret(%llu)(fail)\n",
 			reg_names[idx], ret);
 		return ret;
@@ -284,7 +284,7 @@ static int reinit_pinctrl(struct adaptor_ctx *ctx)
 				ctx->pinctrl, state_names[i]);
 		if (IS_ERR(ctx->state[i])) {
 			ctx->state[i] = NULL;
-			dev_dbg(dev, "no state %s\n", state_names[i]);
+			dev_info(dev, "no state %s\n", state_names[i]);
 		}
 	}
 #if IMGSENSOR_LOG_MORE
