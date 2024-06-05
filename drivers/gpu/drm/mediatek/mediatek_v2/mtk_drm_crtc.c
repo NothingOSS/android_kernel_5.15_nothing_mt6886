@@ -1320,7 +1320,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	//sync brightness and frame commit @{
-	if (need_brightness_sync) {
+	if (need_brightness_sync && index == 0) {
 		DDPINFO("%s: need brightness sync, level: %d\n", __func__, level);
 		return 0;
 	}
@@ -13450,7 +13450,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		//@}
 	}
 
-	if (need_brightness_sync) {
+	if (need_brightness_sync && index == 0) {
 		uint32_t value = (uint32_t)mtk_crtc_state->prop_val[CRTC_PROP_NT_HDR_BRIGHTNESS];
 		if (brightness_now != value) {
 			level_pending = value;
