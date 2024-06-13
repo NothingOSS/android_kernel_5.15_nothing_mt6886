@@ -3372,7 +3372,7 @@
 		vsys-watt = <5000000>;
 		ibus-err = <14>;
 
-		pd_stop_battery_soc = <85>;
+		pd_stop_battery_soc = <90>;
 
 		/* single charger */
 		sc-input-current = <3200000>;
@@ -3436,7 +3436,7 @@
 		start_soc_min = <0>;
 		start_soc_max = <99>;
 		start_vbat_max = <4450>;
-		idvchg_term = <450>;
+		idvchg_term = <350>;
 		idvchg_step = <50>;
 		ita_level = <2250 2150 2000 1500>;
 		rcable_level = <250 300 375 500>;
@@ -3501,7 +3501,7 @@
 		start_soc_min = <0>;
 		start_soc_max = <99>;
 		start_vbat_max = <4450>;
-		idvchg_term = <400>;
+		idvchg_term = <450>;
 		idvchg_step = <50>;
 		ita_level = <3000 2500 2000 1500>;
 		rcable_level = <250 300 375 500>;

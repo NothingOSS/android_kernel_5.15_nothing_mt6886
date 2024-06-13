@@ -301,6 +301,8 @@ struct mtk_charger {
 	bool aging_mode;
 	bool fastchg_rerun;
 	int hwovp_en_gpio;
+	int chg_data_id;
+	int chg_promt;
 
 	int pd_type;
 	bool pd_reset;

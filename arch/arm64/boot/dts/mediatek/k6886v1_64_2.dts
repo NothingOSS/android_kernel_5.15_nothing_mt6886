@@ -767,11 +767,12 @@ initcall_debug=1";
 	};
 };
 &pe5 {
-	ita_level = <2500 2150 2000 1500>;
+	ita_level = <2250 2150 2000 1500>;
 	rcable_level = <250 300 375 500>;
 };
 &charger {
 	chg_data_id = <5>;
+	chg_promt = <2>;
 };
 &nt_chg {
 	cam_lmt_ibus = <(-1)>;

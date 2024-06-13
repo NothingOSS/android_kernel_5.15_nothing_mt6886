@@ -224,6 +224,7 @@ int get_vbus(struct mtk_charger *info)
 {
 	int ret = 0;
 	int vchr = 0;
+	int vchr_min = 0, vchr_max = 0;
 
 	if (info == NULL)
 		return 0;
@@ -234,7 +235,14 @@ int get_vbus(struct mtk_charger *info)
 			chr_err("%s: get vbus failed: %d\n", __func__, ret);
 	} else
 		vchr /= 1000;
-
+	if ((vchr <= 2500) && (info->dvchg1_dev) && (info->chr_type != POWER_SUPPLY_TYPE_UNKNOWN)) {
+		/*get vbus by cp_adc*/
+		ret = charger_dev_get_adc(info->dvchg1_dev, ADC_CHANNEL_VBUS ,&vchr_min, &vchr_max);
+		if (ret < 0) {
+				chr_err("%s: get vbus(cp) failed: %d\n", __func__, ret);
+		} else
+			vchr = vchr_max /= 1000;
+	}
 	g_nt_chg = get_nt_chg_entry();
 	if (g_nt_chg && (vchr * 1000 > g_nt_chg->chg_vol_max)) {
 		g_nt_chg->chg_vol_max = vchr * 1000;

@@ -1359,6 +1359,12 @@ void pd_unlock_msg_output(struct pd_port *pd_port)
 
 	pd_dbg_info_unlock();
 }
+int pd_core_connected = 0;
+bool get_pd_pps_connected(void)
+{
+	return (pd_core_connected == PD_CONNECT_PE_READY_SNK_APDO);
+}
+EXPORT_SYMBOL(get_pd_pps_connected);
 
 int pd_update_connect_state(struct pd_port *pd_port, uint8_t state)
 {
@@ -1368,6 +1374,7 @@ int pd_update_connect_state(struct pd_port *pd_port, uint8_t state)
 		return 0;
 
 	pd_port->pd_connect_state = state;
+	pd_core_connected = state;
 	PE_INFO("pd_state=%d\n", state);
 	return tcpci_notify_pd_state(tcpc, state);
 }

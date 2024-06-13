@@ -43,6 +43,7 @@ const char * const POWER_SUPPLY_USB_TYPE_TEXT[] = {
 	[POWER_SUPPLY_USB_TYPE_APPLE_BRICK_ID]	= "BrickID",
 	[POWER_SUPPLY_USB_TYPE_APPLE_BRICK_ID+1]	= "PE",
 };
+static int chg_check_vbus(struct nt_chg_info *nci);
 
 static struct mtk_battery *get_battery_entry(void)
 {
@@ -79,7 +80,7 @@ static int check_chg_status(struct nt_chg_info *nci)
 	if ((!nci->typec_attach) || (info->chr_type == POWER_SUPPLY_TYPE_UNKNOWN))
 		return 0;
 
-	charger_dev_get_vbus(info->chg1_dev, &vchr);
+	vchr = chg_check_vbus(nci)*1000;
 	pr_info("[%s]vbus : %d,{%d ~ %d}\n", __func__, vchr , (nci->is_hvcharger ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage), info->data.min_charger_voltage);
 
 	if (vchr > (nci->is_hvcharger ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage)) {
@@ -357,17 +358,29 @@ static int cooling_state_to_charger_limit(struct nt_chg_info *nci)
 
 static int chg_check_vbus(struct nt_chg_info *nci)
 {
-	int vchr = 0,ret = 0;
+	int ret = 0;
+	int vchr = 0;
+	int vchr_min = 0, vchr_max = 0;
+	struct mtk_charger *info;
 
 	if (nci == NULL)
 		return 0;
 	if(nci->info == NULL)
 		return 0;
-	ret = charger_dev_get_vbus(nci->info->chg1_dev, &vchr);
-	if(ret < 0){
-		pr_err("%s: get vbus failed: %d\n", __func__, ret);
-	}else
+	info = nci->info;
+	ret = charger_dev_get_vbus(info->chg1_dev, &vchr);
+	if (ret < 0) {
+		chr_err("%s: get vbus failed: %d\n", __func__, ret);
+	} else
 		vchr /= 1000;
+
+	if ((vchr <= 2500) && (info->dvchg1_dev) && (info->chr_type != POWER_SUPPLY_TYPE_UNKNOWN)) {
+		ret = charger_dev_get_adc(info->dvchg1_dev, ADC_CHANNEL_VBUS ,&vchr_min, &vchr_max);
+		if (ret < 0) {
+				chr_err("%s: get vbus(cp) failed: %d\n", __func__, ret);
+		} else
+			vchr = vchr_max /= 1000;
+	}
 	return vchr;
 }
 #if  0
@@ -969,10 +982,43 @@ PROC_FOPS_RW(nt_otg_enable);
 
 static int chg_data_id_proc_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "%d\n", PROJECT_DATA_ID);
+	struct nt_chg_info *nci = m->private;
+	struct mtk_charger *info;
+	
+	if (!nci){
+		pr_info("%s: nci is null!\n", __func__);
+		return -EINVAL;
+	}
+	info = nci->info;
+	if(info == NULL){
+		pr_err("%s:info is null!!\n", __func__);
+		return -EINVAL;
+	}
+	pr_info("%s: chg_data_id: %d \n", __func__,info->chg_data_id);
+	seq_printf(m, "%d\n", info->chg_data_id);
 	return 0;
 }
 PROC_FOPS_RO(chg_data_id);
+
+static int chg_promt_proc_show(struct seq_file *m, void *v)
+{
+	struct nt_chg_info *nci = m->private;
+	struct mtk_charger *info;
+
+	if (!nci){
+		pr_info("%s: nci is null!\n", __func__);
+		return -EINVAL;
+	}
+	info = nci->info;
+	if(info == NULL){
+		pr_err("%s:info is null!!\n", __func__);
+		return -EINVAL;
+	}
+	pr_info("%s: chg_promt: %d \n", __func__,info->chg_promt);
+	seq_printf(m, "%d\n", info->chg_promt);
+	return 0;
+}
+PROC_FOPS_RO(chg_promt);
 
 static ssize_t handle_fake_value(struct file *file,
 	const char __user *buffer, size_t count, loff_t *pos, enum nt_fake_value type)
@@ -1285,6 +1331,22 @@ static int maxchargingcurrent_proc_show(struct seq_file *m, void *v)
 
 PROC_FOPS_RO(maxchargingcurrent);
 
+static int ibus_now_proc_show(struct seq_file *m, void *v)
+{
+	struct nt_chg_info *nci = m->private;
+	int ibus = 0;
+
+	if (!nci){
+		pr_err("%s: nci is NULL! \n", __func__);
+		return -EINVAL;
+	}
+	ibus = chg_check_ibus(nci);
+	pr_info("%s: ibus_now: %d \n", __func__,ibus/1000);
+	seq_printf(m, "%d\n", ibus/1000);
+	return 0;
+}
+
+PROC_FOPS_RO(ibus_now);
 
 const struct nt_proc entries[] = {
 	PROC_ENTRY(usb_charger_en),
@@ -1301,6 +1363,7 @@ const struct nt_proc entries[] = {
 	PROC_ENTRY(real_soc),
 	PROC_ENTRY(nt_otg_enable),
 	PROC_ENTRY(chg_data_id),
+	PROC_ENTRY(chg_promt),
 	PROC_ENTRY(fake_soc),
 	PROC_ENTRY(fake_tbat),
 	PROC_ENTRY(fake_ibat),
@@ -1313,6 +1376,7 @@ const struct nt_proc entries[] = {
 	PROC_ENTRY(nt_resistance),
 	PROC_ENTRY(maxchargingvoltage),
 	PROC_ENTRY(maxchargingcurrent),
+	PROC_ENTRY(ibus_now),
 };
 #endif
 
@@ -1587,6 +1651,25 @@ static int check_aging_mode_status(struct nt_chg_info *nci)
 	return 0;
 }
 
+static int check_battery_psy_change_status(struct nt_chg_info *nci,
+		int pre_soc, int post_soc)
+{
+	int vbat = 0;
+	struct power_supply *batpsy = power_supply_get_by_name("battery");
+
+	if (!nci){
+		pr_info("%s: nci is null!\n", __func__);
+		return -EINVAL;
+	}
+
+	vbat = chg_check_battery_info(nci, POWER_SUPPLY_PROP_VOLTAGE_NOW);
+	if ((pre_soc != post_soc) || (vbat < LOW_BAT_THR))
+		if (batpsy)
+			power_supply_changed(batpsy);
+
+	return 0;
+}
+
 static int nt_ctrl_charge(struct nt_chg_info *nci)
 {
 	struct mtk_charger *info;
@@ -1597,6 +1680,7 @@ static int nt_ctrl_charge(struct nt_chg_info *nci)
 	int i;
 	int val = 0;
 	int need_limmit = nci->cam_on_off;
+	int tmp_cam_lmt_ibus = nci->cam_lmt_ibus;
 
 	if(!gm){
 		pr_err("%s: gm is NULL!\n",	__func__);
@@ -1649,7 +1733,7 @@ static int nt_ctrl_charge(struct nt_chg_info *nci)
 	nci->pre_nt_cam = need_limmit;
 
 	if (need_limmit == NT_CAM_ON) {
-		pdata->thermal_input_current_limit = NT_CAM_LMT_IBUS;
+		pdata->thermal_input_current_limit = tmp_cam_lmt_ibus;
 		for (i = 0; i < MAX_ALG_NO; i++) {
 			alg = info->alg[i];
 			if (alg == NULL)
@@ -1662,10 +1746,11 @@ static int nt_ctrl_charge(struct nt_chg_info *nci)
 			pr_info("%s: Stop hv charging. en_hv:%d alg:%s alg_vbus:%d\n",
 				__func__, info->enable_hv_charging,	dev_name(&alg->dev), val);
 		}
-		charger_dev_set_input_current(info->chg1_dev, NT_CAM_LMT_IBUS);
+		if (tmp_cam_lmt_ibus != -1)
+			charger_dev_set_input_current(info->chg1_dev, tmp_cam_lmt_ibus);
 		charger_dev_enable(info->chg1_dev, true);
 		info->enable_hv_charging = false;
-		nci->cam_lmt = NT_CAM_LMT_IBUS;
+		nci->cam_lmt = tmp_cam_lmt_ibus;
 		nt_ctrl_count++;
 		return RERUN_WQ;
 	} else if (need_limmit == NT_CAM_OFF){
@@ -1760,6 +1845,7 @@ static int nt_charger_routine_thread(void *arg)
 		charger_dev_get_boost_voltage_limit(nci->info->chg1_dev, &val);
 		boost_cv = ((val & BOOST_CV_MAX) - BOOST_CV_MIN)*BOOST_CV_OFFSET + BOOST_CV_BASE;
 		check_aging_mode_status(nci);
+		check_battery_psy_change_status(nci, soc_pre, soc);
 		scnprintf(keyinfo_buffer_temp,DUMP_MSG_BUF_SIZE - 1,"pump:0x%x,pump_en:%d,ovp:%d,wpc:%d, fcc:%d,fv:%d,icl:%d,ibus_ma:%d,usb_sus:%d,wls_sus:%d,BattInit:%d, chg_type:%d,soc:%d,soc_time:%d,soc_pre:%d,real_cap:%d,htemp_charge:%d,plug_in:%d,plugGpio:%d,usbTemp:%d,battTemp:%d,CHG_EN:%x,CHG_STATUS:%x,AICL:%d,AICR:%d,CV:%d,MIVR:%d,ICHG:%d,BOOST_CV:%d,BOOST_EN:%d,BOOST_CC:%d,aging_mode:%d,NT_CHG_TYPE:%s,CAM_LMT:{[ON_OFF]%d,[HV_CHG]%d,[LMT_C]%d,g_nt_cp_ctrl:%d,hvcharger:%d} \n",\
 			pump,pump_en,ovp,wpc,\
 			fcc,fv/1000,icl,ibus,usb_sus,wls_sus,\
@@ -1828,11 +1914,21 @@ static void nt_chg_parse_dt(struct nt_chg_info *nci, struct device *dev)
 		pr_notice("use default AC_CHARGER_CURRENT\n");
 		nci->ac_charger_current = 2050000;
 	}
+
+	if (of_property_read_s32(np, "cam_lmt_ibus", &val) >= 0) {
+		nci->cam_lmt_ibus = val;
+	} else {
+		pr_notice("use default cam_lmt_ibus\n");
+		nci->cam_lmt_ibus = -1;
+	}
 	nci->cp_workmode = CP_WORKMODE_DEF;
 	nci->fcc = -1;
-	pr_notice("nt_chg_parse_dt:pe2{%d,%d},dcp{%d,%d}\n",nci->sc_input_current,
-		nci->sc_charger_current,nci->ac_charger_input_current,
-		nci->ac_charger_current);
+	pr_notice("nt_chg_parse_dt:pe2{%d,%d},dcp{%d,%d},cam_lmt_ibus{%d}\n",
+		nci->sc_input_current,
+		nci->sc_charger_current,
+		nci->ac_charger_input_current,
+		nci->ac_charger_current,
+		nci->cam_lmt_ibus);
 }
 
 static int nt_chg_probe(struct platform_device *pdev)
@@ -1887,6 +1983,8 @@ static int nt_chg_probe(struct platform_device *pdev)
 		pr_err("%s:get charger device fail\n", __func__);
 		return -ENODEV;
 	}
+
+	nci->chg_promt = nci->info->chg_promt;
 
 	nci->tcpc_dev = tcpc_dev_get_by_name("type_c_port0");
 	if (nci->tcpc_dev == NULL) {

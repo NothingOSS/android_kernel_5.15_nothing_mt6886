@@ -67,7 +67,6 @@ int pe50_get_log_level(void)
 #define PE50_MEASURE_R_AVG_TIMES	10
 #define PE50_VSYS_UPPER_BOUND            4700    /* mV */
 #define PE50_VSYS_UPPER_BOUND_GAP        40      /* mV */
-
 #define PE50_CV_UPPER_GAP        5      /* mV */
 #define PE50_CV_DOWN_GAP         35      /* mV */
 #define PE50_IEOC_CURR	800  /* mA */
@@ -2460,6 +2459,7 @@ static int pe50_algo_ss_dvchg_with_ta_cv(struct pe50_algo_info *info)
 		.reset_ta = true,
 		.hardreset_ta = false,
 	};
+	u32 total_time = 0;
 
 repeat:
 	PE50_DBG("++\n");
@@ -2588,12 +2588,19 @@ out_set_cap:
 		msleep(desc->ta_cv_ss_repeat_tmin);
 		end_time = ktime_get();
 		delta_time = ktime_ms_delta(end_time, start_time);
-		PE50_INFO("delta time %dms\n", delta_time);
+		PE50_INFO("delta time %dms, total time %d ms\n", delta_time, total_time);
 		/*
 		if (delta_time < desc->ta_cv_ss_repeat_tmin)
 			msleep(desc->ta_cv_ss_repeat_tmin - delta_time);
 		*/
-		goto repeat;
+		/*The running time cannot exceed the threshold,2min*/
+		total_time += delta_time;
+		if (total_time < 120000) {
+			goto repeat;
+		} else {
+			data->waiver = true;
+			goto out;
+		}
 	}
 	return 0;
 out:
@@ -2831,7 +2838,7 @@ static int pe50_algo_cc_cv_with_ta_cv(struct pe50_algo_info *info)
 		.hardreset_ta = false,
 	};
 
-	PE50_DBG("++\n");
+	PE50_DBG("++ \n");
 
 	ret = pe50_get_adc(info, PE50_ADCCHAN_VBAT, &vbat);
 	if (ret < 0) {
@@ -3100,10 +3107,8 @@ static bool pe50_check_ibatocp(struct pe50_algo_info *info,
 		return false;
 	}
 	PE50_INFO("ibat(%dmA), ibatocp(%dmA)\n", ibat, ibatocp);
-	/*
-		if (ibat > ibatocp) {
-	*/
-	if ((ibat > 0)&&(ibat > ibatocp)) {
+	/*if (ibat > ibatocp) {*/
+	if ((ibat > 0) && (ibat > ibatocp)) {
 		PE50_ERR("ibat(%dmA) > ibatocp(%dmA)\n", ibat, ibatocp);
 		return false;
 	}
@@ -3345,6 +3350,28 @@ static bool pe50_check_tswchg_level(struct pe50_algo_info *info,
 	return true;
 }
 
+static bool pe50_check_ibat_status(struct pe50_algo_info *info,
+			       struct pe50_stop_info *sinfo)
+{
+	int ret, ibat;
+	struct pe50_algo_data *data = info->data;
+
+	if (!data->is_dvchg_en[PE50_DVCHG_MASTER])
+		return true;
+
+	ret = pe50_get_adc(info, PE50_ADCCHAN_IBAT, &ibat);
+	if (ret < 0) {
+		PE50_ERR("get ibat fail(%d)\n", ret);
+		return false;
+	}
+
+	if ((ibat < 0) && (data->state == PE50_ALGO_CC_CV)) {
+		PE50_ERR("CP stop!\n");
+		return false;
+	}
+	return true;
+}
+
 static bool
 (*pe50_safety_check_fn[])(struct pe50_algo_info *info,
 			  struct pe50_stop_info *sinfo) = {
@@ -3358,6 +3385,7 @@ static bool
 	pe50_check_tta_level,
 	pe50_check_tdvchg_level,
 	pe50_check_tswchg_level,
+	pe50_check_ibat_status,
 };
 
 static bool pe50_algo_safety_check(struct pe50_algo_info *info)
@@ -3427,10 +3455,12 @@ static bool pe50_algo_check_charging_time(struct pe50_algo_info *info)
 	struct pe50_algo_desc *desc = info->desc;
 	ktime_t etime, time_diff;
 	struct timespec64 dtime;
+/*
 	struct pe50_stop_info sinfo = {
 		.reset_ta = true,
 		.hardreset_ta = false,
 	};
+*/
 
 	etime = ktime_get_boottime();
 	time_diff = ktime_sub(etime, data->stime);
@@ -3438,8 +3468,10 @@ static bool pe50_algo_check_charging_time(struct pe50_algo_info *info)
 	if (dtime.tv_sec >= desc->chg_time_max) {
 		PE50_ERR("PE5.0 algo timeout(%d, %d)\n", (int)dtime.tv_sec,
 			 desc->chg_time_max);
-		pe50_stop(info, &sinfo);
-		return false;
+		/*
+			pe50_stop(info, &sinfo);
+			return false;
+		*/
 	}
 	return true;
 }

@@ -496,6 +496,19 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 			NON_STD_CHARGER_INPUT_CURRENT);
 		info->data.non_std_charger_input_current = NON_STD_CHARGER_INPUT_CURRENT;
 	}
+
+	if (of_property_read_u32(np, "chg_data_id", &val) >= 0)
+		info->chg_data_id = val;
+	else {
+		chr_err("no chg_data_id !\n");
+	}
+
+	if (of_property_read_u32(np, "chg_promt", &val) >= 0)
+		info->chg_promt = val;
+	else {
+		chr_err("no chg_promt !\n");
+	}
+	chr_err("chg_promt : %d\n",info->chg_promt);
 	if (of_property_read_u32(np, "charging_host_charger_current", &val)
 		>= 0) {
 		info->data.charging_host_charger_current = val;
@@ -1215,7 +1228,8 @@ static ssize_t input_current_store(struct device *dev,
 		else
 			chg_data->thermal_input_current_limit = temp;
 		*/
-		chg_data->thermal_input_current_limit = 9000000;
+		chg_data->thermal_input_current_limit = 10000000;
+		chr_info("%s: ignored %d\n", __func__, temp);
 	} else {
 		chr_err("%s: format error!\n", __func__);
 	}
@@ -2104,11 +2118,24 @@ int mtk_chg_set_vbus_ovp(bool enable, int alg_id, int ovp)
 
 	/* Enable/Disable SW OVP status */
 	pinfo->data.max_charger_voltage = sw_ovp;
+	if ((alg_id == PE5_ID || alg_id == PPS_ID) && (pinfo->chg_data_id != 2)) {
+		/*
+		 * enable = false, gpio115 = H, Start the charging pump and perform
+		 * fast charging according to the pps protocol
+		 */
+		if (enable) {
+			if (gpio_is_valid(pinfo->hwovp_en_gpio))
+					gpio_direction_output(pinfo->hwovp_en_gpio, 0);
+		} else {
+			if (gpio_is_valid(pinfo->hwovp_en_gpio))
+					gpio_direction_output(pinfo->hwovp_en_gpio, 1);
+		}
+	}
 
 	disable_hw_ovp(pinfo, enable);
 
-	chr_err("[%s] en:%d ovp:%d\n",
-			    __func__, enable, sw_ovp);
+	chr_err("[%s] en:%d ovp:%d chg_data_id:%d\n",
+			    __func__, enable, sw_ovp, pinfo->chg_data_id);
 	return ret;
 }
 EXPORT_SYMBOL(mtk_chg_set_vbus_ovp);
@@ -3567,12 +3594,12 @@ int psy_charger_set_property(struct power_supply *psy,
 			info->enable_hv_charging = false;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		info->chg_data[idx].thermal_charging_current_limit =
-			val->intval;
+		//info->chg_data[idx].thermal_charging_current_limit =
+		//	val->intval;
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
-		info->chg_data[idx].thermal_input_current_limit =
-			val->intval;
+		//info->chg_data[idx].thermal_input_current_limit =
+		//	val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
 		if (val->intval > 0)
@@ -3952,6 +3979,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 		info->fast_charging_indicator = 0;
 	*/
 	info->fast_charging_indicator = PE5_ID | PPS_ID | PDC_ID |PE2_ID;
+	info->sw_jeita.sm = TEMP_T2_TO_T3;
+	info->sw_jeita.pre_sm = TEMP_T2_TO_T3;
 	info->enable_meta_current_limit = 1;
 	info->is_charging = false;
 	info->safety_timer_cmd = -1;

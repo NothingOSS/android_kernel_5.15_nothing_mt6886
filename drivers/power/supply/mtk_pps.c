@@ -2435,6 +2435,7 @@ static int pps_algo_ss_dvchg_with_ta_cv(struct pps_algo_info *info)
 		.reset_ta = true,
 		.hardreset_ta = false,
 	};
+	u32 total_time = 0;
 
 repeat:
 	PPS_DBG("++\n");
@@ -2573,12 +2574,19 @@ out_set_cap:
 		msleep(desc->ta_cv_ss_repeat_tmin);
 		end_time = ktime_get();
 		delta_time = ktime_ms_delta(end_time, start_time);
-		PPS_INFO("delta time %dms\n", delta_time);
+		PPS_INFO("delta time %dms, total time %d ms\n", delta_time, total_time);
 		/*
 		if (delta_time < desc->ta_cv_ss_repeat_tmin)
 			msleep(desc->ta_cv_ss_repeat_tmin - delta_time);
 		*/
-		goto repeat;
+		/*The running time cannot exceed the threshold,2min*/
+		total_time += delta_time;
+		if (total_time < 120000) {
+			goto repeat;
+		} else {
+			data->waiver = true;
+			goto out;
+		}
 	}
 	return 0;
 out:
@@ -3081,7 +3089,7 @@ static bool pps_check_ibatocp(struct pps_algo_info *info,
 		return false;
 	}
 	PPS_INFO("ibat(%dmA), ibatocp(%dmA)\n", ibat, ibatocp);
-	if (ibat>0 && ibat > ibatocp) {
+	if ((ibat > 0) && (ibat > ibatocp)) {
 		PPS_ERR("ibat(%dmA) > ibatocp(%dmA)\n", ibat, ibatocp);
 		return false;
 	}
@@ -3321,6 +3329,28 @@ static bool pps_check_tswchg_level(struct pps_algo_info *info,
 	return true;
 }
 
+static bool pps_check_ibat_status(struct pps_algo_info *info,
+			       struct pps_stop_info *sinfo)
+{
+	int ret, ibat;
+	struct pps_algo_data *data = info->data;
+
+	if (!data->is_dvchg_en[PPS_DVCHG_MASTER])
+		return true;
+
+	ret = pps_get_adc(info, PPS_ADCCHAN_IBAT, &ibat);
+	if (ret < 0) {
+		PPS_ERR("get ibat fail(%d)\n", ret);
+		return false;
+	}
+
+	if ((ibat < 0) && (data->state == PPS_ALGO_CC_CV)) {
+		PPS_ERR("CP stop!!\n");
+		return false;
+	}
+	return true;
+}
+
 static bool
 (*pps_safety_check_fn[])(struct pps_algo_info *info,
 			  struct pps_stop_info *sinfo) = {
@@ -3334,6 +3364,7 @@ static bool
 	pps_check_tta_level,
 	pps_check_tdvchg_level,
 	pps_check_tswchg_level,
+	pps_check_ibat_status,
 };
 
 static bool pps_algo_safety_check(struct pps_algo_info *info)
@@ -3403,19 +3434,22 @@ static bool pps_algo_check_charging_time(struct pps_algo_info *info)
 	struct pps_algo_desc *desc = info->desc;
 	ktime_t etime, time_diff;
 	struct timespec64 dtime;
+	/*
 	struct pps_stop_info sinfo = {
 		.reset_ta = true,
 		.hardreset_ta = false,
 	};
-
+	*/
 	etime = ktime_get_boottime();
 	time_diff = ktime_sub(etime, data->stime);
 	dtime = ktime_to_timespec64(time_diff);
 	if (dtime.tv_sec >= desc->chg_time_max) {
 		PPS_ERR("PPS algo timeout(%d, %d)\n", (int)dtime.tv_sec,
 			 desc->chg_time_max);
+	/*
 		pps_stop(info, &sinfo);
 		return false;
+	*/
 	}
 	return true;
 }

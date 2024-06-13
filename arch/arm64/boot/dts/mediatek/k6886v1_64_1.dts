@@ -766,7 +766,20 @@ initcall_debug=1";
 		compatible = "mediatek,mtk_sec_video_path_support";
 	};
 };
-
+&pe5 {
+	ita_level = <2500 2150 2000 1500>;
+	rcable_level = <250 300 375 500>;
+};
+&charger {
+	chg_data_id = <5>;
+	chg_promt = <5>;
+};
+&nt_chg {
+	cam_lmt_ibus = <(-1)>;
+};
+&extcon_usb {
+	vbus-current = <1300000>;
+};
 #include "mediatek/cust_mt6886_touch_ft3681_1084x2412.dtsi"
 #include "mediatek/cust_mt6886_camera_v4l2_2.dtsi"
 #include "mediatek/aw32280.dtsi"

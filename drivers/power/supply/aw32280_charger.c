@@ -1916,7 +1916,7 @@ static int aw32280_charger_get_property(struct power_supply *psy,
 		case POWER_SUPPLY_PROP_CURRENT_NOW:
 		ret = aw32280_get_adc_data(aw, ADC_IBUS, &result);
 		if (!ret)
-		aw->ibus_curr = result;
+			aw->ibus_curr = result;
 		val->intval = aw->ibus_curr;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:

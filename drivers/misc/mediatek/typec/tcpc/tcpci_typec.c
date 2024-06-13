@@ -2049,6 +2049,15 @@ static inline bool typec_is_ignore_cc_change(
 	return false;
 }
 
+int nt_cc1_connected = 0;
+int nt_cc2_connected = 0;
+
+int nt_get_cc_connected(void)
+{
+	return (nt_cc2_connected | nt_cc1_connected);
+}
+EXPORT_SYMBOL(nt_get_cc_connected);
+
 int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 {
 	int ret;
@@ -2064,7 +2073,8 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 	ret = tcpci_get_cc(tcpc);
 	if (ret < 0)
 		return ret;
-
+	nt_cc1_connected = typec_get_cc1();
+	nt_cc2_connected = typec_get_cc2();
 	TYPEC_INFO("[CC_Alert] %d/%d\n", typec_get_cc1(), typec_get_cc2());
 
 	if (typec_is_cc_no_res()) {

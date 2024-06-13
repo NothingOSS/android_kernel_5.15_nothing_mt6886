@@ -1289,7 +1289,7 @@ static int sc8562_check_charge_enabled(struct sc8562 *sc, bool *enabled)
 	u8 val;
 
 	ret = sc8562_read_byte(sc, SC8562_REG_0B, &val);
-	if (!ret)
+	if (ret > 0)
 		*enabled = !!(val & SC8562_CHG_EN_MASK);
 	return ret;
 }
@@ -1433,7 +1433,7 @@ static int sc8562_dump_registers(struct charger_device *chg_dev)
 	for (addr = 0x0; addr <= 0x6e; addr++) {
 		if (addr <= 0x29 || addr >= 0x6c) {
 			ret = sc8562_read_byte(sc, addr, &val);
-			if (ret) {
+			if (ret > 0) {
 				sc_info("sc8562_reg[0x%02X] = 0x%02X\n", addr, val);
 			}
 		}
@@ -1542,7 +1542,7 @@ static ssize_t sc8562_show_registers(struct device *dev,
 	for (addr = 0x0; addr <= 0x6e; addr++) {
 		if (addr <= 0x29 || addr >= 0x6c) {
 			ret = sc8562_read_byte(sc, addr, &val);
-			if (ret) {
+			if (ret > 0) {
 				len = snprintf(tmpbuf, PAGE_SIZE - idx,"Reg[%.2X] = 0x%.2x\n", addr, val);
 				memcpy(&buf[idx], tmpbuf, len);
 				idx += len;
@@ -1605,31 +1605,31 @@ static int sc8562_charger_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		ret = sc8562_get_adc_data(sc, ADC_VBUS, &result);
-		if (!ret)
+		if (ret > 0)
 			sc->vbus_volt = result;
 		val->intval = sc->vbus_volt;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		ret = sc8562_get_adc_data(sc, ADC_IBUS, &result);
-		if (!ret)
+		if (ret > 0)
 			sc->ibus_curr = result;
 		val->intval = sc->ibus_curr;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
 		ret = sc8562_get_adc_data(sc, ADC_VBAT, &result);
-		if (!ret)
+		if (ret > 0)
 			sc->vbat_volt = result;
 		val->intval = sc->vbat_volt;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		ret = sc8562_get_adc_data(sc, ADC_IBAT, &result);
-		if (!ret)
+		if (ret > 0)
 			sc->ibat_curr = result;
 		val->intval = sc->ibat_curr;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		ret = sc8562_get_adc_data(sc, ADC_TDIE, &result);
-		if (!ret)
+		if (ret > 0)
 			sc->die_temp = result;
 		val->intval = sc->die_temp;
 		break;
@@ -1706,50 +1706,50 @@ static void sc8562_check_fault_status(struct sc8562 *sc)
 
 	mutex_lock(&sc->data_lock);
 	ret = sc8562_read_byte(sc, SC8562_REG_01, &flag);
-	if (!ret)
+	if (ret > 0)
 		sc->bat_ovp_fault = !!(flag & SC8562_BAT_OVP_FLAG_MASK);
 	if(sc->bat_ovp_fault){
 		sc_err("BAT OVP happened\n");
 		evt =  CHARGER_DEV_NOTIFY_BAT_OVP;
 	}
 	ret = sc8562_read_byte(sc, SC8562_REG_02, &flag);
-	if (!ret)
+	if (ret > 0)
 		sc->bat_ocp_fault = !!(flag & SC8562_BAT_OCP_FLAG_MASK);
 	if(sc->bat_ocp_fault){
 		sc_err("BAT OCP happened\n");
 		evt =  CHARGER_DEV_NOTIFY_IBATOCP;
 	}
 	ret = sc8562_read_byte(sc, SC8562_REG_03, &flag);
-	if (!ret)
+	if (ret > 0)
 		sc->usb_ovp_fault = !!(flag & SC8562_USB_OVP_FLAG_MASK);
 	if(sc->usb_ovp_fault){
 		sc_err("USB OVP happened\n");
 		evt = CHARGER_DEV_NOTIFY_VBUS_OVP;
 	}
 	ret = sc8562_read_byte(sc, SC8562_REG_04, &flag);
-	if (!ret)
+	if (ret > 0)
 		sc->wpc_ovp_fault = !!(flag & SC8562_WPC_OVP_FLAG_MASK);
 	if(sc->wpc_ovp_fault){
 		sc_err("WPC OVP happened\n");
 	}
 	ret = sc8562_read_byte(sc, SC8562_REG_06, &flag);
-	if (!ret)
+	if (ret > 0)
 		sc->bus_ocp_fault = !!(flag & SC8562_BUS_OCP_FLAG_MASK);
 	if(sc->bus_ocp_fault){
 		sc_err("BUS OCP happened\n");
 		evt = CHARGER_DEV_NOTIFY_IBUSOCP;
 	}
 	ret = sc8562_read_byte(sc, SC8562_REG_07, &flag);
-	if (!ret)
+	if (ret > 0)
 		sc->bus_ucp_fault = !!(flag & SC8562_BUS_UCP_FALL_FLAG_MASK);
 	if(sc->bus_ucp_fault){
 		sc_err("BUS UCP happened\n");
 	}
 	ret = sc8562_read_byte(sc, SC8562_REG_0A, &stat);
-	if (!ret && (stat & SC8562_USB_OVP_STAT_MASK))
+	if ((ret > 0) && (stat & SC8562_USB_OVP_STAT_MASK))
 		sc_err("FAULT_STAT REG0A = 0x%02X\n", stat);
 	ret = sc8562_read_byte(sc, SC8562_REG_10, &stat);
-	if (!ret && (stat & SC8562_WPC_OVP_STAT_MASK))
+	if ((ret > 0) && (stat & SC8562_WPC_OVP_STAT_MASK))
 		sc_err("FAULT_STAT REG10 = 0x%02X\n", stat);
 	if(evt <= CHARGER_DEV_NOTIFY_BATPRO_DONE)
 		charger_dev_notify(sc->chg_dev, evt);

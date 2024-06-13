@@ -191,12 +191,12 @@ static bool select_charging_current_limit(struct mtk_charger *info,
 		goto done;
 	}
 
-        if (info->aging_mode == true){
-                pdata->input_current_limit = 3000000;
-                info->setting.input_current_limit1 = 3000000;
-                is_basic = true;
-                goto done;
-        }
+	if (info->aging_mode == true){
+		pdata->input_current_limit = 2000000;
+		info->setting.input_current_limit1 = 2000000;
+		is_basic = true;
+		goto done;
+	}
 
 	if (info->atm_enabled == true
 		&& (info->chr_type == POWER_SUPPLY_TYPE_USB ||

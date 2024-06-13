@@ -7,7 +7,6 @@
 #define CP_WORKMODE_DEF                  (4)
 #define ABOVE_IBAT_COMPENSATION          (2600)
 #define PLUGIN_VOLTAGE                   (2500)
-#define PROJECT_DATA_ID                  (2)
 #define NT_CAM_ON                        (1000)
 #define NT_CAM_OFF                       (9000)
 #define NT_CAM_LMT_BAT_LEVEL             (15)
@@ -16,6 +15,7 @@
 #define NT_CAM_ON_INTERVAL_MS            (2000)
 #define NT_CAM_POLL_INTERVAL_MS          (10000)
 #define NT_COUNT_FIVE_MINUTE             (150)
+#define LOW_BAT_THR                      (3400)
 static int nt_ctrl_count = 0;
 static bool nt_ctrl_timeout = false;
 #if IS_ENABLED(CONFIG_PROC_FS)
@@ -159,6 +159,7 @@ struct nt_chg_info {
 	int ac_charger_input_current;
 	int pd_input_current;
 	int pd_charger_current;
+	int cam_lmt_ibus;
 	bool ship_mode_en;
 	int otg_enable;
 	int usbTemp;
@@ -179,6 +180,7 @@ struct nt_chg_info {
 	int cam_lmt;
 	int chg_vol_max;
 	int chg_icl_max;
+	int chg_promt;
 };
 
 static struct notify_info g_abnormal_info[] = {

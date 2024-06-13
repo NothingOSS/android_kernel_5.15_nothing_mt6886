@@ -226,6 +226,9 @@ static int get_usb_ts_temperature(void)
 	int volt = 0;
 	int ret = 0;
 
+	if (pts_info == NULL) {
+		return 25;
+	}
 	if (pts_info->usb_ts_debug == true) {
 		return pts_info->usb_temp;
 	}
@@ -1048,14 +1051,13 @@ static int mtk_usb_ts_probe(struct platform_device *pdev)
 		chr_err("%s get tcpc device type_c_port0 fail\n", __func__);
 		return -EINVAL;
 	}
-
+	pts_info = ts_info;
 	ts_info->pd_nb.notifier_call = pd_tcp_notifier_call;
 	ret = register_tcp_dev_notifier(ts_info->tcpc_dev, &ts_info->pd_nb, TCP_NOTIFY_TYPE_ALL);
 	if (ret < 0) {
 		chr_err("%s: register tcpc notifer fail\n", __func__);
 		return ret;
 	}
-	pts_info = ts_info;
 #if IS_ENABLED(CONFIG_PRIZE_BOARD_ID)
 	ts_info->board_id = -1;
 #endif
