@@ -1275,6 +1275,11 @@
 				scmi-mminfra = <13>;
 			};
 		};
+
+		android: android {
+			compatible = "android,firmware";
+			hardware = "mt6835";
+		};
 	};
 
 	reserved_memory: reserved-memory {
