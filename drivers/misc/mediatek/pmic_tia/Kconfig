@@ -1,0 +1,7 @@
+config MTK_PMIC_TIA
+	tristate "MediaTek MTK_PMIC_TIA driver"
+	help
+	  Say y here to control pmic driver add pmic_tia node.
+	  This config add pmic_tia node for wifi only project co-tms, wifi
+	  only project will read GPS TSX DATA through pmic_tia node in
+	  user layer.

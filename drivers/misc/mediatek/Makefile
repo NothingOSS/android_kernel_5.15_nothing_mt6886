@@ -59,6 +59,7 @@ obj-$(CONFIG_MTK_CLKBUF) += clkbuf/
 obj-$(CONFIG_MTK_SRCLKEN_RC) += srclken_rc/
 obj-$(CONFIG_MTK_POWER_THROTTLING_COMMON) += power_throttling/
 obj-$(CONFIG_MTK_PMIC_PROTECT) += pmic_protect/
+obj-$(CONFIG_MTK_PMIC_TIA) += pmic_tia/
 obj-$(CONFIG_MTK_MDPM) += mdpm/
 obj-$(CONFIG_MTK_PWM)	    += pwm/
 obj-$(CONFIG_MTK_IRTX_PWM_SUPPORT) += irtx/
