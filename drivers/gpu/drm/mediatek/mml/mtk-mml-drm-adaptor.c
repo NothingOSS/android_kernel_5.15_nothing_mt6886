@@ -45,7 +45,7 @@ struct mml_drm_ctx {
 	const struct mml_config_ops *cfg_ops;
 	atomic_t job_serial;
 	atomic_t config_serial;
-	struct workqueue_struct *wq_config[MML_PIPE_CNT];
+	struct kthread_worker *kt_config[MML_PIPE_CNT];
 	struct workqueue_struct *wq_destroy;
 	struct kthread_worker *kt_done;
 	struct task_struct *kt_done_task;
@@ -1176,7 +1176,7 @@ static void task_queue(struct mml_task *task, u32 pipe)
 {
 	struct mml_drm_ctx *ctx = task->ctx;
 
-	queue_work(ctx->wq_config[pipe], &task->work_config[pipe]);
+	kthread_queue_work(ctx->kt_config[pipe], &task->work_config[pipe]);
 }
 
 static struct mml_tile_cache *task_get_tile_cache(struct mml_task *task, u32 pipe)
@@ -1188,14 +1188,18 @@ static void kt_setsched(void *adaptor_ctx)
 {
 	struct mml_drm_ctx *ctx = adaptor_ctx;
 	struct sched_param kt_param = { .sched_priority = MAX_RT_PRIO - 1 };
-	int ret;
+	int ret[3] = {0};
 
 	if (ctx->kt_priority)
 		return;
 
-	ret = sched_setscheduler(ctx->kt_done_task, SCHED_FIFO, &kt_param);
-	mml_log("[drm]%s set kt done priority %d ret %d",
-		__func__, kt_param.sched_priority, ret);
+	ret[0] = sched_setscheduler(ctx->kt_done_task, SCHED_FIFO, &kt_param);
+	if (ctx->kt_config[0])
+		ret[1] = sched_setscheduler(ctx->kt_config[0]->task, SCHED_FIFO, &kt_param);
+	if (ctx->kt_config[1])
+		ret[2] = sched_setscheduler(ctx->kt_config[1]->task, SCHED_FIFO, &kt_param);
+	mml_log("[adpt]%s set kt done priority %d ret %d %d %d",
+		__func__, kt_param.sched_priority, ret[0], ret[1], ret[2]);
 	ctx->kt_priority = true;
 }
 
@@ -1287,8 +1291,8 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 	ctx->dispen_cb = disp->dispen_cb;
 	ctx->dispen_param = disp->dispen_param;
 	ctx->panel_pixel = MML_DEFAULT_PANEL_PX;
-	ctx->wq_config[0] = alloc_ordered_workqueue("mml_work0", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
-	ctx->wq_config[1] = alloc_ordered_workqueue("mml_work1", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
+	ctx->kt_config[0] = kthread_create_worker(0, "mml_work0");
+	ctx->kt_config[1] = kthread_create_worker(0, "mml_work1");
 
 #ifndef MML_FPGA
 	ctx->timeline = mtk_sync_timeline_create("mml_timeline");
@@ -1366,8 +1370,8 @@ static void drm_ctx_release(struct mml_drm_ctx *ctx)
 	}
 
 	destroy_workqueue(ctx->wq_destroy);
-	destroy_workqueue(ctx->wq_config[0]);
-	destroy_workqueue(ctx->wq_config[1]);
+	kthread_destroy_worker(ctx->kt_config[0]);
+	kthread_destroy_worker(ctx->kt_config[1]);
 	kthread_destroy_worker(ctx->kt_done);
 #ifndef MML_FPGA
 	mtk_sync_timeline_destroy(ctx->timeline);

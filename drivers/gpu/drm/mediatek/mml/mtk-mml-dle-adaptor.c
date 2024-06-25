@@ -33,10 +33,11 @@ struct mml_dle_ctx {
 	const struct mml_task_ops *task_ops;
 	const struct mml_config_ops *cfg_ops;
 	atomic_t job_serial;
-	struct workqueue_struct *wq_config;
+	struct kthread_worker *kt_config;
 	struct workqueue_struct *wq_destroy;
 	struct kthread_worker *kt_done;
 	struct task_struct *kt_done_task;
+	bool kt_priority;
 	bool dl_dual;
 	void (*config_cb)(struct mml_task *task, void *cb_param);
 	struct mml_tile_cache tile_cache[MML_PIPE_CNT];
@@ -793,7 +794,7 @@ static void task_queue(struct mml_task *task, u32 pipe)
 	struct mml_dle_ctx *ctx = task->ctx;
 
 	if (pipe)
-		queue_work(ctx->wq_config, &task->work_config[pipe]);
+		kthread_queue_work(ctx->kt_config, &task->work_config[pipe]);
 	else
 		mml_err("[dle] should not queue pipe %d", pipe);
 }
@@ -861,7 +862,7 @@ struct mml_dle_ctx *mml_dle_ctx_create(struct mml_dev *mml)
 	ctx->task_ops = &dle_task_ops;
 	ctx->cfg_ops = &dle_config_ops;
 	ctx->wq_destroy = alloc_ordered_workqueue("mml_destroy_dl", 0, 0);
-	ctx->wq_config = alloc_ordered_workqueue("mml_work_dl", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
+	ctx->kt_config = kthread_create_worker(0, "mml_work_dl");
 
 	return ctx;
 }
@@ -908,7 +909,7 @@ static void dle_ctx_release(struct mml_dle_ctx *ctx)
 	}
 
 	destroy_workqueue(ctx->wq_destroy);
-	destroy_workqueue(ctx->wq_config);
+	kthread_destroy_worker(ctx->kt_config);
 	kthread_destroy_worker(ctx->kt_done);
 	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++) {
 		for (j = 0; j < ARRAY_SIZE(ctx->tile_cache[i].func_list); j++)

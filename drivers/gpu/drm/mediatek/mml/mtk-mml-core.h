@@ -490,7 +490,7 @@ struct mml_task {
 	struct mml_task_reuse reuse[MML_PIPE_CNT];
 
 	/* config and done on thread */
-	struct work_struct work_config[MML_PIPE_CNT];
+	struct kthread_work work_config[MML_PIPE_CNT];
 	struct work_struct wq_work_done;
 	struct kthread_work kt_work_done;
 	atomic_t pipe_done;

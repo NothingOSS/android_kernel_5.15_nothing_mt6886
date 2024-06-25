@@ -1636,7 +1636,7 @@ exit:
 	mml_trace_ex_end();
 }
 
-static void core_config_pipe1_work(struct work_struct *work)
+static void core_config_pipe1_work(struct kthread_work *work)
 {
 	struct mml_task *task;
 
@@ -1727,7 +1727,7 @@ static void core_config_task(struct mml_task *task)
 	if (addon_dual)
 		core_config_pipe(task, 1);
 	else if (cfg->dual)
-		flush_work(&task->work_config[1]);
+		kthread_flush_work(&task->work_config[1]);
 
 	cfg->task_ops->submit_done(task);
 
@@ -1740,7 +1740,7 @@ done:
 	mml_trace_end();
 }
 
-static void core_config_task_work(struct work_struct *work)
+static void core_config_task_work(struct kthread_work *work)
 {
 	struct mml_task *task;
 
@@ -1763,8 +1763,8 @@ struct mml_task *mml_core_create_task(void)
 	INIT_LIST_HEAD(&task->entry);
 	INIT_LIST_HEAD(&task->pipe[0].entry_clt);
 	INIT_LIST_HEAD(&task->pipe[1].entry_clt);
-	INIT_WORK(&task->work_config[0], core_config_task_work);
-	INIT_WORK(&task->work_config[1], core_config_pipe1_work);
+	kthread_init_work(&task->work_config[0], core_config_task_work);
+	kthread_init_work(&task->work_config[1], core_config_pipe1_work);
 	INIT_WORK(&task->wq_work_done, core_taskdone);
 	kthread_init_work(&task->kt_work_done, core_taskdone_kt_work);
 
