@@ -13940,6 +13940,36 @@
 			 "clk_top_camtg",
 			 "clk_top_osc_d20",
 			 "clk_top_tck_26m_mx9";
+
+		clk-fmeter-isp {
+			fmeter-type = "CKGEN_CK2";
+			fmeter-no = <71>;
+		};
+
+		clk-fmeter-csi0 {
+			fmeter-type = "CKGEN_CK2";
+			fmeter-no = <40>;
+		};
+
+		clk-fmeter-csi1 {
+			fmeter-type = "CKGEN_CK2";
+			fmeter-no = <41>;
+		};
+
+		clk-fmeter-csi2 {
+			fmeter-type = "CKGEN_CK2";
+			fmeter-no = <42>;
+		};
+
+		clk-fmeter-csi3 {
+			fmeter-type = "CKGEN_CK2";
+			fmeter-no = <43>;
+		};
+
+		clk-fmeter-csi4 {
+			fmeter-type = "CKGEN_CK2";
+			fmeter-no = <44>;
+		};
 	};
 
 	camisp: camisp@1a000000 {
