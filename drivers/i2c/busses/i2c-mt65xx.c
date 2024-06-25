@@ -677,7 +677,7 @@ int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
 	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
 		i2c->clk_ex_flag = 1;
 		spin_lock_irqsave(&i2c->multi_host_lock, flags);
-		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0x20) {
+		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0) {
 			mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
 			/* Make sure shadow reg mode is ready before writing register */
 			mb();
@@ -717,7 +717,7 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 
 	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
 		spin_lock_irqsave(&i2c->multi_host_lock, flags);
-		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0x20) {
+		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0) {
 			mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
 			/* Make sure shadow reg mode is ready before writing register */
 			mb();
