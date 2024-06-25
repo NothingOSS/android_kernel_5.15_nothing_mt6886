@@ -639,7 +639,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 static struct subdrv_static_ctx static_ctx = {
 	.sensor_id = S5K3M5SX_SENSOR_ID,
 	.reg_addr_sensor_id = {0x0000, 0x0001},
-	.i2c_addr_table = {0x20, 0x5A, 0xFF},
+	.i2c_addr_table = {0x5A, 0x20, 0xFF},
 	.i2c_burst_write_support = TRUE,
 	.i2c_transfer_data_type = I2C_DT_ADDR_16_DATA_16,
 	.eeprom_info = PARAM_UNDEFINED,
@@ -723,7 +723,8 @@ static struct subdrv_ops ops = {
 static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_MCLK, 24, 0},
 	{HW_ID_RST, 0, 1},
-	{HW_ID_DVDD, 1100000, 1},
+	{HW_ID_DVDD, 1100000, 0},
+	{HW_ID_DVDD1, 1800000, 1},
 	{HW_ID_AVDD, 2800000, 1},
 	{HW_ID_DOVDD, 1800000, 2},
 	{HW_ID_RST, 1, 2},
