@@ -301,9 +301,16 @@ static int mtk_jpeg_try_fmt_mplane(struct v4l2_pix_format_mplane *pix_mp,
 		struct v4l2_plane_pix_format *pfmt = &pix_mp->plane_fmt[i];
 		u32 stride = pix_mp->width * fmt->h_sample[i] / 4;
 		u32 h = pix_mp->height * fmt->v_sample[i] / 4;
+		if (pix_mp->pixelformat == V4L2_PIX_FMT_YUYV ||
+			pix_mp->pixelformat == V4L2_PIX_FMT_YVYU) {
+			stride = round_up(pix_mp->width * 2, 32);
+			pfmt->bytesperline = stride;
+			pfmt->sizeimage = stride * h;
 
-		pfmt->bytesperline = stride;
-		pfmt->sizeimage = stride * h;
+		} else {
+		    pfmt->bytesperline = stride;
+		    pfmt->sizeimage = stride * h;
+		}
 	}
 	return 0;
 }
