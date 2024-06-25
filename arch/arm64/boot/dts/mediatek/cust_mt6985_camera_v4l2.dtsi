@@ -837,7 +837,7 @@
 		pinctrl-6 = <&camera_pins_cam4_rst_1>;
 
 		avdd-supply = <&rt5133_ldo6>;
-		dvdd-supply = <&rt5133_gpio3>;
+		dvdd1-supply = <&rt5133_gpio3>;
 		dovdd-supply = <&rt5133_ldo1>;
 		afvdd-supply = <&rt5133_ldo2>;
 
