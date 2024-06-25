@@ -1954,7 +1954,9 @@ static s32 cmdq_sec_late_init_wsm(void *data)
 	s32 i = 0, err = 0;
 
 	do {
+#if defined(CMDQ_GP_SUPPORT)
 		msleep(10000);
+#endif
 		cmdq = g_cmdq[i];
 		if (!cmdq)
 			break;
@@ -1966,6 +1968,7 @@ static s32 cmdq_sec_late_init_wsm(void *data)
 				GFP_ATOMIC);
 			if (!context) {
 				err = -CMDQ_ERR_NULL_SEC_CTX_HANDLE;
+				cmdq_err("%s: cmdq->context kzalloc failed, err:%d", __func__, err);
 				break;
 			}
 			cmdq->context = context;
