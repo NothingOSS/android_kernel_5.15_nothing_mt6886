@@ -406,6 +406,96 @@ int clkbuf_dcxo_get_bblpm_en(u32 *val)
 			&dcxo->_bblpm_auxout, val);
 }
 
+int clkbuf_dcxo_get_aac(u32 *aac)
+{
+	int ret = 0;
+	u32 temp = 0;
+
+	ret = clk_buf_write(&dcxo->hw, &dcxo->_static_aux_sel, 12);
+	if (ret) {
+		pr_notice("set staic aux sel failed\n");
+		return ret;
+	}
+
+	ret = clk_buf_read(&dcxo->hw, &dcxo->_xo_core_fpm_isel, &temp);
+	if (ret) {
+		pr_notice("get aac failed\n");
+		return ret;
+	}
+
+	*aac = temp & 0x1f;
+
+	return ret;
+}
+
+int clkbuf_dcxo_set_aac(void)
+{
+	int ret = 0;
+
+	ret = clk_buf_write(&dcxo->hw, &dcxo->_xo_aac_fpm_swen, 0);
+	if (ret) {
+		pr_notice("set aac fpm swen failed\n");
+		return ret;
+	}
+	mdelay(1);
+
+	ret = clk_buf_write(&dcxo->hw, &dcxo->_xo_aac_fpm_swen, 1);
+	if (ret) {
+		pr_notice("set aac fpm swen failed\n");
+		return ret;
+	}
+
+	mdelay(30);
+
+	return ret;
+}
+
+int clkbuf_dcxo_get_capid(u32 *capid)
+{
+	return clk_buf_read(&dcxo->hw, &dcxo->_xo_cdac_fpm, capid);
+}
+
+int clkbuf_dcxo_set_capid(u32 capid)
+{
+	int ret = 0;
+
+	if (capid > 0xFF) {
+		pr_notice("set illegal capid: %u\n", capid);
+		return -EINVAL;
+	}
+
+	ret = clk_buf_write(&dcxo->hw, &dcxo->_xo_cdac_fpm, capid);
+	if (ret) {
+		pr_notice("set capid failed\n");
+		return ret;
+	}
+
+	return ret;
+}
+
+int clkbuf_dcxo_get_heater(u32 *opp)
+{
+	return clk_buf_read(&dcxo->hw, &dcxo->_xo_heater_sel, opp);
+}
+
+int clkbuf_dcxo_set_heater(u32 opp)
+{
+	int ret = 0;
+
+	if (opp > 0x3) {
+		pr_notice("switch to illegal heater opp: %u\n", opp);
+		return -EINVAL;
+	}
+
+	ret = clk_buf_write(&dcxo->hw, &dcxo->_xo_heater_sel, opp);
+	if (ret) {
+		pr_notice("switch to %u failed\n", opp);
+		return ret;
+	}
+
+	return ret;
+}
+
 int clkbuf_dcxo_get_xo_mode(u8 xo_idx, u32 *mode)
 {
 	int ret = 0;

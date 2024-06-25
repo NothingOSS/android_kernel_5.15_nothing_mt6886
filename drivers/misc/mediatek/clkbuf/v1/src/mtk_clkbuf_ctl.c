@@ -933,6 +933,155 @@ static ssize_t rc_sta_reg_show(struct kobject *kobj,
 }
 #endif /* defined(SRCLKEN_RC_SUPPORT) */
 
+static ssize_t clk_buf_aac_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	uint32_t aac;
+	int len = 0;
+
+	if (!clkbuf_ctl.init_done) {
+		pr_notice("clkbuf HW not init yet\n");
+		return -ENODEV;
+	}
+
+	clkbuf_dcxo_get_aac(&aac);
+	len += snprintf(buf+len, PAGE_SIZE-len, "dcxo aac: 0x%x\n",
+		aac);
+
+	return len;
+}
+
+static ssize_t clk_buf_capid_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	uint32_t capid, capid_old, capid_new;
+	int ret;
+	const char *capid_buf;
+
+	if (!clkbuf_ctl.init_done) {
+		pr_notice("clkbuf HW not init yet\n");
+		return -ENODEV;
+	}
+
+	if (buf != NULL && count != 0) {
+		if (!strncmp(buf, "cmd1#", 5)) {
+			clkbuf_dcxo_set_aac();
+		} else if (!strncmp(buf, "cmd2#", 5)) {
+			capid_buf = &buf[5];
+			ret = kstrtouint(capid_buf, 0, &capid);
+
+			if (ret) {
+				pr_info("wrong format!\n");
+				return ret;
+			}
+
+			if (capid > 0xFF) {
+				pr_info("offset should be within(%x) %x!\n",
+					0xFF, capid);
+				return -EINVAL;
+			}
+
+			clkbuf_dcxo_get_capid(&capid_old);
+			pr_info("original cap code: 0x%x\n", capid_old);
+
+			clkbuf_dcxo_set_capid(capid);
+
+			mdelay(1);
+
+			clkbuf_dcxo_get_capid(&capid_new);
+			pr_info("write capid 0x%x done. current capid: 0x%x\n",
+				capid, capid_new);
+		} else {
+			ret = kstrtouint(buf, 0, &capid);
+
+			if (ret) {
+				pr_info("wrong format!\n");
+				return ret;
+			}
+
+			if (capid > 0xFF) {
+				pr_info("offset should be within(%x) %x!\n",
+					0xFF, capid);
+				return -EINVAL;
+			}
+
+			clkbuf_dcxo_get_capid(&capid_old);
+			pr_info("original cap code: 0x%x\n", capid_old);
+
+			clkbuf_dcxo_set_aac();
+			clkbuf_dcxo_set_capid(capid);
+			mdelay(1);
+
+			clkbuf_dcxo_get_capid(&capid_new);
+			pr_info("write capid 0x%x done. current capid: 0x%x\n",
+				capid, capid_new);
+		}
+	} else {
+		pr_info("invalid parameter!\n");
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static ssize_t clk_buf_capid_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	uint32_t capid;
+	int len = 0;
+
+	if (!clkbuf_ctl.init_done) {
+		pr_notice("clkbuf HW not init yet\n");
+		return -ENODEV;
+	}
+
+	clkbuf_dcxo_get_capid(&capid);
+	len += snprintf(buf+len, PAGE_SIZE-len, "dcxo capid: 0x%x\n",
+		capid);
+
+	return len;
+}
+
+static ssize_t clk_buf_heater_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	uint32_t opp;
+	const char *capid_buf;
+	int ret = 0;
+
+	if (!clkbuf_ctl.init_done) {
+		pr_notice("clkbuf HW not init yet\n");
+		return -ENODEV;
+	}
+
+	capid_buf = &buf[0];
+	ret = kstrtouint(buf, 0, &opp);
+
+	if (ret) {
+		pr_info("wrong format!\n");
+		return ret;
+	}
+
+	clkbuf_dcxo_set_heater(opp);
+
+	return count;
+}
+
+static ssize_t clk_buf_heater_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	uint32_t opp;
+	int len = 0;
+
+	if (!clkbuf_ctl.init_done) {
+		pr_notice("clkbuf HW not init yet\n");
+		return -ENODEV;
+	}
+
+	clkbuf_dcxo_get_heater(&opp);
+	len += snprintf(buf+len, PAGE_SIZE-len, "dcxo heater: 0x%x\n",
+		opp);
+
+	return len;
+}
+
 static ssize_t clk_buf_all_ctrl_store(struct kobject *kobj,
 		struct kobj_attribute *attr, const char *buf, size_t count)
 {
@@ -1026,6 +1175,9 @@ DEFINE_ATTR_RW(clk_buf_pmic);
 DEFINE_ATTR_RW(clk_buf_pmif);
 DEFINE_ATTR_RW(clk_buf_debug);
 DEFINE_ATTR_RO(clk_buf_bblpm);
+DEFINE_ATTR_RO(clk_buf_aac);
+DEFINE_ATTR_RW(clk_buf_capid);
+DEFINE_ATTR_RW(clk_buf_heater);
 #if defined(SRCLKEN_RC_SUPPORT)
 DEFINE_ATTR_RO(rc_cfg_ctl);
 DEFINE_ATTR_RW(rc_sta_reg);
@@ -1042,6 +1194,9 @@ static struct attribute *clk_buf_attrs[] = {
 	__ATTR_OF(clk_buf_pmif),
 	__ATTR_OF(clk_buf_debug),
 	__ATTR_OF(clk_buf_bblpm),
+	__ATTR_OF(clk_buf_aac),
+	__ATTR_OF(clk_buf_capid),
+	__ATTR_OF(clk_buf_heater),
 #if defined(SRCLKEN_RC_SUPPORT)
 	__ATTR_OF(rc_cfg_ctl),
 	__ATTR_OF(rc_sta_reg),

@@ -69,11 +69,15 @@ struct dcxo_hw {
 	struct mutex lock;
 	struct xo_buf_t *xo_bufs;
 	struct reg_t _static_aux_sel;
+	struct reg_t _xo_core_fpm_isel;
 	struct reg_t _bblpm_auxout;
 	struct reg_t _swbblpm_en;
 	struct reg_t _hwbblpm_sel;
 	struct reg_t _srclken_i3;
 	struct reg_t _dcxo_pmrc_en;
+	struct reg_t _xo_cdac_fpm;
+	struct reg_t _xo_aac_fpm_swen;
+	struct reg_t _xo_heater_sel;
 	struct pmic_pmrc_en *pmrc_en;
 	struct dcxo_op ops;
 	const char * const *valid_dcxo_cmd;
@@ -101,6 +105,13 @@ int clkbuf_dcxo_dump_reg_log(char *buf);
 int clkbuf_dcxo_dump_misc_log(char *buf);
 int clkbuf_dcxo_dump_dws(char *buf);
 int clkbuf_dcxo_dump_pmrc_en(char *buf);
+int clkbuf_dcxo_get_aac(u32 *aac);
+int clkbuf_dcxo_set_aac(void);
+int clkbuf_dcxo_get_capid(u32 *capid);
+int clkbuf_dcxo_set_capid(u32 capid);
+int clkbuf_dcxo_get_heater(u32 *opp);
+int clkbuf_dcxo_set_heater(u32 opp);
+
 
 extern struct dcxo_hw *dcxo;
 

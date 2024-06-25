@@ -261,6 +261,15 @@
 #define RG_XO_DIG26M_DIV2_ADDR         (MT6377_DCXO_DIGCLK_ELR)
 #define RG_XO_DIG26M_DIV2_MASK         (0x1)
 #define RG_XO_DIG26M_DIV2_SHIFT        (0)
+#define RG_XO_CDAC_FPM_ADDR		       (MT6377_DCXO_CW04)
+#define RG_XO_CDAC_FPM_MASK		       (0xff)
+#define RG_XO_CDAC_FPM_SHIFT		   (0)
+#define RG_XO_AAC_FPM_SWEN_ADDR		   (MT6377_DCXO_CW08_H)
+#define RG_XO_AAC_FPM_SWEN_MASK		   (0x1)
+#define RG_XO_AAC_FPM_SWEN_SHIFT	   (7)
+#define RG_XO_HEATER_SEL_ADDR		   (MT6377_DCXO_CW11)
+#define RG_XO_HEATER_SEL_MASK		   (0x3)
+#define RG_XO_HEATER_SEL_SHIFT		   (6)
 
 /* Register_LDO_REG */
 #define RG_LDO_VRFCK_HW6_OP_EN_ADDR    (0x1c2a)

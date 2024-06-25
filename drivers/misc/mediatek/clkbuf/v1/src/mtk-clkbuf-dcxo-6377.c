@@ -136,9 +136,13 @@ struct dcxo_hw mt6377_dcxo = {
 	.bblpm_auxout_sel = 0x25,
 	.xo_bufs = xo_bufs,
 	MT6377_SET_REG_BY_NAME(static_aux_sel, XO_STATIC_AUXOUT_SEL)
+	MT6377_SET_REG_BY_NAME(xo_core_fpm_isel, XO_STATIC_AUXOUT_L)
 	SET_REG(bblpm_auxout, XO_STATIC_AUXOUT_H_ADDR, 0x1, 0)
 	MT6377_SET_REG_BY_NAME(swbblpm_en, XO_BB_LPM_EN_M)
 	MT6377_SET_REG_BY_NAME(hwbblpm_sel, XO_BB_LPM_EN_SEL)
+	MT6377_SET_REG_BY_NAME(xo_cdac_fpm, RG_XO_CDAC_FPM)
+	MT6377_SET_REG_BY_NAME(xo_aac_fpm_swen, RG_XO_AAC_FPM_SWEN)
+	MT6377_SET_REG_BY_NAME(xo_heater_sel, RG_XO_HEATER_SEL)
 	SET_RAW_REG(dcxo_pmrc_en, MT6377_PMRC_CON0)
 	.ops = {
 		.dcxo_dump_reg_log = mt6377_dcxo_dump_reg_log,
