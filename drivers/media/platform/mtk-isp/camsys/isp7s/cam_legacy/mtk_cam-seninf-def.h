@@ -365,4 +365,35 @@ enum {
 	"clk_top_osc_d20", \
 	"clk_top_tck_26m_mx9", \
 
+enum {
+	CLK_FMETER_ISP = 0,
+	CLK_FMETER_CSI_MIN = 1,
+	CLK_FMETER_CSI0 = CLK_FMETER_CSI_MIN,
+	CLK_FMETER_CSI1,
+	CLK_FMETER_CSI2,
+	CLK_FMETER_CSI3,
+	CLK_FMETER_CSI4,
+	CLK_FMETER_CSI5,
+	CLK_FMETER_MAX,
+};
+
+#define CLK_FMETER_NAMES \
+	"clk-fmeter-isp", \
+	"clk-fmeter-csi0", \
+	"clk-fmeter-csi1", \
+	"clk-fmeter-csi2", \
+	"clk-fmeter-csi3", \
+	"clk-fmeter-csi4", \
+	"clk-fmeter-csi5", \
+
+#define CLK_FMETER_MAPS \
+	{"FT_NULL", FT_NULL}, \
+	{"ABIST", ABIST}, \
+	{"CKGEN", CKGEN}, \
+	{"ABIST_2", ABIST_2}, \
+	{"ABIST_CK2", ABIST_CK2}, \
+	{"CKGEN_CK2", CKGEN_CK2}, \
+	{"SUBSYS", SUBSYS}, \
+	{"VLPCK", VLPCK}, \
+
 #endif

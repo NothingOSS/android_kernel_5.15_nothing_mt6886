@@ -3297,6 +3297,36 @@ static int mtk_cam_seninf_get_mux_meter(struct seninf_ctx *ctx, int mux,
 	return 0;
 }
 
+static int mtk_cam_dbg_fmeter(struct seninf_core *core, char *out_str, size_t out_str_sz)
+{
+	int i, ret;
+	unsigned int result;
+	int ofs = 0;
+	const char * const clk_fmeter_names[] = {
+		CLK_FMETER_NAMES
+	};
+
+	if (!core || !out_str)
+		return -EINVAL;
+
+	memset(out_str, 0, out_str_sz);
+
+	for (i = 0; i < CLK_FMETER_MAX && i < ARRAY_SIZE(clk_fmeter_names); i++) {
+		if (seninf_get_fmeter_clk(core, i, &result) < 0)
+			continue;
+
+		ret = snprintf(out_str + ofs, out_str_sz - 1,
+			"%s(%u) ", clk_fmeter_names[i], result);
+
+		if (ret < 0)
+			return -EINVAL;
+
+		ofs += ret;
+	}
+
+	return (ofs > 0) ? 0 : -EPERM;
+}
+
 static ssize_t mtk_cam_seninf_show_status(struct device *dev,
 				   struct device_attribute *attr,
 		char *buf)
@@ -3310,11 +3340,16 @@ static ssize_t mtk_cam_seninf_show_status(struct device *dev,
 	struct media_pad *pad;
 	struct mtk_cam_seninf_mux_meter meter;
 	void *csi2, *rx, *pmux, *pcammux, *base_ana;
+	char *fmeter_dbg = kzalloc(sizeof(char) * 256, GFP_KERNEL);
 
 	core = dev_get_drvdata(dev);
 	len = 0;
 
 	mutex_lock(&core->mutex);
+
+	if (fmeter_dbg && mtk_cam_dbg_fmeter(core, fmeter_dbg, sizeof(char) * 256) == 0)
+		SHOW(buf, len, "\n%s\n", fmeter_dbg);
+	kfree(fmeter_dbg);
 
 	list_for_each_entry(ctx, &core->list, list) {
 		SHOW(buf, len,
@@ -3513,12 +3548,17 @@ static int mtk_cam_seninf_debug(struct seninf_ctx *ctx)
 	unsigned long debug_vb = 3 * SCAN_TIME;	// FIXME
 	enum CSI_PORT csi_port = CSI_PORT_0;
 	unsigned int tag_03_vc, tag_03_dt, tag_47_vc, tag_47_dt;
+	char *fmeter_dbg = kzalloc(sizeof(char) * 256, GFP_KERNEL);
 
 	if (ctx->dbg_timeout != 0)
 		debug_ft = ctx->dbg_timeout / 1000;
 
 	if (debug_ft > FT_30_FPS)
 		debug_vb = debug_ft / 10;
+
+	if (fmeter_dbg && mtk_cam_dbg_fmeter(ctx->core, fmeter_dbg, sizeof(char) * 256) == 0)
+		dev_info(ctx->dev, "%s\n", fmeter_dbg);
+	kfree(fmeter_dbg);
 
 	for (csi_port = CSI_PORT_0A; csi_port <= CSI_PORT_5B; csi_port++) {
 		if (csi_port != ctx->portA &&

@@ -35,6 +35,8 @@ int mtk_cam_seninf_forget_camtg_setting(struct seninf_ctx *ctx);
 int stream_sensor(struct seninf_ctx *ctx, int enable);
 void notify_fsync_with_kthread_and_s_stream(struct seninf_ctx *ctx,
 	const unsigned int mdelay, const int enable);
+int seninf_get_fmeter_clk(struct seninf_core *core,
+	int clk_fmeter_idx, unsigned int *out_clk);
 
 #ifdef SENINF_DEBUG
 void mtk_cam_seninf_release_cam_mux(struct seninf_ctx *ctx);

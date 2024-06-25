@@ -2053,6 +2053,25 @@ void notify_fsync_with_kthread_and_s_stream(struct seninf_ctx *ctx,
 	}
 }
 
+int seninf_get_fmeter_clk(struct seninf_core *core, int clk_fmeter_idx, unsigned int *out_clk)
+{
+	struct clk_fmeter_info *fmeter;
+
+	if (!core || !out_clk || clk_fmeter_idx < 0 || clk_fmeter_idx >= CLK_FMETER_MAX)
+		return -EINVAL;
+
+	fmeter = &core->fmeter[clk_fmeter_idx];
+
+	if (fmeter->fmeter_no) {
+		*out_clk = mt_get_fmeter_freq(fmeter->fmeter_no, fmeter->fmeter_type);
+		return 0;
+	}
+
+	*out_clk = 0;
+
+	return -EPERM;
+}
+
 
 bool has_multiple_expo_mode(struct seninf_ctx *ctx)
 {

@@ -81,6 +81,14 @@ static const char * const cammux_range_name[] = {
 	CAMMUX_RANGE_NAMES
 };
 
+static const char * const clk_fmeter_names[] = {
+	CLK_FMETER_NAMES
+};
+
+static const struct seninf_struct_map clk_fmeter_maps[] = {
+	CLK_FMETER_MAPS
+};
+
 static ssize_t status_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
@@ -729,10 +737,13 @@ static int get_seninf_ops(struct device *dev, struct seninf_core *core)
 
 static int seninf_core_probe(struct platform_device *pdev)
 {
-	int i, ret, irq;
+	int i, j, ret, irq;
 	struct resource *res;
 	struct seninf_core *core;
 	struct device *dev = &pdev->dev;
+	const char *str = NULL;
+	u32 tmp_no = 0;
+	struct device_node *tmp_node;
 
 	core = devm_kzalloc(&pdev->dev, sizeof(*core), GFP_KERNEL);
 	if (!core)
@@ -804,6 +815,30 @@ static int seninf_core_probe(struct platform_device *pdev)
 			dev_info(dev, "failed to get %s\n", clk_names[i]);
 			core->clk[i] = NULL;
 			//return -EINVAL;
+		}
+	}
+
+	/* fmeter dbg property */
+	memset(core->fmeter, 0, sizeof(core->fmeter));
+	for (i = 0; i < CLK_FMETER_MAX; i++) {
+		str = NULL;
+		tmp_node = of_find_node_by_name(dev->of_node, clk_fmeter_names[i]);
+		if (tmp_node) {
+			of_property_read_u32(tmp_node,
+				"fmeter-no", &tmp_no);
+			of_property_read_string(tmp_node,
+				"fmeter-type", &str);
+			of_node_put(tmp_node);
+			tmp_node = NULL;
+		}
+		if (str) {
+			for (j = 0; j < ARRAY_SIZE(clk_fmeter_maps); j++) {
+				if (strncmp(str, clk_fmeter_maps[j].key, strlen(str)) == 0) {
+					core->fmeter[i].fmeter_type = clk_fmeter_maps[j].value;
+					break;
+				}
+			}
+			core->fmeter[i].fmeter_no = tmp_no;
 		}
 	}
 
