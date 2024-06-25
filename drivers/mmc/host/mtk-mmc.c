@@ -2673,12 +2673,22 @@ static void msdc_hs400_enhanced_strobe(struct mmc_host *mmc,
 static void mmc_mtk_crypto_enable(struct mmc_host *mmc)
 {
 	struct arm_smccc_res res;
+	struct msdc_host *host = mmc_priv(mmc);
+	u32 cqhci_cfg = 0;
 
 	mmc_mtk_crypto_ctrl(res);
 	if (res.a0) {
 		pr_info("%s: crypto enable failed, err: %lu\n",
 			 __func__, res.a0);
 		mmc->caps2 &= ~MMC_CAP2_CRYPTO;
+	}
+	if (host && host->cq_host) {
+		cqhci_cfg = readl(host->cq_host->mmio + CQHCI_CFG);
+		if (!(cqhci_cfg & CQHCI_CRYPTO_GENERAL_ENABLE)) {
+			pr_info("%s: crypto enable failed, cqhci_cfg: 0x%X\n",
+			 __func__, cqhci_cfg);
+			BUG_ON(1);
+		}
 	}
 }
 
