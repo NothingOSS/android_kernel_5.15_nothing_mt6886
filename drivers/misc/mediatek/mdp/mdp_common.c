@@ -949,9 +949,6 @@ static s32 cmdq_mdp_consume_handle(void)
 	u32 task_cnt;
 #endif
 
-	/* operation for tasks_wait list need task mutex */
-	mutex_lock(&mdp_task_mutex);
-
 	CMDQ_MSG("%s\n", __func__);
 
 	CMDQ_PROF_MMP(mdp_mmp_get_event()->consume_done, MMPROFILE_FLAG_START,
@@ -1060,8 +1057,6 @@ static s32 cmdq_mdp_consume_handle(void)
 	CMDQ_PROF_MMP(mdp_mmp_get_event()->consume_done, MMPROFILE_FLAG_END,
 		current->pid, 0);
 
-	mutex_unlock(&mdp_task_mutex);
-
 	CMDQ_MSG("%s end acquired:%s\n", __func__, acquired ? "true" : "false");
 
 	if (acquired) {
@@ -1076,7 +1071,10 @@ static s32 cmdq_mdp_consume_handle(void)
 
 static void cmdq_mdp_consume_wait_item(struct work_struct *ignore)
 {
-	s32 err = cmdq_mdp_consume_handle();
+	s32 err = 0;
+	mutex_lock(&mdp_task_mutex);
+	err = cmdq_mdp_consume_handle();
+	mutex_unlock(&mdp_task_mutex);
 
 	if (err < 0)
 		CMDQ_ERR("consume handle in worker fail:%d\n", err);
@@ -1695,11 +1693,11 @@ s32 cmdq_mdp_flush_async_impl(struct cmdqRecStruct *handle)
 		insert_pos = &entry->list_entry;
 	}
 	list_add(&handle->list_entry, insert_pos);
-	mutex_unlock(&mdp_task_mutex);
 
 	/* run consume to run task in thread */
 	CMDQ_MSG("cmdq_mdp_consume_handle:0x%p\n", handle);
 	cmdq_mdp_consume_handle();
+	mutex_unlock(&mdp_task_mutex);
 
 	return 0;
 }
