@@ -12,6 +12,7 @@
 #include <linux/sysfs.h>
 #include <linux/timer.h>
 #include <linux/types.h>
+#include <linux/thermal.h>
 #define CREATE_TRACE_POINTS
 #include "thermal_trace.h"
 

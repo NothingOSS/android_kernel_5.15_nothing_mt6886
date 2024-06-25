@@ -786,7 +786,9 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 			PCM_TICK_TO_SEC((wakesrc->timer_out %
 				PCM_32K_TICKS_PER_SEC)
 			* 1000));
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 		log_md_sleep_info();
+#endif
 		/* Eable rcu lock checking */
 //		rcu_irq_exit_irqson();
 	} else

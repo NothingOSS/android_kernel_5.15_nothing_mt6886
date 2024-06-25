@@ -662,7 +662,9 @@ static void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type)
 static ssize_t system_stat_read(char *ToUserBuf, size_t sz, void *priv)
 {
 	char *p = ToUserBuf;
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	struct md_sleep_status tmp_md_data;
+#endif
 	struct lpm_dbg_lp_info info;
 	unsigned int i;
 	struct spm_req_sta_list *sta_list;
@@ -683,7 +685,7 @@ static ssize_t system_stat_read(char *ToUserBuf, size_t sz, void *priv)
 			PCM_TICK_TO_SEC(info.record[i].duration),
 			PCM_TICK_TO_SEC((info.record[i].duration % PCM_32K_TICKS_PER_SEC) * 1000));
 	}
-
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	/* dump MD sleep time */
 	get_md_sleep_time(&tmp_md_data);
 	if (is_md_sleep_info_valid(&tmp_md_data))
@@ -702,7 +704,7 @@ static ssize_t system_stat_read(char *ToUserBuf, size_t sz, void *priv)
 		(cur_md_sleep_status.lte_sleep_time % 1000000) / 1000,
 		cur_md_sleep_status.nr_sleep_time / 1000000,
 		(cur_md_sleep_status.nr_sleep_time % 1000000) / 1000);
-
+#endif
 	/* dump requests that are blocking suspend (if any) */
 	sta_list = spm_get_req_sta_list();
 	if (!sta_list || sta_list->is_blocked == 0) {
