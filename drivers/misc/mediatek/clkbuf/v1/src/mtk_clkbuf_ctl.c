@@ -935,7 +935,7 @@ static ssize_t rc_sta_reg_show(struct kobject *kobj,
 
 static ssize_t clk_buf_aac_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
-	uint32_t aac;
+	uint32_t aac = 0;
 	int len = 0;
 
 	if (!clkbuf_ctl.init_done) {
@@ -1067,7 +1067,7 @@ static ssize_t clk_buf_heater_store(struct kobject *kobj,
 
 static ssize_t clk_buf_heater_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
-	uint32_t opp;
+	uint32_t opp = 0;
 	int len = 0;
 
 	if (!clkbuf_ctl.init_done) {
