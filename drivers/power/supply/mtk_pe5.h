@@ -348,4 +348,6 @@ extern int pe50_hal_dump_registers(struct chg_alg_device *alg, enum chg_idx chgi
 extern int pe50_set_operating_mode(struct chg_alg_device *alg, enum chg_idx chgidx,
 			    bool en);
 extern int pe50_hal_set_ieoc(struct chg_alg_device *alg, enum chg_idx chgidx, u32 uA);
+extern int pe50_set_ibusucp(struct chg_alg_device *alg, enum chg_idx chgidx,
+			    bool en);
 #endif /* __MTK_PE5_H */

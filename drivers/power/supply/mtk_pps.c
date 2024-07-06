@@ -2415,6 +2415,8 @@ out_set_cap:
 		sinfo.hardreset_ta = true;
 		goto err;
 	}
+	if (data->state == PPS_ALGO_CC_CV)
+		pps_set_ibusucp(info->alg, DVCHG1, true);
 	return 0;
 err:
 	return pps_stop(info, &sinfo);
@@ -2588,6 +2590,8 @@ out_set_cap:
 			goto out;
 		}
 	}
+	if (data->state == PPS_ALGO_CC_CV)
+		pps_set_ibusucp(info->alg, DVCHG1, true);
 	return 0;
 out:
 	return pps_stop(info, &sinfo);

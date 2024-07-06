@@ -346,4 +346,6 @@ extern int pps_hal_dump_registers(struct chg_alg_device *alg, enum chg_idx chgid
 extern int pps_set_operating_mode(struct chg_alg_device *alg, enum chg_idx chgidx,
 			    bool en);
 extern int pps_hal_set_ieoc(struct chg_alg_device *alg, enum chg_idx chgidx, u32 mA);
+extern int pps_set_ibusucp(struct chg_alg_device *alg, enum chg_idx chgidx,
+			    bool en);
 #endif /* __MTK_PE5_H */

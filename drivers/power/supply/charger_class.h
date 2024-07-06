@@ -146,7 +146,7 @@ struct charger_ops {
 	int (*kick_direct_charging_wdt)(struct charger_device *dev);
 	int (*set_direct_charging_ibusoc)(struct charger_device *dev, u32 uA);
 	int (*set_direct_charging_vbusov)(struct charger_device *dev, u32 uV);
-
+	int (*set_ibusucp)(struct charger_device *dev, bool en);
 	int (*set_ibusocp)(struct charger_device *dev, u32 uA);
 	int (*set_vbusovp)(struct charger_device *dev, u32 uV);
 	int (*set_ibatocp)(struct charger_device *dev, u32 uA);
@@ -418,4 +418,5 @@ extern int charger_dev_get_boost_current_limit(struct charger_device *chg_dev, u
 extern int charger_dev_get_boost_voltage_limit(struct charger_device *chg_dev, u32* uV);
 extern int charger_dev_get_cp_status(struct charger_device *charger_dev, u32 evt);
 extern int charger_dev_enable_ship_mode(struct charger_device *charger_dev, bool en);
+extern int charger_dev_set_ibusucp(struct charger_device *charger_dev, bool en);
 #endif /*LINUX_POWER_CHARGER_CLASS_H*/

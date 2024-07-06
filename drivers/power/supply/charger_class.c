@@ -521,6 +521,14 @@ int charger_dev_set_direct_charging_vbusov(struct charger_device *chg_dev,
 }
 EXPORT_SYMBOL(charger_dev_set_direct_charging_vbusov);
 
+int charger_dev_set_ibusucp(struct charger_device *chg_dev, bool en)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+	    chg_dev->ops->set_ibusucp)
+		return chg_dev->ops->set_ibusucp(chg_dev, en);
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_set_ibusucp);
 int charger_dev_set_ibusocp(struct charger_device *chg_dev, u32 uA)
 {
 	if (chg_dev != NULL && chg_dev->ops != NULL &&

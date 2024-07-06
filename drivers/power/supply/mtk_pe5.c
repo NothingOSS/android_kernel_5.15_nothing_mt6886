@@ -2439,6 +2439,9 @@ out_set_cap:
 		sinfo.hardreset_ta = true;
 		goto err;
 	}
+	if (data->state == PE50_ALGO_CC_CV)
+		pe50_set_ibusucp(info->alg, DVCHG1, true);
+
 	return 0;
 err:
 	return pe50_stop(info, &sinfo);
@@ -2602,6 +2605,8 @@ out_set_cap:
 			goto out;
 		}
 	}
+	if (data->state == PE50_ALGO_CC_CV)
+		pe50_set_ibusucp(info->alg, DVCHG1, true);
 	return 0;
 out:
 	return pe50_stop(info, &sinfo);

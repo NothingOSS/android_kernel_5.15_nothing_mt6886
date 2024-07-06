@@ -180,6 +180,7 @@ static int sc8562_mode_data[] = {
 #define sc_err(fmt, ...)   pr_err("%s:" fmt,__func__, ##__VA_ARGS__);
 #define sc_info(fmt, ...)  pr_info("%s:" fmt,__func__, ##__VA_ARGS__);
 #define sc_dbg(fmt, ...)   pr_debug("%s:" fmt,__func__, ##__VA_ARGS__);
+static int sc8562_get_adc_data(struct sc8562 *sc, int channel,  int *result);
 /************************************************************************/
 static int __sc8562_read_byte(struct sc8562 *sc, u8 reg, u8 *data)
 {
@@ -420,7 +421,7 @@ static int sc8562_set_busocp_th(struct sc8562 *sc, int threshold)
 	return ret;
 }
 /*********************************************************************/
-static int sc8562_enable_busucp(struct sc8562 *sc, bool enable)
+static int sc8562_enable_ibusucp(struct sc8562 *sc, bool enable)
 {
 	int ret;
 	u8 val;
@@ -489,10 +490,52 @@ static int sc8562_set_tsbat_flt_dis(struct sc8562 *sc, bool enable)
 	return ret;
 }
 /*********************************************************************/
-static int sc8562_enable_charge(struct sc8562 *sc, bool enable)
+static int sc8562_set_ss_timeout(struct sc8562 *sc, int timeout)
 {
 	int ret;
 	u8 val;
+
+	switch (timeout) {
+	case 0:
+		val = SC8562_SS_TIMEOUT_DISABLE;
+		break;
+	case 40:
+		val = SC8562_SS_TIMEOUT_40MS;
+		break;
+	case 80:
+		val = SC8562_SS_TIMEOUT_80MS;
+		break;
+	case 320:
+		val = SC8562_SS_TIMEOUT_320MS;
+		break;
+	case 1280:
+		val = SC8562_SS_TIMEOUT_1280MS;
+		break;
+	case 5120:
+		val = SC8562_SS_TIMEOUT_5120MS;
+		break;
+	case 20480:
+		val = SC8562_SS_TIMEOUT_20480MS;
+		break;
+	case 81920:
+		val = SC8562_SS_TIMEOUT_81920MS;
+		break;
+	default:
+		val = SC8562_SS_TIMEOUT_DISABLE;
+		break;
+	}
+	val <<= SC8562_SS_TIMEOUT_SET_SHIFT;
+	ret = sc8562_update_bits(sc, SC8562_REG_0D,	SC8562_SS_TIMEOUT_SET_MASK,	val);
+	return ret;
+}
+/*********************************************************************/
+static int sc8562_enable_charge(struct sc8562 *sc, bool enable)
+{
+	u8 data = 0;
+	u8 addr = 0, val = 0;
+	u8 pin_diag = 0, cp_switch = 0;
+	int vbus_value = 0, vout_value = 0;
+	int ret = 0, ret1 = 0;
 
 	if (enable)
 		val = SC8562_CHG_ENABLE;
@@ -500,7 +543,55 @@ static int sc8562_enable_charge(struct sc8562 *sc, bool enable)
 		val = SC8562_CHG_DISABLE;
 	val <<= SC8562_CHG_EN_SHIFT;
 	sc_err("sc8562 charger %s\n", enable == false ? "disable" : "enable");
-	ret = sc8562_update_bits(sc, SC8562_REG_0B, SC8562_CHG_EN_MASK, val);
+
+	if (!enable) {
+		sc8562_enable_ibusucp(sc, true);
+		sc8562_set_ss_timeout(sc, 5120);
+		ret = sc8562_update_bits(sc, SC8562_REG_0B, SC8562_CHG_EN_MASK, val);
+		return ret;
+	} else {
+		sc8562_enable_ibusucp(sc, false);
+		sc8562_set_ss_timeout(sc, 0);
+		sc8562_get_adc_data(sc, ADC_VBUS, &vbus_value);
+		sc8562_get_adc_data(sc, ADC_VOUT, &vout_value);
+		sc_err("vbus/vout:%d / %d = %d \r\n", vbus_value, vout_value, vbus_value*100/vout_value);
+		sc_err("work_mode : %d \n", sc->work_mode);
+		ret1 = sc8562_read_byte(sc, SC8562_REG_0A, &data);
+		if (ret1 >= 0) {
+			sc_err(" high:%d  low:%d \n", 
+			((data & SC8562_VBUS_ERRORHI_STAT_MASK) >> SC8562_VBUS_ERRORHI_STAT_SHIFT),
+			((data & SC8562_VBUS_ERRORLO_STAT_MASK) >> SC8562_VBUS_ERRORLO_STAT_SHIFT));
+		}
+
+		ret = sc8562_update_bits(sc, SC8562_REG_0B, SC8562_CHG_EN_MASK, val);
+
+		disable_irq(sc->irq);
+
+		mdelay(300);
+
+		ret1 = sc8562_read_byte(sc, SC8562_REG_0A, &data);
+		if (ret1 >= 0) {
+			pin_diag = (data & SC8562_PIN_DIAG_FALL_FLAG_MASK) >> SC8562_PIN_DIAG_FALL_FLAG_SHIFT;
+			cp_switch = (data & SC8562_CP_SWITCHING_STAT_MASK) >> SC8562_CP_SWITCHING_STAT_SHIFT;
+			
+			sc_err("pin_diag : %d, cp_switch :%d \n", pin_diag, cp_switch);
+			if (!cp_switch) {
+				sc_err("enable fail \r\n");
+				for (addr = 0x0; addr <= 0x6e; addr++) {
+					if (addr <= 0x29 || addr >= 0x6c) {
+						ret1 = sc8562_read_byte(sc, addr, &val);
+						if (ret1 > 0) {
+							sc_info("sc8562_reg[0x%02X] = 0x%02X\n", addr, val);
+						}
+					}
+				}
+			} else {
+				sc_err("enable success!\n");
+			}
+		}        
+		enable_irq(sc->irq);
+	}
+
 	return ret;
 }
 /*********************************************************************/
@@ -549,45 +640,6 @@ static int sc8562_enable_ovpgate(struct sc8562 *sc, bool enable)
 	sc->ovpgate_state = enable;
 	sc_err("sc8562 ovp gate %s\n", enable == false ? "disable" : "enable");
 	ret = sc8562_update_bits(sc, SC8562_REG_0B,	SC8562_OVPGATE_EN_MASK, val);
-	return ret;
-}
-/*********************************************************************/
-static int sc8562_set_ss_timeout(struct sc8562 *sc, int timeout)
-{
-	int ret;
-	u8 val;
-
-	switch (timeout) {
-	case 0:
-		val = SC8562_SS_TIMEOUT_DISABLE;
-		break;
-	case 40:
-		val = SC8562_SS_TIMEOUT_40MS;
-		break;
-	case 80:
-		val = SC8562_SS_TIMEOUT_80MS;
-		break;
-	case 320:
-		val = SC8562_SS_TIMEOUT_320MS;
-		break;
-	case 1280:
-		val = SC8562_SS_TIMEOUT_1280MS;
-		break;
-	case 5120:
-		val = SC8562_SS_TIMEOUT_5120MS;
-		break;
-	case 20480:
-		val = SC8562_SS_TIMEOUT_20480MS;
-		break;
-	case 81920:
-		val = SC8562_SS_TIMEOUT_81920MS;
-		break;
-	default:
-		val = SC8562_SS_TIMEOUT_DISABLE;
-		break;
-	}
-	val <<= SC8562_SS_TIMEOUT_SET_SHIFT;
-	ret = sc8562_update_bits(sc, SC8562_REG_0D,	SC8562_SS_TIMEOUT_SET_MASK,	val);
 	return ret;
 }
 /*********************************************************************/
@@ -1137,7 +1189,7 @@ static int sc8562_init_protection(struct sc8562 *sc)
 					sc_info("%s bus ocp %s\n",sc->cfg->bus_ocp_disable ? "disable" : "enable",
 	!ret ? "successfullly" : "failed");
 
-	ret = sc8562_enable_busucp(sc, !sc->cfg->bus_ucp_disable);
+	ret = sc8562_enable_ibusucp(sc, !sc->cfg->bus_ucp_disable);
 	sc_info("%s bus ucp %s\n",sc->cfg->bus_ucp_disable ? "disable" : "enable",
 					!ret ? "successfullly" : "failed");
 
@@ -1359,6 +1411,21 @@ static int sc8562_set_vbusovp(struct charger_device *chg_dev, u32 uV)
 	return sc8562_set_busovp_th(sc, uV / 1000);
 }
 /*********************************************************************/
+static int sc8562_set_ibusucp(struct charger_device *chg_dev, bool en)
+{
+	struct sc8562 *sc = charger_get_data(chg_dev);
+
+	sc_info("%s: en : %d\n", __func__, en);
+	if (en) {
+		sc8562_enable_ibusucp(sc, true);
+		sc8562_set_ss_timeout(sc, 5120);
+	} else {
+		sc8562_enable_ibusucp(sc, false);
+		sc8562_set_ss_timeout(sc, 0);
+	}
+	return 0;
+}
+/*********************************************************************/
 static int sc8562_set_ibusocp(struct charger_device *chg_dev, u32 uA)
 {
 	struct sc8562 *sc = charger_get_data(chg_dev);
@@ -1492,6 +1559,7 @@ static const struct charger_ops sc8562_chg_ops = {
 	.is_enabled = sc8562_is_chg_enabled,
 	.get_adc = sc8562_get_adc,
 	.set_vbusovp = sc8562_set_vbusovp,
+	.set_ibusucp = sc8562_set_ibusucp,
 	.set_ibusocp = sc8562_set_ibusocp,
 	.set_vbatovp = sc8562_set_vbatovp,
 	.set_ibatocp = sc8562_set_ibatocp,

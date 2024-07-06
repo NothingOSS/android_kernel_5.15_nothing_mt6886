@@ -697,3 +697,13 @@ int pe50_set_operating_mode(struct chg_alg_device *alg, enum chg_idx chgidx,
 		return chgtyp;
 	return charger_dev_set_operation_mode(hal->chgdevs[chgtyp], en);
 }
+int pe50_set_ibusucp(struct chg_alg_device *alg, enum chg_idx chgidx,
+			    bool en)
+{
+	int chgtyp = to_chgtyp(chgidx);
+	struct pe50_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
+
+	if (chgtyp < 0)
+		return chgtyp;
+	return charger_dev_set_ibusucp(hal->chgdevs[chgtyp], en);
+}
