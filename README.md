@@ -28,6 +28,12 @@
 6. OS 2.5.6
   - Update charger driver
 
+7. OS 2.6
+  - Update display driver
+  - Update dts
+  - Improve power/charging mechanism
+
+
 # How do I submit patches to Android Common Kernels
 
 1. BEST: Make all of your changes to upstream Linux. If appropriate, backport to the stable releases.
