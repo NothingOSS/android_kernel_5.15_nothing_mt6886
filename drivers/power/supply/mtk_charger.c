@@ -73,6 +73,7 @@ struct tag_bootmode {
 	u32 boottype;
 };
 static int mtk_charger_enable_power_path(struct mtk_charger *info,int idx, bool en);
+static struct nt_chg_info *get_nt_chg_entry(void);
 #ifdef MODULE
 static char __chg_cmdline[COMMAND_LINE_SIZE];
 static char *chg_cmdline = __chg_cmdline;
@@ -917,6 +918,7 @@ static DEVICE_ATTR_RO(pd_type);
 static ssize_t Pump_Express_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
+/*
 	int ret = 0, i = 0;
 	bool is_ta_detected = false;
 	struct mtk_charger *pinfo = dev->driver_data;
@@ -938,6 +940,19 @@ static ssize_t Pump_Express_show(struct device *dev,
 		}
 	}
 	chr_err("%s: idx = %d, detect = %d\n", __func__, i, is_ta_detected);
+*/
+	bool is_ta_detected = false;
+
+	g_nt_chg = get_nt_chg_entry();
+	if (!g_nt_chg) {
+		chr_err("%s: g_nt_chg is null\n", __func__);
+		return sprintf(buf, "%d\n", is_ta_detected);
+	}
+	if (g_nt_chg->chg_type == POWER_SUPPLY_USB_TYPE_PD_PPS ||
+		g_nt_chg->chg_type == POWER_SUPPLY_USB_TYPE_PD ||
+		g_nt_chg->chg_type == POWER_SUPPLY_USB_TYPE_APPLE_BRICK_ID+1)
+		is_ta_detected = true;
+	chr_err("%s: detect = %d\n", __func__, is_ta_detected);
 	return sprintf(buf, "%d\n", is_ta_detected);
 }
 
