@@ -10,6 +10,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
+#include <linux/sched/mm.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
 
@@ -552,6 +553,7 @@ int mtk_clk_check_muxes(void)
 {
 	struct clk *clk;
 	int i;
+	unsigned int old_nofs;
 
 	if (!clkchk_ops || !clkchk_ops->get_vf_name
 			|| !clkchk_ops->get_vf_num)
@@ -565,7 +567,10 @@ int mtk_clk_check_muxes(void)
 
 		pr_notice("name: %s\n", name);
 		clk = __clk_chk_lookup(name);
+
+		old_nofs = memalloc_nofs_save();
 		clk_notifier_register(clk, &mtk_clk_notifier);
+		memalloc_nofs_restore(old_nofs);
 	}
 
 	return 0;
