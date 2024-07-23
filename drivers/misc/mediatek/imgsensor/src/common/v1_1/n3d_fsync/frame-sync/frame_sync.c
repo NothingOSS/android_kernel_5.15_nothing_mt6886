@@ -110,6 +110,13 @@ struct FrameSyncMgr {
 	struct FrameRecorder frm_recorder[SENSOR_MAX_NUM];
 
 
+#ifndef FS_UT
+	struct mutex fs_flow_protect_lock[SENSOR_MAX_NUM];
+#else
+	pthread_mutex_t fs_flow_protect_lock[SENSOR_MAX_NUM];
+#endif
+
+
 	/* call back */
 	struct callback_st cb_data[SENSOR_MAX_NUM];
 
@@ -969,6 +976,20 @@ static void fs_single_cam_IT(unsigned int idx, unsigned int line_time_ns)
 /******************************************************************************/
 // Frame Sync Mgr function
 /******************************************************************************/
+static void fs_init_members(void)
+{
+	unsigned int i;
+
+	for (i = 0; i < SENSOR_MAX_NUM; ++i) {
+#ifdef FS_UT
+		pthread_mutex_init(&fs_mgr.fs_flow_protect_lock[i], 0);
+#else
+		mutex_init(&fs_mgr.fs_flow_protect_lock[i]);
+#endif
+	}
+}
+
+
 static void fs_init(void)
 {
 	enum FS_STATUS status = get_fs_status();
@@ -976,6 +997,7 @@ static void fs_init(void)
 	fs_mgr.user_counter++;
 
 	if (status == FS_NONE) {
+		fs_init_members();
 		change_fs_status(FS_INITIALIZED);
 
 		LOG_INF("FrameSync init. (User:%u)\n", fs_mgr.user_counter);
@@ -1313,6 +1335,12 @@ fs_streaming(unsigned int flag, struct fs_streaming_st (*sensor_info))
 		sensor_info->sensor_idx);
 #endif // REDUCE_FS_DRV_LOG
 
+#ifdef FS_UT
+	pthread_mutex_lock(&fs_mgr.fs_flow_protect_lock[idx]);
+#else
+	mutex_lock(&fs_mgr.fs_flow_protect_lock[idx]);
+#endif
+
 	fs_reset_idx_ctx(idx);
 
 
@@ -1405,6 +1433,12 @@ fs_streaming(unsigned int flag, struct fs_streaming_st (*sensor_info))
 	if (flag > 0)
 		fs_set_sync(idx, 1);
 #endif // FS_SENSOR_CCU_IT
+
+#ifdef FS_UT
+	pthread_mutex_unlock(&fs_mgr.fs_flow_protect_lock[idx]);
+#else
+	mutex_unlock(&fs_mgr.fs_flow_protect_lock[idx]);
+#endif
 
 	return 0;
 }
@@ -1877,6 +1911,11 @@ void fs_set_shutter(struct fs_perframe_st (*frameCtrl))
 		return;
 	}
 
+#ifdef FS_UT
+	pthread_mutex_lock(&fs_mgr.fs_flow_protect_lock[idx]);
+#else
+	mutex_lock(&fs_mgr.fs_flow_protect_lock[idx]);
+#endif
 
 	//fs_dump_pf_info(frameCtrl);
 
@@ -1908,6 +1947,12 @@ void fs_set_shutter(struct fs_perframe_st (*frameCtrl))
 	/* for N3D and not using v4l2_ctrl_request_setup*/
 	fs_notify_sensor_ctrl_setup_complete(idx, frameCtrl->sensor_id);
 #endif // USING_V4L2_CTRL_REQUEST_SETUP
+
+#ifdef FS_UT
+	pthread_mutex_unlock(&fs_mgr.fs_flow_protect_lock[idx]);
+#else
+	mutex_unlock(&fs_mgr.fs_flow_protect_lock[idx]);
+#endif
 }
 /******************************************************************************/
 
