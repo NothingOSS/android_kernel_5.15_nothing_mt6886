@@ -44,7 +44,7 @@ static struct rcu_ctrlblk rcu_ctrlblk = {
 
 void rcu_barrier(void)
 {
-	wait_rcu_gp(call_rcu_hurry);
+	wait_rcu_gp(call_rcu);
 }
 EXPORT_SYMBOL(rcu_barrier);
 

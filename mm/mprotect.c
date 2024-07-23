@@ -17,7 +17,6 @@
 #include <linux/highmem.h>
 #include <linux/security.h>
 #include <linux/mempolicy.h>
-#include <linux/pgsize_migration.h>
 #include <linux/personality.h>
 #include <linux/syscalls.h>
 #include <linux/swap.h>
@@ -497,8 +496,7 @@ success:
 	 * vm_flags and vm_page_prot are protected by the mmap_lock
 	 * held in write mode.
 	 */
-	vma->vm_flags = vma_pad_fixup_flags(vma, newflags);
-
+	vma->vm_flags = newflags;
 	dirty_accountable = vma_wants_writenotify(vma, vma->vm_page_prot);
 	vma_set_page_prot(vma);
 
