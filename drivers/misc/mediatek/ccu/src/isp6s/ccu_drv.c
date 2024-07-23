@@ -73,6 +73,10 @@
 
 #define CCU_DEV_NAME            "ccu"
 
+#ifndef MAX_FREQ_STEP
+#define MAX_FREQ_STEP 12
+#endif
+
 #define CCU_CLK_PWR_NUM 4
 /* [0]: CCU_CLK_TOP_MUX, [1]: MDP_PWR, [2]: CAM_PWR, [3]: CCU_CLK_CAM_CCU */
 struct clk *ccu_clk_pwr_ctrl[CCU_CLK_PWR_NUM];
@@ -945,6 +949,11 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 			(void *)arg, sizeof(uint32_t));
 
 		LOG_DBG_MUST("request freq level: %d\n", freq_level);
+		if (freq_level >= MAX_FREQ_STEP) {
+			ret = -EINVAL;
+			break;
+		}
+
 #ifdef CONFIG_MTK_QOS_SUPPORT_ENABLE
 		if (freq_level == CCU_REQ_CAM_FREQ_NONE)
 			pm_qos_update_request(&_ccu_qos_request, 0);
