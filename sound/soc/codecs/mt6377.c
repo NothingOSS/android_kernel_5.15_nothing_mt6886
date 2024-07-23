@@ -874,15 +874,11 @@ static const struct snd_kcontrol_new vow_amic1_mux_control =
 static const char *const dmic_mux_map[] = {
 	"DMIC_DATA0",
 	"DMIC_DATA1_L",
-	"DMIC_DATA1_L_1",
-	"DMIC_DATA1_R",
 };
 
 static int dmic_mux_map_value[] = {
 	DMIC_MUX_DMIC_DATA0,
 	DMIC_MUX_DMIC_DATA1_L,
-	DMIC_MUX_DMIC_DATA1_L_1,
-	DMIC_MUX_DMIC_DATA1_R,
 };
 
 static SOC_VALUE_ENUM_SINGLE_DECL(dmic0_mux_map_enum,
@@ -898,8 +894,8 @@ static const struct snd_kcontrol_new dmic0_mux_control =
 /* ul1 ch2 use RG_DMIC_ADC3_SOURCE_SEL */
 static SOC_VALUE_ENUM_SINGLE_DECL(dmic1_mux_map_enum,
 				  MT6377_AFE_MIC_ARRAY_CFG0,
-				  RG_DMIC_ADC2_SOURCE_SEL_SFT,
-				  RG_DMIC_ADC2_SOURCE_SEL_MASK,
+				  RG_DMIC_ADC3_SOURCE_SEL_SFT,
+				  RG_DMIC_ADC3_SOURCE_SEL_MASK,
 				  dmic_mux_map,
 				  dmic_mux_map_value);
 
@@ -909,8 +905,8 @@ static const struct snd_kcontrol_new dmic1_mux_control =
 /* ul2 ch1 use RG_DMIC_ADC2_SOURCE_SEL */
 static SOC_VALUE_ENUM_SINGLE_DECL(dmic2_mux_map_enum,
 				  MT6377_AFE_MIC_ARRAY_CFG0,
-				  RG_DMIC_ADC3_SOURCE_SEL_SFT,
-				  RG_DMIC_ADC3_SOURCE_SEL_MASK,
+				  RG_DMIC_ADC2_SOURCE_SEL_SFT,
+				  RG_DMIC_ADC2_SOURCE_SEL_MASK,
 				  dmic_mux_map,
 				  dmic_mux_map_value);
 
@@ -3951,16 +3947,13 @@ static const struct snd_soc_dapm_route mt6377_dapm_routes[] = {
 
 	{"DMIC0_MUX", "DMIC_DATA0", "AIN0_DMIC"},
 	{"DMIC0_MUX", "DMIC_DATA1_L", "AIN2_DMIC"},
-	{"DMIC0_MUX", "DMIC_DATA1_L_1", "AIN2_DMIC"},
-	{"DMIC0_MUX", "DMIC_DATA1_R", "AIN3_DMIC"},
+	{"DMIC0_MUX", "DMIC_DATA1_L", "AIN3_DMIC"},
 	{"DMIC1_MUX", "DMIC_DATA0", "AIN0_DMIC"},
 	{"DMIC1_MUX", "DMIC_DATA1_L", "AIN2_DMIC"},
-	{"DMIC1_MUX", "DMIC_DATA1_L_1", "AIN2_DMIC"},
-	{"DMIC1_MUX", "DMIC_DATA1_R", "AIN3_DMIC"},
+	{"DMIC1_MUX", "DMIC_DATA1_L", "AIN3_DMIC"},
 	{"DMIC2_MUX", "DMIC_DATA0", "AIN0_DMIC"},
 	{"DMIC2_MUX", "DMIC_DATA1_L", "AIN2_DMIC"},
-	{"DMIC2_MUX", "DMIC_DATA1_L_1", "AIN2_DMIC"},
-	{"DMIC2_MUX", "DMIC_DATA1_R", "AIN3_DMIC"},
+	{"DMIC2_MUX", "DMIC_DATA1_L", "AIN3_DMIC"},
 
 	{"DMIC0_MUX", NULL, "UL_SRC_DMIC"},
 	{"DMIC1_MUX", NULL, "UL_SRC_DMIC"},
@@ -3968,6 +3961,8 @@ static const struct snd_soc_dapm_route mt6377_dapm_routes[] = {
 
 	{"AIN0_DMIC", NULL, "DMIC_0"},
 	{"AIN0_DMIC", NULL, "MIC_BIAS_0"},
+	{"AIN2_DMIC", NULL, "DMIC_0"},
+	{"AIN2_DMIC", NULL, "MIC_BIAS_0"},
 
 	/* adc */
 	{"ADC_L", NULL, "ADC_L_Mux"},
