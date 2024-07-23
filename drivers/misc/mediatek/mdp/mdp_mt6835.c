@@ -1417,13 +1417,40 @@ static s32 mdp_enable_larb(bool enable, struct device *larb)
 	return 0;
 }
 
+#define CMDQ_ENG_INPUT_BITS ((1LL << CMDQ_ENG_MDP_RDMA0) |  \
+							(1LL << CMDQ_ENG_WPEI) |  \
+							(1LL << CMDQ_ENG_WPEI2) |  \
+							(1LL << CMDQ_ENG_ISP_IMGI))
+
+#define CMDQ_ENG_OUTPUT_BITS ((1LL << CMDQ_ENG_MDP_WROT0) |  \
+							(1LL << CMDQ_ENG_MDP_WROT2) |  \
+							(1LL << CMDQ_ENG_WPEO) |  \
+							(1LL << CMDQ_ENG_WPEO2) |  \
+							(1LL << CMDQ_ENG_ISP_IMG2O))
+
+#define CMDQ_END_INVALID_BITS 0x7FFFFFFC
+
 static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 {
-	CMDQ_LOG_CLOCK("%s enable:%d, engine_flag:%llx\n", __func__, enable, engine_flag);
-	if (engine_flag & MDP_ENG_LARB2)
-		mdp_enable_larb(enable, larb2);
+	bool is_engine_valid = true;
 
-	return 0;
+	CMDQ_LOG_CLOCK("%s enable:%d, engine_flag:%llx\n", __func__, enable, engine_flag);
+
+	is_engine_valid = (((engine_flag >> 32) & CMDQ_END_INVALID_BITS) == 0);
+	is_engine_valid = is_engine_valid && ((engine_flag & CMDQ_ENG_INPUT_BITS) == (1LL << CMDQ_ENG_MDP_RDMA0) ||
+						(engine_flag & CMDQ_ENG_INPUT_BITS) == (1LL << CMDQ_ENG_WPEI) ||
+						(engine_flag & CMDQ_ENG_INPUT_BITS) == (1LL << CMDQ_ENG_WPEI2) ||
+						(engine_flag & CMDQ_ENG_INPUT_BITS) == (1LL << CMDQ_ENG_ISP_IMGI));
+	is_engine_valid = is_engine_valid && ((engine_flag & CMDQ_ENG_OUTPUT_BITS) != 0);
+
+	if (is_engine_valid) {
+		if (engine_flag & CMDQ_ENG_MDP_GROUP_BITS)
+			return mdp_enable_larb(enable, larb2);
+		return 0;
+	}
+
+	CMDQ_ERR("%s invalid engine flag: enable:%d, flag:%llx\n", __func__, enable, engine_flag);
+	return TASK_STATE_ERROR;
 }
 
 static void cmdq_mdp_check_hw_status(struct cmdqRecStruct *handle)
