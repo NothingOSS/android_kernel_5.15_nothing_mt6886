@@ -6992,7 +6992,19 @@
 		sw-sync-token-tzmp-disp-set = <CMDQ_SYNC_TOKEN_TZMP_DISP_SET>;
 		mboxes = <&gce_sec 8 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_4>;
 	};
-
+	ktf-mmdvfs-test {
+		compatible = "mediatek,ktf-mmdvfs-test";
+		interconnects =
+			<&mmqos MASTER_LARB_PORT(M4U_PORT_L0_OVL_RDMA0)
+					&mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_HW_VDEC_MC_EXT)
+					&mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_RDMA0)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "mmdvfs_interconnect1",
+						"mmdvfs_interconnect2",
+						"mmdvfs_interconnect3";
+	};
 	mmdvfs-debug {
 		compatible = "mediatek,mmdvfs-debug";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
