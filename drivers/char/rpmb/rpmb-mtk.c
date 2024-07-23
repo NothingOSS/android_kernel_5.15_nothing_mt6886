@@ -1393,8 +1393,15 @@ struct emmc_rpmb_req {
  */
 int emmc_rpmb_switch(struct mmc_card *card, struct emmc_rpmb_blk_data *md)
 {
-	int ret;
-	struct emmc_rpmb_blk_data *main_md = dev_get_drvdata(&card->dev);
+	int ret = 0;
+	struct emmc_rpmb_blk_data *main_md = NULL;
+
+	if (card == NULL || card->host == NULL) {
+		MSG(ERR, "card or card->host is null\n");
+		return -EINVAL;
+	}
+
+	main_md = dev_get_drvdata(&card->dev);
 
 	if (main_md->part_curr == md->part_type)
 		return 0;
@@ -1430,9 +1437,13 @@ int emmc_rpmb_switch(struct mmc_card *card, struct emmc_rpmb_blk_data *md)
 	if (main_md->part_curr == EXT_CSD_PART_CONFIG_ACC_RPMB) {
 		if (card->reenable_cmdq && !card->ext_csd.cmdq_en) {
 			ret = mmc_cmdq_enable(card);
-			if (ret)
-				pr_notice("%s enable CMDQ error %d,so just work without CMDQ\n",
-					mmc_hostname(card->host), ret);
+			if (ret) {
+				if (card->host)
+					pr_notice("%s enable CMDQ error %d,so just work without CMDQ\n",
+						mmc_hostname(card->host), ret);
+				else
+					pr_notice("(Without)mmc host enable CMDQ error %d,so just work without CMDQ\n", ret);
+			}
 		}
 	}
 
