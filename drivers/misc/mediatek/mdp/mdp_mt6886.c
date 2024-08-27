@@ -1197,11 +1197,21 @@ int32_t cmdqMdpClockOff(uint64_t engineFlag)
 		}
 	}
 
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_RDMA0))
-		cmdq_mdp_get_func()->enableMdpClock(false, CMDQ_ENG_MDP_RDMA0);
+	if (engineFlag & (1LL << CMDQ_ENG_MDP_RDMA0)) {
+		if (cmdq_mdp_get_func()->mdpClockIsOn(CMDQ_ENG_MDP_RDMA0)) {
+			CMDQ_MSG("Disable MDP_RDMA0 clock\n");
+			cmdq_mdp_get_func()->enableMdpClock(false,
+				CMDQ_ENG_MDP_RDMA0);
+		}
+	}
 
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_RDMA1))
-		cmdq_mdp_get_func()->enableMdpClock(false, CMDQ_ENG_MDP_RDMA1);
+	if (engineFlag & (1LL << CMDQ_ENG_MDP_RDMA1)) {
+		if (cmdq_mdp_get_func()->mdpClockIsOn(CMDQ_ENG_MDP_RDMA1)) {
+			CMDQ_MSG("Disable MDP_RDMA1 clock\n");
+			cmdq_mdp_get_func()->enableMdpClock(false,
+				CMDQ_ENG_MDP_RDMA1);
+		}
+	}
 
 	if (engineFlag & (1LL << CMDQ_ENG_MDP_COLOR0)) {
 		if (cmdq_mdp_get_func()->mdpClockIsOn(CMDQ_ENG_MDP_COLOR0)) {
