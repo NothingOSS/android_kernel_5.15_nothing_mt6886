@@ -13107,6 +13107,7 @@
 			      <8 0x1000>, /* MMDVFS_MEM_ID 4KB */
 			      <9 0x0>; /* secure dump, its size is in secure_dump_size */
 
+		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MM_PROC_DORMANT>;
 		clocks = <&topckgen_clk CLK_TOP_MMUP_SEL>,
 			<&topckgen_clk CLK_TOP_MAINPLL_D3>,
