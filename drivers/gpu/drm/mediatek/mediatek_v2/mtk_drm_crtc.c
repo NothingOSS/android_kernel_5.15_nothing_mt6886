@@ -3360,6 +3360,9 @@ void mtk_crtc_cwb_path_disconnect(struct drm_crtc *crtc)
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
+	if (mtk_crtc_is_frame_trigger_mode(crtc))
+		mtk_drm_idlemgr_kick(__func__, crtc, 0);
+
 	priv->need_cwb_path_disconnect = true;
 	mtk_crtc_pkt_create(&handle, crtc, client);
 
