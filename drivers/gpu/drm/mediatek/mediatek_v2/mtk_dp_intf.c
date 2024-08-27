@@ -21,6 +21,7 @@
 
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_ddp_comp.h"
+#include "mtk_drm_drv.h"
 #include "mtk_dump.h"
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_gem.h"
@@ -1177,8 +1178,26 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 	struct mtk_dp_intf *dp_intf = dev_id;
 	u32 status = 0;
 	struct mtk_drm_crtc *mtk_crtc;
+	irqreturn_t ret = IRQ_NONE;
+
+	if (IS_ERR_OR_NULL(dp_intf))
+		return IRQ_NONE;
+
+	if (mtk_drm_top_clk_isr_get("dp_intf_irq") == false) {
+		DDPIRQ("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+
+	mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
+	if (!mtk_crtc) {
+		DDPINFO("[E]%s mtk_crtc is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
+	}
 
 	status = readl(dp_intf->regs + DP_INTSTA);
+	if (!status)
+		goto out;
 
 	DRM_MMP_MARK(dp_intf0, status, 0);
 
@@ -1210,8 +1229,11 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 		|| ((irq_tl + 1) % 200 == 0))
 		DPTXDBG("%s, status:0x%x, vsync:%d, vde:%d, underflow:%d, target_line:%d\n",
 				__func__, status, irq_intsa, irq_vdesa, irq_underflowsa, irq_tl);
+	ret = IRQ_HANDLED;
+out:
+	mtk_drm_top_clk_isr_put("dp_intf_irq");
 
-	return IRQ_HANDLED;
+	return ret;
 }
 
 
