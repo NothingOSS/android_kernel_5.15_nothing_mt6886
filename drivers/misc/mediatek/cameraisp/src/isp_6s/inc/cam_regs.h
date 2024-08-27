@@ -505,6 +505,10 @@ enum{
 #define CAM_REG_LTMSO_BASE_ADDR(module)        (isp_devs[module].regs + 0x45F0)
 #define CAM_REG_TSFSO_BASE_ADDR(module)        (isp_devs[module].regs + 0x43C0)
 
+#define CAM_REG_FLKO_XSIZE(module)             (isp_devs[module].regs + 0x458C)
+#define CAM_REG_FLKO_YSIZE(module)             (isp_devs[module].regs + 0x4590)
+#define CAM_REG_FLKO_STRIDE(module)            (isp_devs[module].regs + 0x4594)
+
 #define CAM_REG_IMGO_DRS(module)                (isp_devs[module].regs + 0x4828)
 #define CAM_REG_IMGO_CON(module)                (isp_devs[module].regs + 0x4838)
 #define CAM_REG_IMGO_CON2(module)               (isp_devs[module].regs + 0x483C)
