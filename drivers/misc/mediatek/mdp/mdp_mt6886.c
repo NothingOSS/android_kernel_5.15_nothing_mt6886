@@ -1138,15 +1138,19 @@ int32_t cmdqMdpClockOff(uint64_t engineFlag)
 
 	CMDQ_MSG("%s: Disable MDP(0x%llx) clock begin\n", __func__, engineFlag);
 	if (engineFlag & (1LL << CMDQ_ENG_MDP_WROT0)) {
-		cmdq_mdp_loop_off(CMDQ_ENG_MDP_WROT0,
-			MDP_WROT0_BASE + 0X010, MDP_WROT0_BASE + 0X014,
-			0x1, 0x1, true);
+		if (cmdq_mdp_get_func()->mdpClockIsOn(CMDQ_ENG_MDP_WROT0)) {
+			cmdq_mdp_loop_off(CMDQ_ENG_MDP_WROT0,
+				MDP_WROT0_BASE + 0X010, MDP_WROT0_BASE + 0X014,
+				0x1, 0x1, true);
+		}
 	}
 
 	if (engineFlag & (1LL << CMDQ_ENG_MDP_WROT1)) {
-		cmdq_mdp_loop_off(CMDQ_ENG_MDP_WROT1,
-			MDP_WROT1_BASE + 0X010, MDP_WROT1_BASE + 0X014,
-			0x1, 0x1, true);
+		if (cmdq_mdp_get_func()->mdpClockIsOn(CMDQ_ENG_MDP_WROT1)) {
+			cmdq_mdp_loop_off(CMDQ_ENG_MDP_WROT1,
+				MDP_WROT1_BASE + 0X010, MDP_WROT1_BASE + 0X014,
+				0x1, 0x1, true);
+		}
 	}
 
 	if (engineFlag & (1LL << CMDQ_ENG_MDP_TDSHP0)) {
