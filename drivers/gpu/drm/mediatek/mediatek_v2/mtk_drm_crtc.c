@@ -5636,7 +5636,7 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 #ifndef DRM_CMDQ_DISABLE
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct cmdq_client *cl;
-	dma_addr_t trig_pc;
+	dma_addr_t trig_pc = 0;
 	u64 *inst;
 #endif
 
@@ -12615,6 +12615,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		kfree(cb_data);
 		return -EINVAL;
 	}
 
@@ -12657,6 +12658,11 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 				mtk_ddp_comp_io_cmd(r_comp, cmdq_handle,
 						MDP_RDMA_FILL_FRAME, NULL);
 			}
+		} else {
+			DDPINFO("[E]%s:%d first_comp is NULL\n", __func__, __LINE__);
+			cmdq_pkt_destroy(cmdq_handle);
+			kfree(cb_data);
+			return -EINVAL;
 		}
 	}
 
