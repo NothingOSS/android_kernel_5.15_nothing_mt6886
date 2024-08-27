@@ -137,13 +137,11 @@ static void xhci_trace_ep0_urb(void *data, struct urb *urb)
 	int config_num, i;
 
 	if (!urb || !urb->setup_packet || !urb->dev) {
-		dev_dbg(hcd_dev, "%s urb/setup pkt/device can't be NULL\n", __func__);
 		return;
 	}
 
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
 	if (ctrl->bRequest != USB_REQ_SET_INTERFACE || ctrl->wValue == 0) {
-		dev_dbg(hcd_dev, "%s it's not ep0 transfer request\n", __func__);
 		return;
 	}
 
