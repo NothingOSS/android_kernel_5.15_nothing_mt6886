@@ -173,5 +173,5 @@
 
 #define SPM_REQ_STA_6				(vcpreg.spm + 0x860)
 #define SPM_REQ_STA_7				(vcpreg.spm + 0x864)
-
+#define MM_INFRA_PWR_CON			(vcpreg.spm + 0xE90)
 #endif

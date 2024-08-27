@@ -34,6 +34,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/cpuidle.h>
+#include <linux/regulator/consumer.h>
 //#include <mt-plat/sync_write.h>
 //#include <mt-plat/aee.h>
 #include <linux/delay.h>
@@ -131,6 +132,7 @@ phys_addr_t vcp_sec_dump_base_virt;
 phys_addr_t vcp_mem_size;
 bool vcp_hwvoter_support = true;
 struct vcp_regs vcpreg;
+struct regulator *mmdvfs_vcore_reg;
 struct clk *vcpsel;
 struct clk *vcpclk;
 struct clk *vcp26m;
@@ -534,7 +536,7 @@ static void vcp_A_notify_ws(struct work_struct *ws)
 	struct vcp_work_struct *sws =
 		container_of(ws, struct vcp_work_struct, work);
 	unsigned int vcp_notify_flag = sws->flags;
-	uint32_t spm_req_sta_6, spm_req_sta_7;
+	uint32_t spm_req_sta_6 = 0, spm_req_sta_7 = 0, mm_infra_pwr_con = 0;
 
 	vcp_recovery_flag[VCP_A_ID] = VCP_A_RECOVERY_OK;
 	writel(0xff, VCP_TO_SPM_REG); /* patch: clear SPM interrupt */
@@ -556,10 +558,15 @@ static void vcp_A_notify_ws(struct work_struct *ws)
 	if (vcpreg.spm != NULL) {
 		spm_req_sta_6 = readl(SPM_REQ_STA_6);
 		spm_req_sta_7 = readl(SPM_REQ_STA_7);
+		mm_infra_pwr_con = readl(MM_INFRA_PWR_CON);
 		if (!(spm_req_sta_6 & 0x80000000) || (spm_req_sta_7 & 0x1))
 			pr_notice("[VCP] SPM_REQ_STA_6 0x%x SPM_REQ_STA_7 0x%x\n",
 				spm_req_sta_6, spm_req_sta_7);
 	}
+
+	if (!IS_ERR(mmdvfs_vcore_reg))
+		pr_notice("[VCP] [Debug] MM_INFRA_PWR_CON 0x%x MMDVFS_VCORE_VOL %duV\n",
+			mm_infra_pwr_con, regulator_get_voltage(mmdvfs_vcore_reg));
 
 	mutex_unlock(&vcp_A_notify_mutex);
 
@@ -2824,6 +2831,11 @@ static int vcp_device_probe(struct platform_device *pdev)
 	if (ret) {
 		vcpreg.secure_dump = 0;
 		pr_info("[VCP] Unable to get memory dump size.\n");
+	}
+
+	mmdvfs_vcore_reg = devm_regulator_get_optional(&pdev->dev, "mmdvfs-dvfsrc-vcore");
+	if (IS_ERR(mmdvfs_vcore_reg)) {
+		pr_info("[VCP] Unable to devm_regulator_get_optional for mmdvfs-dvfsrc-vcore\n");
 	}
 
 	pr_info("[VCP] %s done\n", __func__);
