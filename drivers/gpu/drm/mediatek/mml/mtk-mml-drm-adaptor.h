@@ -99,6 +99,15 @@ struct mml_drm_ctx *mml_drm_get_context(struct platform_device *pdev,
 	struct mml_drm_param *disp);
 
 /*
+ * mml_ctx_init - Create kthread worker and workqueue.
+ *
+ * @ctx:	The drm context instance.
+ * @threads:	Thread name array which will create worker thread.
+ *
+ */
+int mml_ctx_init(struct mml_drm_ctx *ctx, const char * const threads[]);
+
+/*
  * mml_drm_ctx_idle - Check if all tasks in this drm ctx stop.
  *
  * @ctx:	The drm context instance.
