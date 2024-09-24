@@ -3598,6 +3598,12 @@
 				support-hub = <0xC0>;  /*bit 0~7 to ch 0~7*/
 				peri-regs = <0x11036300 0x1 0x1>;  /*peri: <base, mask, val>*/
 				peri-axi-dbg = <0x11036150>;
+				apdma-cg = <0x11036014>;
+				apdma-idle-en = <0x11036300>;
+				debug-dma-bus1 = <0x110220a0>;
+				debug-dma-bus2 = <0x110220dc>;
+				debug-dma-bus3 = <0x110220e4>;
+				debug-dma-bus4 = <0x110220f4>;
 				#dma-cells = <1>;
 		};
 
