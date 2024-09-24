@@ -38,6 +38,7 @@
 //#include "../imgsensor_i2c.h"
 //#include "imgsensor_common.h"
 #include "s5k3p9spmipiraw_Sensor.h"
+#include "platform_common.h"
 
 #if IS_ENABLED(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 #include "imgsensor_ca.h"
@@ -59,6 +60,7 @@
 #define S5K3P9SP_EEPROM_WRITE_ID 0xA1
 
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
+static unsigned int g_platform_id;
 
 static struct imgsensor_info_struct imgsensor_info = {
 		.sensor_id = S5K3P9SP_SENSOR_ID,
@@ -4889,8 +4891,12 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-		*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
-			= 2500000;
+		if (IS_MT6835(g_platform_id)){
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 1200000;
+		}else
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 2500000;
 		break;
 	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
 		switch (*feature_data) {
@@ -5204,13 +5210,20 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	return ERROR_NONE;
 }	/*	feature_control()  */
 
+static void set_platform_info(unsigned int platform_id)
+{
+	g_platform_id = platform_id;
+	pr_info("%s id:%x\n", __func__, g_platform_id);
+}
+
 static struct SENSOR_FUNCTION_STRUCT sensor_func = {
 	open,
 	get_info,
 	get_resolution,
 	feature_control,
 	control,
-	close
+	close,
+	set_platform_info
 };
 
 UINT32 S5K3P9SP_MIPI_RAW_SensorInit(struct SENSOR_FUNCTION_STRUCT **pfFunc)
