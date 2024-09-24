@@ -63,9 +63,11 @@
 static unsigned int VowDrv_Wait_Queue_flag;
 static unsigned int VoiceData_Wait_Queue_flag;
 static unsigned int DumpData_Wait_Queue_flag;
+static unsigned int ScpRecover_Wait_Queue_flag;
 static DECLARE_WAIT_QUEUE_HEAD(VowDrv_Wait_Queue);
 static DECLARE_WAIT_QUEUE_HEAD(VoiceData_Wait_Queue);
 static DECLARE_WAIT_QUEUE_HEAD(DumpData_Wait_Queue);
+static DECLARE_WAIT_QUEUE_HEAD(ScpRecover_Wait_Queue);
 static DEFINE_SPINLOCK(vowdrv_lock);
 static DEFINE_SPINLOCK(vowdrv_dump_lock);
 static DEFINE_SPINLOCK(vow_rec_queue_lock);
@@ -167,6 +169,8 @@ static struct
 	char                 alexa_engine_version[VOW_ENGINE_INFO_LENGTH_BYTE];
 	char                 google_engine_arch[VOW_ENGINE_INFO_LENGTH_BYTE];
 	unsigned long        custom_model_size;
+	unsigned int         scp_recover_data;
+	unsigned long        scp_recover_user_return_size_addr;
 } vowserv;
 
 struct vow_dump_info_t {
@@ -565,6 +569,17 @@ static void vow_service_getDumpData(void)
 	}
 }
 
+static void vow_service_getScpRecover(void)
+{
+	if (ScpRecover_Wait_Queue_flag == 0) {
+		ScpRecover_Wait_Queue_flag = 1;
+		wake_up_interruptible(&ScpRecover_Wait_Queue);
+	} else {
+		/* VOWDRV_DEBUG("getScpRecover but no one wait for it, */
+		/* may lost it!!\n"); */
+	}
+}
+
 /*****************************************************************************
  * DSP SERVICE FUNCTIONS
  *****************************************************************************/
@@ -613,6 +628,7 @@ static void vow_service_Init(void)
 		VowDrv_Wait_Queue_flag = 0;
 		VoiceData_Wait_Queue_flag = 0;
 		DumpData_Wait_Queue_flag = 0;
+		ScpRecover_Wait_Queue_flag = 0;
 		vowserv.recording_flag = false;
 		vowserv.suspend_lock = 0;
 		vowserv.firstRead = false;
@@ -675,6 +691,8 @@ static void vow_service_Init(void)
 		vowserv.scp_dual_mic_switch = VOW_ENABLE_DUAL_MIC;
 		vowserv.mtkif_type = 0;
 		vowserv.bargein_enable = false;
+		vowserv.scp_recover_data = VOW_SCP_EVENT_NONE;
+		vowserv.scp_recover_user_return_size_addr = 0;
 		/* set meaningless default value to platform identifier and version */
 		memset(vowserv.google_engine_arch, 0, VOW_ENGINE_INFO_LENGTH_BYTE);
 		if (sprintf(vowserv.google_engine_arch, "12345678-1234-1234-1234-123456789012") < 0)
@@ -1727,6 +1745,36 @@ static void vow_service_ReadVoiceData(void)
 	}
 }
 
+static bool vow_service_get_scp_recover(unsigned long arg)
+{
+	struct vow_scp_recover_info_t scp_recover_temp;
+
+	if (copy_from_user((void *)&scp_recover_temp,
+			   (const void __user *)arg,
+			   sizeof(struct vow_scp_recover_info_t))) {
+		VOWDRV_DEBUG("%s(), copy_from_user fail", __func__);
+		return false;
+	}
+	vowserv.scp_recover_user_return_size_addr = scp_recover_temp.return_event_addr;
+	if (vowserv.scp_recover_user_return_size_addr == 0)
+		return false;
+
+	if (ScpRecover_Wait_Queue_flag == 0)
+		wait_event_interruptible(ScpRecover_Wait_Queue,
+					 ScpRecover_Wait_Queue_flag);
+	if (ScpRecover_Wait_Queue_flag == 1) {
+		ScpRecover_Wait_Queue_flag = 0;
+		// copy scp recover event to user
+		if (copy_to_user((void __user *)vowserv.scp_recover_user_return_size_addr,
+				 &vowserv.scp_recover_data,
+				 sizeof(unsigned int))) {
+			VOWDRV_DEBUG("%s(), copy_to_user fail", __func__);
+		}
+	}
+
+	return true;
+}
+
 static void vow_hal_reboot(void)
 {
 	bool ret = false;
@@ -2658,6 +2706,10 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		break;
+	case VOW_GET_SCP_RECOVER_STATUS:
+		if (!vow_service_get_scp_recover(arg))
+			ret = -EFAULT;
+		break;
 	case VOW_READ_VOICE_DATA:
 		if (!vow_service_SetApAddr(arg)) {
 			ret = -EFAULT;
@@ -2738,6 +2790,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		VowDrv_EnableHW(0);
 		VowDrv_ChangeStatus();
 		vow_service_Disable();
+		vow_service_getScpRecover();
 		pr_debug("-VOW_RECOG_DISABLE(%lu)-", arg);
 		break;
 	case VOW_MODEL_START:
@@ -2948,6 +3001,21 @@ static long VowDrv_compat_ioctl(struct file *fp,
 		data.return_payloaddump_addr      = data32.return_payloaddump_addr;
 		data.return_payloaddump_size_addr = data32.return_payloaddump_size_addr;
 		data.max_payloaddump_size         = data32.max_payloaddump_size;
+
+		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&data);
+	}
+		break;
+	case VOW_GET_SCP_RECOVER_STATUS: {
+		struct vow_scp_recover_info_kernel_t data32 = {};
+		struct vow_scp_recover_info_t data = {};
+		long err = -1;
+
+		err = (long)copy_from_user(&data32, compat_ptr(arg),
+			(unsigned long)sizeof(struct vow_scp_recover_info_kernel_t));
+		if (err != 0L)
+			VOWDRV_DEBUG("%s(), copy data from user fail", __func__);
+
+		data.return_event_addr = data32.return_event_addr;
 
 		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&data);
 	}
@@ -3224,6 +3292,10 @@ static int vow_scp_recover_event(struct notifier_block *this,
 		vowserv.vow_recovering = true;
 		vowserv.scp_recovering = false;
 		VOWDRV_DEBUG("%s(), SCP_EVENT_READY\n", __func__);
+
+		vowserv.scp_recover_data = VOW_SCP_EVENT_READY;
+		vow_service_getScpRecover();
+
 		if (!vow_check_scp_status()) {
 			VOWDRV_DEBUG("SCP is Off, don't recover VOW\n");
 			return NOTIFY_DONE;
@@ -3299,7 +3371,9 @@ static int vow_scp_recover_event(struct notifier_block *this,
 	case SCP_EVENT_STOP:
 		vowserv.scp_recovering = true;
 		VOWDRV_DEBUG("%s(), SCP_EVENT_STOP\n", __func__);
-		/* Check if VOW is running phase2.5, then stop this */
+
+		vowserv.scp_recover_data = VOW_SCP_EVENT_STOP;
+		vow_service_getScpRecover();
 		break;
 	}
 	return NOTIFY_DONE;
