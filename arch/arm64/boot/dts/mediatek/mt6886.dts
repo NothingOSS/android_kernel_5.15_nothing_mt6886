@@ -4911,6 +4911,7 @@
 		vmm-pmic-supply = <&mt6319_6_vbuck3>;
 		fmeter-id = /bits/ 8 <5 6 7 52 53 64 65 66>;
 		fmeter-type = /bits/ 8 <2 2 2 2 2 2 2 2>;
+		debug-version = <3>; /* OR operation of (1 << MMDVFS_DBG_VERx) */
 	};
 
 	ktf-mmdvfs-test {
