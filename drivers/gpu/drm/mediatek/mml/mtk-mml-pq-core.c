@@ -300,14 +300,18 @@ void mml_pq_get_pq_task(struct mml_pq_task *pq_task)
 	mutex_unlock(&pq_task->ref_lock);
 }
 
-void mml_pq_put_pq_task(struct mml_pq_task *pq_task)
+int mml_pq_put_pq_task(struct mml_pq_task *pq_task)
 {
+	int ret = -1;
+
 	if (!pq_task) {
 		mml_pq_log("%s pq_task[%p]", __func__, pq_task);
-		return;
+		return ret;
 	}
 
-	kref_put_mutex(&pq_task->ref, release_pq_task, &pq_task->ref_lock);
+	ret = kref_put_mutex(&pq_task->ref, release_pq_task, &pq_task->ref_lock);
+
+	return ret;
 }
 
 void mml_pq_comp_config_clear(struct mml_task *task)
@@ -353,18 +357,22 @@ void mml_pq_comp_config_clear(struct mml_task *task)
 		mml_pq_put_pq_task(pq_task);
 }
 
-static void remove_sub_task(struct mml_pq_task *pq_task, struct mml_pq_chan *chan,
+static int remove_sub_task(struct mml_pq_task *pq_task, struct mml_pq_chan *chan,
 			    struct mml_pq_sub_task *sub_task)
 {
+	int ret = 0;
+
 	mml_pq_trace_ex_begin("pq core %s", __func__);
 	mml_pq_msg("%s chan[%p] sub_task[%p]", __func__, chan, sub_task);
 
 	mutex_lock(&chan->job_lock);
 	list_del(&sub_task->mbox_list);
 	mutex_unlock(&chan->job_lock);
-	mml_pq_put_pq_task(pq_task);
+	ret = mml_pq_put_pq_task(pq_task);
 
 	mml_pq_trace_ex_end();
+
+	return ret;
 }
 
 void mml_pq_get_vcp_buf_offset(struct mml_task *task, u32 engine,
@@ -1656,8 +1664,10 @@ static int mml_pq_aal_readback_ioctl(unsigned long data)
 		mml_pq_msg("single pipe");
 	}
 
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
+
 
 	dump_sub_task(new_sub_task, new_job_id, readback->is_dual, readback->cut_pos_x,
 		AAL_HIST_NUM + AAL_DUAL_INFO_NUM);
@@ -1667,8 +1677,9 @@ static int mml_pq_aal_readback_ioctl(unsigned long data)
 	return 0;
 
 wake_up_aal_readback_task:
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
 	kfree(readback);
 	kfree(job);
 	cancel_sub_task(new_sub_task);
@@ -1788,8 +1799,9 @@ static int mml_pq_hdr_readback_ioctl(unsigned long data)
 		mml_pq_msg("single pipe");
 	}
 
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
 
 	dump_sub_task(new_sub_task, new_job_id, readback->is_dual, readback->cut_pos_x,
 		HDR_HIST_NUM);
@@ -1799,8 +1811,9 @@ static int mml_pq_hdr_readback_ioctl(unsigned long data)
 	return 0;
 
 wake_up_hdr_readback_task:
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
 	kfree(job);
 	kfree(readback);
 	cancel_sub_task(new_sub_task);
@@ -1863,16 +1876,18 @@ static int mml_pq_rsz_callback_ioctl(unsigned long data)
 		goto wake_up_rsz_callback_task;
 	}
 
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
 
 	mml_pq_msg("%s end job_id[%d]\n", __func__, job->new_job_id);
 	kfree(job);
 	return 0;
 
 wake_up_rsz_callback_task:
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
 	kfree(job);
 	cancel_sub_task(new_sub_task);
 	mml_pq_msg("%s end %d\n", __func__, ret);
@@ -2000,8 +2015,9 @@ static int mml_pq_clarity_readback_ioctl(unsigned long data)
 		mml_pq_msg("single pipe");
 	}
 
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
 
 	dump_sub_task(new_sub_task, new_job_id, readback->is_dual, readback->cut_pos_x,
 		HDR_HIST_NUM);
@@ -2011,8 +2027,9 @@ static int mml_pq_clarity_readback_ioctl(unsigned long data)
 	return 0;
 
 wake_up_clarity_readback_task:
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
 	kfree(job);
 	kfree(readback);
 	cancel_sub_task(new_sub_task);
@@ -2132,8 +2149,9 @@ static int mml_pq_dc_readback_ioctl(unsigned long data)
 		mml_pq_msg("single pipe");
 	}
 
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
 
 	dump_sub_task(new_sub_task, new_job_id, readback->is_dual, readback->cut_pos_x,
 		HDR_HIST_NUM);
@@ -2143,8 +2161,9 @@ static int mml_pq_dc_readback_ioctl(unsigned long data)
 	return 0;
 
 wake_up_dc_readback_task:
-	atomic_dec_if_positive(&new_sub_task->queued);
-	remove_sub_task(new_pq_task, chan, new_sub_task);
+	ret = remove_sub_task(new_pq_task, chan, new_sub_task);
+	if (!ret)
+		atomic_dec_if_positive(&new_sub_task->queued);
 	kfree(job);
 	kfree(readback);
 	cancel_sub_task(new_sub_task);

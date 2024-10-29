@@ -386,4 +386,30 @@ int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist);
  */
 int mml_pq_clarity_readback(struct mml_task *task, u8 pipe, u32 *phist, u32 arr_idx, u32 size);
 
+/*
+ * mml_pq_get_pq_task - get pq_task & increase kret
+ *
+ * @pq_task:	pq task data, include sub_task info
+ *
+ */
+void mml_pq_get_pq_task(struct mml_pq_task *pq_task);
+
+/*
+ * mml_pq_put_pq_task - reset pq histogram use status
+ *
+ * @pq_task:	pq task data, include sub_task info
+ *
+ * Return:	if value = 1, pq will be released
+ */
+int mml_pq_put_pq_task(struct mml_pq_task *pq_task);
+
+/*
+ * copy_sub_task_data - copy sub_task info
+ *
+ * @pq_param:	pq related info
+ * @config:	mml config info
+ * @sub_task:	sub_task info
+ *
+ */
+
 #endif	/* __MTK_MML_PQ_CORE_H__ */
