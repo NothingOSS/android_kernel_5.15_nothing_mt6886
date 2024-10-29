@@ -198,6 +198,7 @@ s32 mml_pq_task_create(struct mml_task *task)
 	pq_task->task = task;
 	kref_init(&pq_task->ref);
 	mutex_init(&pq_task->buffer_mutex);
+	mutex_init(&pq_task->ref_lock);
 	task->pq_task = pq_task;
 
 	init_sub_task(&pq_task->tile_init);
@@ -292,6 +293,23 @@ static void release_pq_task(struct kref *ref)
 	mml_pq_trace_ex_end();
 }
 
+void mml_pq_get_pq_task(struct mml_pq_task *pq_task)
+{
+	mutex_lock(&pq_task->ref_lock);
+	kref_get(&pq_task->ref);
+	mutex_unlock(&pq_task->ref_lock);
+}
+
+void mml_pq_put_pq_task(struct mml_pq_task *pq_task)
+{
+	if (!pq_task) {
+		mml_pq_log("%s pq_task[%p]", __func__, pq_task);
+		return;
+	}
+
+	kref_put_mutex(&pq_task->ref, release_pq_task, &pq_task->ref_lock);
+}
+
 void mml_pq_comp_config_clear(struct mml_task *task)
 {
 	struct mml_pq_chan *chan = &pq_mbox->comp_config_chan;
@@ -332,7 +350,7 @@ void mml_pq_comp_config_clear(struct mml_task *task)
 		mutex_unlock(&chan->job_lock);
 	}
 	if (need_put)
-		kref_put(&pq_task->ref, release_pq_task);
+		mml_pq_put_pq_task(pq_task);
 }
 
 static void remove_sub_task(struct mml_pq_task *pq_task, struct mml_pq_chan *chan,
@@ -344,7 +362,7 @@ static void remove_sub_task(struct mml_pq_task *pq_task, struct mml_pq_chan *cha
 	mutex_lock(&chan->job_lock);
 	list_del(&sub_task->mbox_list);
 	mutex_unlock(&chan->job_lock);
-	kref_put(&pq_task->ref, release_pq_task);
+	mml_pq_put_pq_task(pq_task);
 
 	mml_pq_trace_ex_end();
 }
@@ -455,7 +473,7 @@ void mml_pq_task_release(struct mml_task *task)
 {
 	struct mml_pq_task *pq_task = task->pq_task;
 
-	kref_put(&pq_task->ref, release_pq_task);
+	mml_pq_put_pq_task(pq_task);
 	task->pq_task = NULL;
 }
 
@@ -649,7 +667,7 @@ static int set_sub_task(struct mml_task *task,
 			sub_task->aee_dump_done = true;
 		}
 		atomic_set(&sub_task->result_ref, 0);
-		kref_get(&pq_task->ref);
+		mml_pq_get_pq_task(pq_task);
 		memcpy(&sub_task->frame_data.pq_param, task->pq_param,
 			MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
 		memcpy(&sub_task->frame_data.info, &task->config->info,
@@ -1031,7 +1049,7 @@ static void wake_up_sub_task(struct mml_pq_sub_task *sub_task,
 	mutex_unlock(&sub_task->lock);
 
 	/* decrease pq_task ref after finish the result */
-	kref_put(&pq_task->ref, release_pq_task);
+	mml_pq_put_pq_task(pq_task);
 }
 
 static struct mml_pq_sub_task *wait_next_sub_task(struct mml_pq_chan *chan)
