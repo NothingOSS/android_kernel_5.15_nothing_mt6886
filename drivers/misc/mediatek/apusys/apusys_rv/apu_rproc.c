@@ -107,6 +107,12 @@ stop:
 	}
 	hw_ops->stop(apu);
 
+	/* trigger panic to prevent issue spreading */
+	if (apu->platdata->flags & F_EXCEPTION_KE) {
+		msleep(APU_KE_DELAY_MS);
+		panic("APUSYS_RV boot timeout: APUSYS_RV_TIMEOUT\n");
+	}
+
 	return ret;
 }
 
