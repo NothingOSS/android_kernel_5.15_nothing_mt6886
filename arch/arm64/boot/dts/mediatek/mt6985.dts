@@ -3604,6 +3604,8 @@
 				debug-dma-bus2 = <0x110220dc>;
 				debug-dma-bus3 = <0x110220e4>;
 				debug-dma-bus4 = <0x110220f4>;
+				debug-dma-bus5 = <0x10000100>;
+				debug-dma-bus6 = <0x11035018>;
 				#dma-cells = <1>;
 		};
 
