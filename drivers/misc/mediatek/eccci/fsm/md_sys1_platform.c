@@ -1051,6 +1051,7 @@ static void md_pll_setting(struct ccci_modem *md)
 static int md_cd_power_on(struct ccci_modem *md)
 {
 	int ret = 0;
+	void __iomem* topsm_rg = NULL;
 
 	/* step 1: PMIC setting */
 	md1_pmic_setting_on();
@@ -1106,6 +1107,15 @@ static int md_cd_power_on(struct ccci_modem *md)
 #else
 	ret = clk_prepare_enable(clk_table[0].clk_ref);
 #endif
+	if (ap_plat_info == 6886) {
+		topsm_rg = ioremap_wc(0x200D0200, 0x10);
+		if(topsm_rg == NULL)
+			CCCI_ERROR_LOG(0, TAG, "%s topsm remap fail\n", __func__);
+		else
+			CCCI_NORMAL_LOG(0, TAG, "[POWER ON] topsm 0x%x\n", ccci_read32(topsm_rg, 0));
+		iounmap(topsm_rg);
+	}
+
 	CCCI_BOOTUP_LOG(0, TAG,
 		"[POWER ON] MD MTCMOS ON end: ret = %d\n", ret);
 	CCCI_NORMAL_LOG(0, TAG,
