@@ -194,7 +194,10 @@ static unsigned int debug_dma_bus1; // 0x110220a0
 static unsigned int debug_dma_bus2; // 0x110220dc
 static unsigned int debug_dma_bus3; // 0x110220e4
 static unsigned int debug_dma_bus4; // 0x110220f4
-char register_values_buffer[255];
+static unsigned int debug_dma_bus5; // 0x10000100
+static unsigned int debug_dma_bus6; // 0x11035018
+
+char register_values_buffer[512];
 
 static inline struct mtk_uart_apdmadev *
 to_mtk_uart_apdma_dev(struct dma_device *d)
@@ -335,11 +338,12 @@ static unsigned int mtk_uart_apdma_get_idle_en_status(void)
 
 static char *mtk_uart_apdma_get_bus_registers(void) {
 	void __iomem *debug_dma_bus1_mapped = NULL, *debug_dma_bus2_mapped = NULL,
-		*debug_dma_bus3_mapped = NULL, *debug_dma_bus4_mapped=NULL;
-	unsigned int value1 = 0, value2 = 0, value3 = 0, value4 = 0;
+		*debug_dma_bus3_mapped = NULL, *debug_dma_bus4_mapped=NULL, *debug_dma_bus5_mapped = NULL, *debug_dma_bus6_mapped = NULL;
+	unsigned int value1 = 0, value2 = 0, value3 = 0, value4 = 0, value5 = 0, value6 = 0;
 	memset(register_values_buffer, 0, sizeof(register_values_buffer));
 
-	if(debug_dma_bus1 == 0 || debug_dma_bus2 == 0 || debug_dma_bus3 == 0 || debug_dma_bus4 ==0) {
+	if(debug_dma_bus1 == 0 || debug_dma_bus2 == 0 || debug_dma_bus3 == 0 || debug_dma_bus4 == 0
+		|| debug_dma_bus5 == 0 || debug_dma_bus6 == 0) {
 		pr_info("[%s] get DMA bus RG value fail\n", __func__);
 		return NULL;
 	}
@@ -347,9 +351,12 @@ static char *mtk_uart_apdma_get_bus_registers(void) {
 	debug_dma_bus2_mapped = ioremap(debug_dma_bus2, sizeof(unsigned int));	// 0x1102_20dc
 	debug_dma_bus3_mapped = ioremap(debug_dma_bus3, sizeof(unsigned int));	// 0x1102_20e4
 	debug_dma_bus4_mapped = ioremap(debug_dma_bus4, sizeof(unsigned int));	// 0x1102_20f4
+	debug_dma_bus5_mapped = ioremap(debug_dma_bus5, sizeof(unsigned int));	// 0x1000_0100
+	debug_dma_bus6_mapped = ioremap(debug_dma_bus6, sizeof(unsigned int));	// 0x1103_5018
 
 	if (!debug_dma_bus1_mapped || !debug_dma_bus2_mapped ||
-		!debug_dma_bus3_mapped || !debug_dma_bus4_mapped) {
+		!debug_dma_bus3_mapped || !debug_dma_bus4_mapped ||
+		!debug_dma_bus5_mapped || !debug_dma_bus6_mapped) {
 		pr_info("[%s] debug_dma_bus ioremap fail\n", __func__);
 		return NULL;
 	}
@@ -359,12 +366,15 @@ static char *mtk_uart_apdma_get_bus_registers(void) {
 	value2 = readl(debug_dma_bus2_mapped);
 	value3 = readl(debug_dma_bus3_mapped);
 	value4 = readl(debug_dma_bus4_mapped);
+	value5 = readl(debug_dma_bus5_mapped);
+	value6 = readl(debug_dma_bus6_mapped);
 
 	snprintf(register_values_buffer, sizeof(register_values_buffer),
 		"Value of debug_dma_bus1(0x%x): 0x%x, Value of debug_dma_bus2(0x%x):\
-		0x%x, Value of debug_dma_bus3(0x%x): 0x%x, Value of debug_dma_bus4(0x%x): 0x%x\n",
+		0x%x, Value of debug_dma_bus3(0x%x): 0x%x, Value of debug_dma_bus4(0x%x): 0x%x, \
+		Value of debug_dma_bus5(0x%x): 0x%x, Value of debug_dma_bus6(0x%x): 0x%x\n",
 		debug_dma_bus1, value1, debug_dma_bus2, value2, debug_dma_bus3,
-		value3, debug_dma_bus4, value4);
+		value3, debug_dma_bus4, value4, debug_dma_bus5, value5, debug_dma_bus6, value6);
 
 	if (debug_dma_bus1_mapped)
 		iounmap(debug_dma_bus1_mapped);
@@ -374,7 +384,10 @@ static char *mtk_uart_apdma_get_bus_registers(void) {
 		iounmap(debug_dma_bus3_mapped);
 	if (debug_dma_bus4_mapped)
 		iounmap(debug_dma_bus4_mapped);
-
+	if (debug_dma_bus5_mapped)
+		iounmap(debug_dma_bus5_mapped);
+	if (debug_dma_bus6_mapped)
+		iounmap(debug_dma_bus6_mapped);
     return register_values_buffer;
 }
 
@@ -1456,6 +1469,12 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		if (of_property_read_u32_index(pdev->dev.of_node,
 			"debug-dma-bus4", 0, &debug_dma_bus4))
 			pr_info("[%s] get debug-dma-bus4 fail\n", __func__);
+		if (of_property_read_u32_index(pdev->dev.of_node,
+			"debug-dma-bus5", 0, &debug_dma_bus5))
+			pr_info("[%s] get debug-dma-bus5 fail\n", __func__);
+		if (of_property_read_u32_index(pdev->dev.of_node,
+			"debug-dma-bus6", 0, &debug_dma_bus6))
+			pr_info("[%s] get debug-dma-bus6 fail\n", __func__);
 	}
 	for (i = 0; i < mtkd->dma_requests; i++) {
 		c = devm_kzalloc(mtkd->ddev.dev, sizeof(*c), GFP_KERNEL);
