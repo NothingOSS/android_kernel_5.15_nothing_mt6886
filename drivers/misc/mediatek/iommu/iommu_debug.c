@@ -4714,6 +4714,41 @@ static int mtk_iommu_port_idx(int id, enum mtk_iommu_type type)
 	return port_nr;
 }
 
+int mtk_iommu_skip_aee_report(enum mtk_iommu_type type, u64 fault_iova, int idx)
+{
+	const struct mtk_iommu_port *port_list;
+	static int mt6985_idx[] = {0, 3, 10, 13};
+	static int mt6886_idx[] = {1, 2, 3};
+	static int mt6835_idx[] = {2, 7};
+	int i;
+
+	if ((type == MM_IOMMU) && (fault_iova == 0)) {
+		port_list = m4u_data->plat_data->port_list[type];
+		/* Work around for display driver issue mt6985 mt6886 mt6835*/
+		if (port_list == &mm_port_mt6985[0]) {
+			for (i = 0; i < sizeof(mt6985_idx) / sizeof(mt6985_idx[0]); i++) {
+				if (idx == mt6985_idx[i])
+					return 1;
+			}
+		}
+
+		if (port_list == &mm_port_mt6886[0]) {
+			for (i = 0; i < sizeof(mt6886_idx) / sizeof(mt6886_idx[0]); i++) {
+				if (idx == mt6886_idx[i])
+					return 1;
+			}
+		}
+
+		if (port_list == &mm_port_mt6835[0]) {
+			for (i = 0; i < sizeof(mt6835_idx) / sizeof(mt6835_idx[0]); i++) {
+				if (idx == mt6835_idx[i])
+					return 1;
+			}
+		}
+	}
+	return 0;
+}
+
 void report_custom_iommu_fault(
 	u64 fault_iova, u64 fault_pa,
 	u32 fault_id, enum mtk_iommu_type type,
@@ -4749,6 +4784,9 @@ void report_custom_iommu_fault(
 			m4u_data->m4u_cb[idx].fault_fn(m4u_data->m4u_cb[idx].port,
 			fault_iova, m4u_data->m4u_cb[idx].fault_data);
 	}
+
+	if (mtk_iommu_skip_aee_report(type, fault_iova, idx))
+		return;
 
 	m4u_aee_print(mmu_translation_log_format,
 		port_list[idx].name,
