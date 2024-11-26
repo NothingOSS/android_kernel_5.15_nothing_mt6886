@@ -5192,6 +5192,19 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 	bool hrt_valid = false;
 	int sphrt_enable;
 
+	if ((mtk_drm->is_iot == true) &&
+	    (mtk_drm->data->mmsys_id == MMSYS_MT6835) &&
+	    (mtk_disp_check_segment(mtk_crtc, mtk_drm) == false)) {
+		struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		if (comp == NULL)
+			return;
+
+  		mtk_ddp_comp_io_cmd(comp, NULL, DSI_COMP_DISABLE, NULL);
+		if (mtk_crtc_with_trigger_loop(crtc))
+			mtk_crtc_stop_trig_loop(crtc);
+	}
+
 	mutex_lock(&mtk_drm->lyeblob_list_mutex);
 	prop_lye_idx = crtc_state->prop_val[CRTC_PROP_LYE_IDX];
 	sphrt_enable = mtk_drm_helper_get_opt(mtk_drm->helper_opt, MTK_DRM_OPT_SPHRT);
@@ -7701,6 +7714,11 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 	lop.idx = var1;
 	rop.reg = false;
 	rop.idx = var2;
+
+	if ((priv->is_iot == true) &&
+	    (priv->data->mmsys_id == MMSYS_MT6835) &&
+	    (mtk_disp_check_segment(mtk_crtc, priv) == false))
+		return;
 
 	if (mtk_crtc->trig_loop_cmdq_handle) {
 		DDPDBG("exist trigger loop, skip %s\n", __func__);

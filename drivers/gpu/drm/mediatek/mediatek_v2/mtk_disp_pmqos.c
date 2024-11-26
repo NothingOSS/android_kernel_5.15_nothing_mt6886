@@ -126,7 +126,7 @@ void __mtk_disp_set_module_hrt(struct icc_path *request,
 		mtk_icc_set_bw(request, 0, MBps_to_icc(bandwidth));
 }
 
-static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
+bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
 				struct mtk_drm_private *priv)
 {
 	bool ret = true;
@@ -134,6 +134,7 @@ static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
 	int vact = 0;
 	int vrefresh = 0;
 	int bpc = 0;
+	bool efuse_status = false;
 
 	if (IS_ERR_OR_NULL(mtk_crtc)) {
 		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
@@ -154,10 +155,11 @@ static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
 		else
 			ret = false;
 	}
-/*
- *	DDPMSG("%s, segment:%d, mode(%d, %d, %d)\n",
- *			__func__, priv->seg_id, hact, vact, vrefresh);
- */
+
+	efuse_status = priv->seg_id == 0x8A || priv->seg_id == 0;
+	if (priv->is_iot && !efuse_status )
+		ret = false;
+
 	if (ret == false)
 		DDPPR_ERR("%s, check sement fail: segment:%d, mode(%d, %d, %d)\n",
 			__func__, priv->seg_id, hact, vact, vrefresh);

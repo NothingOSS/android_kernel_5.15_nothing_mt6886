@@ -7259,6 +7259,11 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	else
 		disp_helper_set_stage(DISP_HELPER_STAGE_BRING_UP);
 
+	if (of_property_read_bool(dev->of_node, "is-iot")) {
+		private->is_iot = true;
+		DDPMSG("is iot!\n");
+	}
+
 	if (private->data->mmsys_id == MMSYS_MT6835) {
 		if (mtk_drm_get_segment_id(pdev, private))
 			DDPPR_ERR("%s, segment get fail\n", __func__);

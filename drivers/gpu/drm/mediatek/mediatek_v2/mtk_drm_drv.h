@@ -219,6 +219,8 @@ struct mtk_drm_private {
 	struct mml_drm_ctx *mml_ctx;
 	atomic_t need_recover;
 	unsigned int seg_id;
+
+	bool is_iot;
 };
 
 struct mtk_drm_property {
@@ -424,4 +426,5 @@ void **mtk_drm_disp_sec_cb_init(void);
 void mtk_crtc_v_idle_apsrc_control(struct drm_crtc *crtc,
 	struct cmdq_pkt *_cmdq_handle, bool reset, bool condition_check,
 	unsigned int crtc_id, bool enable);
+bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc, struct mtk_drm_private *priv);
 #endif /* MTK_DRM_DRV_H */

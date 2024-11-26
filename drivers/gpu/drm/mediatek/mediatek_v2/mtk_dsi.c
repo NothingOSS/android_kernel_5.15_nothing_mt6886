@@ -9307,6 +9307,10 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		enable = (bool *)params;
 		*enable = dsi->output_en;
 		break;
+  	case DSI_COMP_DISABLE:
+  		mtk_dsi_disable(dsi);
+  		mtk_dsi_stop(dsi);
+  		break;
 	case DSI_VFP_IDLE_MODE:
 	{
 		panel_ext = mtk_dsi_get_panel_ext(comp);
