@@ -40,6 +40,10 @@
 /* #define FORCE_FPGA_ENABLE_IRQ */
 
 
+#include <linux/nvmem-consumer.h>
+
+static bool efuse_status;
+
 #define AFE_SYS_DEBUG_SIZE (1024 * 32) // 32K
 #define MAX_DEBUG_WRITE_INPUT 256
 
@@ -141,6 +145,11 @@ int mt6835_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 	unsigned int rate = runtime->rate;
 	int fs;
 	int ret = 0;
+
+	if(efuse_status){
+		pr_info("%s(): EFUSE enable\n", __func__);
+		return 0;
+	}
 
 	if (!in_interrupt())
 		dev_info(afe->dev,
@@ -1233,7 +1242,6 @@ static int mt6835_ul_mmap_fd_set(struct snd_kcontrol *kcontrol,
 {
 	return 0;
 }
-
 
 static const struct snd_kcontrol_new mt6835_pcm_kcontrols[] = {
 	SOC_SINGLE_EXT("Audio IRQ1 CNT", SND_SOC_NOPM, 0, 0x3ffff, 0,
@@ -6423,6 +6431,41 @@ static ssize_t mt6835_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	return n;
 }
 
+static int mtk_audio_efuse_init(struct platform_device *pdev)
+{
+	struct nvmem_cell *efuse_cell;
+
+	unsigned int *efuse_buf;
+	unsigned int seg_val = 0;
+	size_t efuse_len;
+
+	efuse_cell = nvmem_cell_get(&pdev->dev, "efuse_segment_cell");
+
+	if (IS_ERR(efuse_cell)) {
+		pr_info("%s(): cannot get efuse_cell\n", __func__);
+		return PTR_ERR(efuse_cell);
+	}
+
+	efuse_buf = (unsigned int *)nvmem_cell_read(efuse_cell, &efuse_len);
+
+	nvmem_cell_put(efuse_cell);
+	if (IS_ERR(efuse_buf)) {
+		pr_info("%s(): cannot get efuse_buf\n", __func__);
+	} else {
+		seg_val = (*efuse_buf & 0xFF);
+
+		if ((seg_val == 0) || (seg_val == 0x8A)) {
+			efuse_status = false;
+		} else {
+			efuse_status = true;
+		}
+		pr_info("%s():seg_val=0x%x, efuse_status=%d\n", __func__, seg_val, efuse_status);
+	}
+
+	kfree(efuse_buf);
+	return 0;
+}
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static ssize_t mt6835_debugfs_read(struct file *file, char __user *buf,
 				   size_t count, loff_t *pos)
@@ -6504,6 +6547,10 @@ static int mt6835_afe_pcm_dev_probe(struct platform_device *pdev)
 #endif
 
 	pr_info("+%s()\n", __func__);
+
+	if (of_property_read_bool(pdev->dev.of_node, "is-iot")) {
+		mtk_audio_efuse_init(pdev);
+	}
 
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
 	if (ret)
