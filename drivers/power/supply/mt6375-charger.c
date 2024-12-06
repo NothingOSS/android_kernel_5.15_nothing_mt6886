@@ -1000,6 +1000,7 @@ static int mt6375_get_vbus(struct charger_device *chg_dev, u32 *vbus);
 extern int get_pd_usb_connected(void);
 extern int nt_get_cc_connected(void);
 extern int get_pd_pps_connected(void);
+extern int get_fake_usb_checking(void);
 
 /*
 	DP/DM voltage range is 600, 650, 700, 750, 1800, 2800, 3300
@@ -1431,6 +1432,8 @@ static int mt6375_chg_get_property(struct power_supply *psy,
 		if (ret < 0)
 			return ret;
 		val->intval = ret;
+		if (get_fake_usb_checking() == 1)
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		mutex_lock(&ddata->pe_lock);

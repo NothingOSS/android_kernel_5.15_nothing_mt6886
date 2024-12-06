@@ -149,7 +149,9 @@ static bool support_fast_charging(struct mtk_charger *info)
 		}else if(state == ALG_INIT_FAIL){
 			chg_alg_init_algo(alg);
 		} else if (state == ALG_TA_CHECKING) {
-			ret = true;
+			g_nt_chg = get_nt_chg_entry();
+			if (g_nt_chg && g_nt_chg->area_id == NT_LIMMIT)
+				ret = true;
 			break;
 		}
 	}
@@ -775,8 +777,12 @@ static int do_algorithm(struct mtk_charger *info)
 		*/
 		g_nt_chg = get_nt_chg_entry();
 		if (ret == ALG_TA_CHECKING) {
-			if (g_nt_chg && (g_nt_chg->area_id == NT_LIMMIT)) {
-				set_input_current_limit = (g_nt_chg->count >= NT_CHG_CYCLE) ? NT_CHG_1500MA : NT_CHG_100MA;
+			if (g_nt_chg) {
+				if (g_nt_chg->area_id == NT_LIMMIT) {
+					set_input_current_limit = (g_nt_chg->count >= NT_CHG_CYCLE) ? NT_CHG_1500MA : NT_CHG_100MA;
+				} else {
+					set_input_current_limit = NT_CHG_1500MA;
+				}
 				charger_dev_set_input_current(info->chg1_dev, set_input_current_limit);
 				if (g_nt_chg->count >= NT_CHG_CYCLE) {
 					g_nt_chg->count = NT_CHG_CYCLE;

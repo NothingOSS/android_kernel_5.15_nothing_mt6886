@@ -130,6 +130,11 @@ static int mtk_charger_enable_power_path_cust(struct mtk_charger *info,
 		info->usb_disable_pp = !en;
 	if (info->usb_psy == psy)
 		info->pd_disable_pp = !en;
+	g_nt_chg = get_nt_chg_entry();
+	if (g_nt_chg && g_nt_chg->area_id != NT_LIMMIT) {
+		info->usb_disable_pp = false;
+		info->pd_disable_pp = false;
+	}
 
 	if ((info->aging_mode == true && info->cmd_discharging == false)
 			|| (info->safety_timeout == true)) {
@@ -141,8 +146,8 @@ static int mtk_charger_enable_power_path_cust(struct mtk_charger *info,
 	else
 		goto out;
 
-	chr_err("%s: disable_pp(u=%d,p=%d), enable power path = %d\n", __func__,
-			info->usb_disable_pp, info->pd_disable_pp, setting);
+	chr_err("%s: area_id(%d), disable_pp(u=%d,p=%d), en_pp = %d\n", __func__,
+			g_nt_chg->area_id, info->usb_disable_pp, info->pd_disable_pp, setting);
 	ret = charger_dev_is_powerpath_enabled(chg_dev, &is_en);
 	if (ret < 0) {
 		chr_err("%s: get is power path enabled failed\n", __func__);
