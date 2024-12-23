@@ -31,6 +31,9 @@ EXPORT_SYMBOL(nt_fastchg_done);
 struct nt_chg_info *g_nt_chg = NULL;
 bool nt_otg_boost_enabled = false;
 EXPORT_SYMBOL(g_nt_chg);
+int g_battery_curr_now = 0;
+EXPORT_SYMBOL(g_battery_curr_now);
+
 static bool dbg_log_en;
 module_param(dbg_log_en, bool, 0644);
 #define mt_dbg(dev, fmt, ...) \
@@ -1434,6 +1437,11 @@ static int mt6375_chg_get_property(struct power_supply *psy,
 		val->intval = ret;
 		if (get_fake_usb_checking() == 1)
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		if (val->intval == POWER_SUPPLY_STATUS_NOT_CHARGING &&
+		    g_battery_curr_now > NT_CHG_100MA) {
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+			dev_err(ddata->dev,"g_battery_curr_now: %d\n", g_battery_curr_now);
+		}
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		mutex_lock(&ddata->pe_lock);

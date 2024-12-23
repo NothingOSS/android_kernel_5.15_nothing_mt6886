@@ -34,6 +34,8 @@
 #define TBAT_COMPENSATE_GAP_TEMP_H     (47)
 #define TBAT_COMPENSATE_GAP_TEMP_L     (43)
 #define TBAT_COMPENSATE_TEMP_VALUE     (2)
+extern int g_battery_curr_now;
+
 struct tag_bootmode {
 	u32 size;
 	u32 tag;
@@ -673,7 +675,7 @@ static int battery_psy_get_property(struct power_supply *psy,
 			val->intval = curr_now * 100;
 			gm->ibat = curr_now;
 		}
-
+		g_battery_curr_now = val->intval;
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
