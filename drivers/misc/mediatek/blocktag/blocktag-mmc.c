@@ -311,11 +311,11 @@ static void cpu_cluster_freq_tbl_init(void)
 		return;
 	}
 	s_tchbst_rq = kcalloc(s_cluster_num,
-		sizeof(struct freq_qos_request), GFP_KERNEL);
+		sizeof(struct freq_qos_request), GFP_ATOMIC);
 	if (s_tchbst_rq == NULL)
 		return;
 
-	s_target_freq = kcalloc(s_cluster_num, sizeof(int), GFP_KERNEL);
+	s_target_freq = kcalloc(s_cluster_num, sizeof(int), GFP_ATOMIC);
 	if (s_target_freq)
 		for (i = 0; i < s_cluster_num; i++)
 			s_target_freq[i] = -1;
@@ -422,13 +422,13 @@ void mmc_mtk_biolog_check(struct mmc_host *mmc, unsigned long req_mask)
 	end_time = sched_clock();
 
 	/* when io loading is heavy,enable mmc performance mode */
+	spin_lock_irqsave(&ctx->lock, flags);
 	if (ctx->last_workload_percent >= 90 && req_mask) {
 		if (!s_cluster_freq_rdy)
 			cpu_cluster_freq_tbl_init();
 		set_mmc_perf_mode(mmc, true);
 	}
 
-	spin_lock_irqsave(&ctx->lock, flags);
 
 	if (ctx->busy_start_t)
 		mmc_mtk_bio_ctx_count_usage(ctx, ctx->busy_start_t, end_time);
