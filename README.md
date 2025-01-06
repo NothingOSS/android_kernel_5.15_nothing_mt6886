@@ -37,6 +37,9 @@
   - [Charger] Low probability of not being able to enable the charging pump
   - [Charger] Phone repeatedly restart
 
+9. OS 2.6(Pacman-U2.6-20241021-2253)
+  - No update
+
 
 # How do I submit patches to Android Common Kernels
 
