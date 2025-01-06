@@ -33,6 +33,10 @@
   - Update dts
   - Improve power/charging mechanism
 
+8. OS 2.6(Pacman-U2.6-20240828-1906)
+  - [Charger] Low probability of not being able to enable the charging pump
+  - [Charger] Phone repeatedly restart
+
 
 # How do I submit patches to Android Common Kernels
 
