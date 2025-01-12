@@ -45,7 +45,7 @@ static void mtk_usb_extcon_update_role(struct work_struct *work)
 
 	cur_dr = extcon->c_role;
 	new_dr = role->d_role;
-
+	extcon->c_role = new_dr;
 	dev_info(extcon->dev, "cur_dr(%d) new_dr(%d)\n", cur_dr, new_dr);
 
 	/* none -> device */
@@ -80,7 +80,7 @@ static void mtk_usb_extcon_update_role(struct work_struct *work)
 	if (extcon->role_sw)
 		usb_role_switch_set_role(extcon->role_sw, new_dr);
 
-	extcon->c_role = new_dr;
+	//extcon->c_role = new_dr;
 	kfree(role);
 }
 
@@ -338,14 +338,15 @@ static int mtk_extcon_tcpc_notifier(struct notifier_block *nb,
 		if (noti->swap_state.new_role == PD_ROLE_UFP &&
 				extcon->c_role != USB_ROLE_DEVICE) {
 			dev_info(dev, "switch role to device\n");
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
+			//mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
 		} else if (noti->swap_state.new_role == PD_ROLE_DFP &&
 				extcon->c_role != USB_ROLE_HOST) {
 			dev_info(dev, "switch role to host\n");
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
+			//mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_HOST);
-		}
+		} else
+			dev_info(dev, "wrong condition\n");
 		break;
 	}
 
