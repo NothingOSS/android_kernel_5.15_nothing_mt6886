@@ -1722,6 +1722,33 @@ void cmdq_mdp_compose_readback(struct cmdqRecStruct *handle,
 	}
 }
 
+static u32 mdp_get_poll_gpr(u16 engine, u32 reg_addr)
+{
+	u32 gpr;
+
+	switch (engine) {
+	case ENGBASE_MDP_RDMA0:
+	case ENGBASE_MDP_HDR0:
+	case ENGBASE_MDP_AAL0:
+	case ENGBASE_MDP_RSZ0:
+	case ENGBASE_MDP_TDSHP0:
+	case ENGBASE_MDP_WROT0:
+		gpr = CMDQ_GPR_R14;
+		break;
+	case ENGBASE_MDP_RSZ2:
+	case ENGBASE_MDP_WROT2:
+		gpr = CMDQ_GPR_R12;
+		break;
+	default:
+		CMDQ_ERR("%s engine not support:%hu reg_addr:%#x\n",
+			__func__, engine, reg_addr);
+		gpr = CMDQ_GPR_R14;
+		break;
+	}
+
+	return gpr;
+}
+
 static s32 mdp_get_rdma_idx(u32 eng_base)
 {
 	s32 rdma_idx = -1;
@@ -1835,6 +1862,7 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->getEngineBaseCount = mdp_engine_base_count;
 	pFunc->getEngineGroupName = mdp_get_engine_group_name;
 	pFunc->mdpComposeReadback = cmdq_mdp_compose_readback;
+	pFunc->mdpGetPollGpr = mdp_get_poll_gpr;
 	pFunc->getRDMAIndex = mdp_get_rdma_idx;
 	pFunc->getRegMSBOffset = mdp_get_reg_msb_offset;
 	pFunc->mdpIsCaminSupport = mdp_check_camin_support_virtual;
