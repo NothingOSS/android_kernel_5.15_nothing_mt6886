@@ -1113,3 +1113,11 @@ config MMC_AUTOK
 	  Online Tune Interface. If you have a controller with this interface,
 	  say Y or M here.
 	  If unsure, say N.
+
+config MMC_MTK_WP
+	tristate "MediaTek eMMC Write Protect Group support"
+	help
+	  Set read-only on the partitions belonging to eMMC write protect groups.
+	  If you set write protect on eMMC,
+	  say Y or M here.
+	  If unsure, say N.
