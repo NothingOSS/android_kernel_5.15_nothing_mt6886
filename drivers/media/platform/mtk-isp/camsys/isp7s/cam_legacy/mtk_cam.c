@@ -9946,9 +9946,9 @@ static int mtk_cam_master_bind(struct device *dev)
 
 	mutex_lock(&cam_dev->v4l2_dev.mdev->graph_mutex);
 	mtk_cam_create_links(cam_dev);
+	mutex_unlock(&cam_dev->v4l2_dev.mdev->graph_mutex);
 	/* Expose all subdev's nodes */
 	ret = v4l2_device_register_subdev_nodes(&cam_dev->v4l2_dev);
-	mutex_unlock(&cam_dev->v4l2_dev.mdev->graph_mutex);
 	if (ret) {
 		dev_dbg(dev, "Failed to register subdev nodes\n");
 		goto fail_unreg_mraw_entities;
