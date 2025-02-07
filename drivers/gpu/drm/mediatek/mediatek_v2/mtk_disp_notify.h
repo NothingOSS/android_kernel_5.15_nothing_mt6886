@@ -14,6 +14,13 @@
 /* A hardware display blank change occurred */
 #define MTK_DISP_EARLY_EVENT_BLANK	0x00
 #define MTK_DISP_EVENT_BLANK		0x01
+/*Add for fp*/
+#define FP_NOTIFIER_EVENT_UI		0x02
+
+struct fp_notify_event {
+	int hbm_status;
+	int ui_status;
+};
 
 enum {
 	/* disp power on */

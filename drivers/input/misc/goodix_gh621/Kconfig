@@ -1,0 +1,8 @@
+config GH621X
+	tristate "Goodix GH621X devices"
+	depends on I2C
+	help
+	  Say Y here if you have a Goodix GH621X I2C devcies
+	  controller.
+
+          If unsure, say N.

@@ -250,12 +250,14 @@ static int lm3644_enable_ctrl(struct lm3644_flash *flash,
 		return -1;
 	}
 	pr_info_ratelimited("%s led:%d enable:%d", __func__, led_no, on);
-
 	flashlight_kicker_pbm(on);
+
+	#ifdef CONFIG_MTK_FLASHLIGHT_PT
 	if (flashlight_pt_is_low()) {
 		pr_info_ratelimited("pt is low\n");
 		return 0;
 	}
+	#endif
 
 	if (led_no == LM3644_LED0) {
 		if (on)

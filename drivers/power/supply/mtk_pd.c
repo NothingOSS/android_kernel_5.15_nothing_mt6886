@@ -66,6 +66,16 @@ static int pd_dbg_level = PD_DEBUG_LEVEL;
 static bool algo_waiver_test;
 module_param(algo_waiver_test, bool, 0644);
 
+int g_nt_area_id;
+EXPORT_SYMBOL(g_nt_area_id);
+
+enum {
+	UNKNOW,
+	NT_LIMMIT = 3,
+	OTHER,
+	AREA_ID_MAX,
+};
+
 int pd_get_debug_level(void)
 {
 	return pd_dbg_level;
@@ -167,6 +177,7 @@ static int _pd_is_algo_ready(struct chg_alg_device *alg)
 		ret_value = pd_hal_is_pd_adapter_ready(alg);
 		if (ret_value == ALG_READY) {
 			uisoc = pd_hal_get_uisoc(alg);
+#if 0
 			if (pd->input_current_limit1 != -1 ||
 				pd->charging_current_limit1 != -1 ||
 				pd->input_current_limit2 != -1 ||
@@ -174,6 +185,10 @@ static int _pd_is_algo_ready(struct chg_alg_device *alg)
 				ret_value = ALG_NOT_READY;
 			else if (uisoc >= pd->pd_stop_battery_soc ||
 				(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
+#else
+			if (uisoc >= pd->pd_stop_battery_soc ||
+				(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
+#endif
 				ret_value = ALG_WAIVER;
 		} else if (ret_value == ALG_TA_NOT_SUPPORT)
 			pd->state = PD_TA_NOT_SUPPORT;
@@ -250,8 +265,8 @@ void __mtk_pdc_get_cap_max_watt(struct chg_alg_device *alg)
 	int idx = 0;
 
 	cap = &pd->cap;
-
 	if (pd->pd_cap_max_watt == -1) {
+	//pd->pd_cap_max_watt = -1;
 		for (i = 0; i < cap->nr; i++) {
 			if (cap->min_mv[i] <= pd->vbus_h &&
 				cap->min_mv[i] >= pd->vbus_l &&
@@ -261,6 +276,7 @@ void __mtk_pdc_get_cap_max_watt(struct chg_alg_device *alg)
 				if (cap->maxwatt[i] > pd->pd_cap_max_watt) {
 					pd->pd_cap_max_watt = cap->maxwatt[i];
 					idx = i;
+					cap->selected_cap_idx = idx;
 				}
 				pd_dbg("%d %d %d %d %d %d\n",
 					cap->min_mv[i],
@@ -372,6 +388,7 @@ int __mtk_pdc_setup(struct chg_alg_device *alg, int idx)
 	unsigned int oldmA = 3000000;
 	bool force_update = false;
 	int chg_cnt, is_chip_enabled, i;
+	int vbus_uv = 0;
 
 	struct mtk_pd *pd = dev_get_drvdata(&alg->dev);
 
@@ -381,6 +398,12 @@ int __mtk_pdc_setup(struct chg_alg_device *alg, int idx)
 		if (pd->cap.max_mv[idx] - oldmivr / 1000 >
 			PD_VBUS_IR_DROP_THRESHOLD)
 			force_update = true;
+		if (idx == pd->pd_boost_idx) {
+			vbus_uv = pd_hal_get_vbus(alg);
+			if (vbus_uv < 5500000 && vbus_uv > 0) {
+				force_update = true;
+			}
+		}
 
 		chg_cnt = pd_hal_get_charger_cnt(alg);
 		if (chg_cnt > 1 && alg->config == DUAL_CHARGERS_IN_SERIES) {
@@ -470,7 +493,11 @@ int __mtk_pdc_setup(struct chg_alg_device *alg, int idx)
 			if (oldmA > pd->cap.ma[idx])
 				pd_hal_set_input_current(alg, CHG1,
 					oldmA * 1000);
-
+			vbus_uv = pd_hal_get_vbus(alg);
+			if (vbus_uv < 5500000 && vbus_uv > 0) {
+				oldmivr = 4600000;
+				pd_dbg("%s: oldmivr switch\n", __func__);
+			}
 			pd_hal_set_mivr(alg, CHG1, oldmivr);
 		}
 
@@ -500,21 +527,39 @@ void mtk_pdc_reset(struct chg_alg_device *alg)
 	pd->old_cv = 0;
 }
 
+
+
 int mtk_pd_input_current_protection(struct chg_alg_device *alg, int vbus)
 {
 	struct mtk_pd *pd = dev_get_drvdata(&alg->dev);
+	int aicr_limit_va = -1;
 
-	switch (vbus) {
-	case 5000:
-		pd->input_current_limit1 = 3000000;
+	switch (g_nt_area_id) {
+	case NT_LIMMIT:
+		if (pd_hal_get_usb_type() == POWER_SUPPLY_USB_TYPE_SDP) {
+			aicr_limit_va = pd_hal_check_input_current_limit();
+			if (aicr_limit_va > 0) {
+				pd->input_current_limit1 = aicr_limit_va;
+			}
+			break;
+		}
+	case UNKNOW:
+	case OTHER:
+		switch (vbus) {
+		case 5000:
+			pd->input_current_limit1 = 1600000;
+			break;
+		case 9000:
+			pd->input_current_limit1 = 1600000;
+			break;
+		}
+		pd_hal_set_input_current(alg, CHG1, pd->input_current_limit1);
 		break;
-	case 9000:
-		pd->input_current_limit1 = 1500000;
+	default:
 		break;
 	}
-	pd_hal_set_input_current(alg,
-		CHG1, pd->input_current_limit1);
 	pd_dbg("%s run: vbus: %d, ibus_limit: %d", __func__, vbus, pd->input_current_limit1);
+
 	return 0;
 }
 
@@ -534,7 +579,7 @@ int __mtk_pdc_get_setting(struct chg_alg_device *alg, int *newvbus, int *newcur,
 	bool chg1_mivr = false;
 	bool chg2_mivr = false;
 	int chg_cnt, i, is_chip_enabled;
-
+	int uisoc;
 	__mtk_pdc_init_table(alg);
 	__mtk_pdc_get_reset_idx(alg);
 	__mtk_pdc_get_cap_max_watt(alg);
@@ -641,7 +686,10 @@ int __mtk_pdc_get_setting(struct chg_alg_device *alg, int *newvbus, int *newcur,
 	if (pd_min_watt <= 5000000)
 		pd_min_watt = 5000000;
 
-	if ((now_max_watt >= pd_max_watt) || chg1_mivr || chg2_mivr) {
+	uisoc = pd_hal_get_uisoc(alg);
+	//if ((now_max_watt >= pd_max_watt) || chg1_mivr || chg2_mivr) {
+	if ((now_max_watt >= pd_max_watt) || chg1_mivr || chg2_mivr ||
+		uisoc <= pd->pd_stop_battery_soc) {
 		*newidx = pd->pd_boost_idx;
 		boost = true;
 	} else if (now_max_watt <= pd_min_watt) {
@@ -651,6 +699,12 @@ int __mtk_pdc_get_setting(struct chg_alg_device *alg, int *newvbus, int *newcur,
 		*newidx = selected_idx;
 		boost = false;
 		buck = false;
+	}
+	if ((chg1_mivr || chg2_mivr) && (selected_idx == 0) && (*newidx == pd->pd_boost_idx)) {
+			*newidx = selected_idx;
+			boost = false;
+			buck = false;
+			pd_dbg("pd id switch\n");
 	}
 
 	*newvbus = cap->max_mv[*newidx];
@@ -942,6 +996,7 @@ static int _pd_start_algo(struct chg_alg_device *alg)
 				pd->state = PD_TA_NOT_SUPPORT;
 			else if (ret_value == ALG_READY) {
 				uisoc = pd_hal_get_uisoc(alg);
+#if 0
 				if (pd->input_current_limit1 != -1 ||
 					pd->charging_current_limit1 != -1 ||
 					pd->input_current_limit2 != -1 ||
@@ -949,6 +1004,10 @@ static int _pd_start_algo(struct chg_alg_device *alg)
 					ret_value = ALG_NOT_READY;
 				else if (uisoc >= pd->pd_stop_battery_soc ||
 					(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
+#else
+				if (uisoc >= pd->pd_stop_battery_soc ||
+					(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
+#endif
 					ret_value = ALG_WAIVER;
 				else {
 					pd->state = PD_RUN;
@@ -1180,6 +1239,15 @@ static void mtk_pd_parse_dt(struct mtk_pd *pd,
 {
 	struct device_node *np = dev->of_node;
 	u32 val;
+
+	if (of_property_read_u32(np, "max_charger_voltage", &val) >= 0)
+		pd->max_charger_voltage = val;
+	else if (of_property_read_u32(np, "max-charger-voltage", &val) >= 0)
+		pd->max_charger_voltage = val;
+	else {
+		pd_err("use default V_CHARGER_MAX:%d\n", PD_V_CHARGER_MAX);
+		pd->max_charger_voltage = PD_V_CHARGER_MAX;
+	}
 
 	if (of_property_read_u32(np, "min_charger_voltage", &val) >= 0)
 		pd->min_charger_voltage = val;

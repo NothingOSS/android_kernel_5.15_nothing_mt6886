@@ -161,6 +161,7 @@ obj-$(CONFIG_VIRT_DRIVERS)	+= virt/
 obj-$(subst m,y,$(CONFIG_HYPERV))	+= hv/
 
 obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
+obj-y				+= nothing_stability/
 obj-$(CONFIG_EXTCON)		+= extcon/
 obj-$(CONFIG_MEMORY)		+= memory/
 obj-$(CONFIG_IIO)		+= iio/
@@ -187,3 +188,4 @@ obj-$(CONFIG_GNSS)		+= gnss/
 obj-$(CONFIG_INTERCONNECT)	+= interconnect/
 obj-$(CONFIG_COUNTER)		+= counter/
 obj-$(CONFIG_MOST)		+= most/
+obj-y				+= nothing_thermal/

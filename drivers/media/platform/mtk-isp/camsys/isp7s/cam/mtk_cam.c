@@ -2620,6 +2620,12 @@ static int mtk_cam_probe(struct platform_device *pdev)
 	cam_dev->max_stream_num = 8; /* TODO: how */
 	cam_dev->ctxs = devm_kcalloc(dev, cam_dev->max_stream_num,
 				     sizeof(*cam_dev->ctxs), GFP_KERNEL);
+
+	if (!cam_dev->ctxs) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		cam_dev->ctxs = vmalloc(cam_dev->max_stream_num*sizeof(*cam_dev->ctxs));
+	}
+
 	if (!cam_dev->ctxs)
 		return -ENOMEM;
 

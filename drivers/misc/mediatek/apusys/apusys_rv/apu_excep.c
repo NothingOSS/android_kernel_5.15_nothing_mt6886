@@ -311,6 +311,8 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	uint32_t val;
 	uint32_t *ptr;
 
+	dev_info(dev, "%s +\n", __func__);
+
 	/* bypass AP coredump flow if wdt timeout
 	 * is triggered by uP exception
 	 */
@@ -337,7 +339,21 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		apu->bypass_pwr_off_chk = true;
 		apusys_rv_exception_aee_warn(
 			apusys_assert_module_name[apu->conf_buf->ramdump_module]);
-		dev_info(dev, "%s +\n", __func__);
+
+		if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke &&
+			(ktime_get() / 1000000) > BOOT_BYPASS_APU_KE_MS) {
+			dev_info(dev, "%s: wait aee_kernel_exception to generate db\n", __func__);
+			msleep(APU_KE_DELAY_MS);
+			panic("APUSYS_RV exception: %s\n",
+				apusys_assert_module_name[apu->conf_buf->ramdump_module]);
+		} else {
+			dev_info(dev, "%s: bypass KE due to %s%s%s\n", __func__,
+				(apu->platdata->flags & F_EXCEPTION_KE) ? "":"F_EXCEPTION_KE not enabled",
+				!apu->disable_ke ? "":"disabled by cmd",
+				((ktime_get() / 1000000) > BOOT_BYPASS_APU_KE_MS) ? "":"bootup");
+		}
+
+		dev_info(dev, "%s -\n", __func__);
 		return;
 	}
 
@@ -481,8 +497,18 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	apu_regdump();
 	/* since exception is triggered, so bypass power off timeout check */
 	apu->bypass_pwr_off_chk = true;
-	apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
-	dev_info(dev, "%s +\n", __func__);
+
+	if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke) {
+		panic("APUSYS_RV timeout: APUSYS_RV\n");
+	} else {
+		dev_info(dev, "%s: bypass KE due to %s%s\n", __func__,
+			(apu->platdata->flags & F_EXCEPTION_KE) ? "":"F_EXCEPTION_KE not enabled",
+			!apu->disable_ke ? "":"disabled by cmd");
+
+		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
+	}
+
+	dev_info(dev, "%s -\n", __func__);
 }
 
 static irqreturn_t apu_wdt_isr(int irq, void *private_data)
@@ -492,6 +518,8 @@ static irqreturn_t apu_wdt_isr(int irq, void *private_data)
 	struct device *dev = apu->dev;
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 	uint32_t val;
+
+	dev_info(dev, "%s +\n", __func__);
 
 	if ((apu->platdata->flags & F_SECURE_COREDUMP)) {
 		apusys_rv_smc_call(dev,
@@ -511,7 +539,8 @@ static irqreturn_t apu_wdt_isr(int irq, void *private_data)
 		if (!hw_ops->cg_gating) {
 			spin_unlock_irqrestore(&apu->reg_lock, flags);
 			WARN_ON(1);
-			return -EINVAL;
+			/* return -EINVAL; */
+			return IRQ_HANDLED;
 		}
 		hw_ops->cg_gating(apu);
 		/* disable apu wdt */
@@ -523,12 +552,10 @@ static irqreturn_t apu_wdt_isr(int irq, void *private_data)
 	}
 
 	disable_irq_nosync(apu->wdt_irq_number);
-	dev_info(dev, "%s: disable wdt_irq(%d)\n", __func__,
-		apu->wdt_irq_number);
-
-	dev_info(dev, "%s +\n", __func__);
 
 	schedule_work(&(apu_coredump_work.work));
+
+	dev_info(dev, "%s -\n", __func__);
 
 	return IRQ_HANDLED;
 }

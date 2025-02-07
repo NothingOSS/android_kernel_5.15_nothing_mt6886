@@ -761,7 +761,7 @@ static void mt6886_rv_cachedump(struct mtk_apu *apu)
 
 const struct mtk_apu_platdata mt6886_platdata = {
 	.flags		= F_PRELOAD_FIRMWARE | F_AUTO_BOOT |
-					F_SECURE_BOOT | F_SECURE_COREDUMP,
+					F_SECURE_BOOT | F_SECURE_COREDUMP | F_EXCEPTION_KE,
 	.ops		= {
 		.init	= mt6886_rproc_init,
 		.exit	= mt6886_rproc_exit,

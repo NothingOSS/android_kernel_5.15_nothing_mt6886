@@ -44,3 +44,7 @@ enum {
 	DUAL_PROP_PR_SNK,
 	DUAL_PROP_PR_NONE,
 };
+
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+int extcon_usb_mode_switch(bool mode);
+#endif

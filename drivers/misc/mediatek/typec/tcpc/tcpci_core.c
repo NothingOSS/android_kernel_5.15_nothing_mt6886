@@ -23,8 +23,9 @@
 #include "mtk_battery.h"
 #endif /* CONFIG_RECV_BAT_ABSENT_NOTIFY */
 #endif /* CONFIG_USB_POWER_DELIVERY */
+#include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.18_MTK"
+#define TCPC_CORE_VERSION		"2.0.27_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -54,6 +55,8 @@ static struct device_attribute tcpc_device_attributes[] = {
 	TCPC_DEVICE_ATTR(timer, 0664),
 	TCPC_DEVICE_ATTR(caps_info, 0444),
 	TCPC_DEVICE_ATTR(pe_ready, 0444),
+	TCPC_DEVICE_ATTR(vbus_level, 0444),
+	TCPC_DEVICE_ATTR(cc_high, 0444),
 };
 
 enum {
@@ -64,6 +67,8 @@ enum {
 	TCPC_DESC_TIMER,
 	TCPC_DESC_CAP_INFO,
 	TCPC_DESC_PE_READY,
+	TCPC_TCPM_VBUS_LEVEL,
+	TCPC_TCPM_CC_HIGH,
 };
 
 static struct attribute *__tcpc_attrs[ARRAY_SIZE(tcpc_device_attributes) + 1];
@@ -185,7 +190,7 @@ static ssize_t tcpc_show_property(struct device *dev,
 				"1: pr_swap", "2: dr_swap", "3: vconn_swap",
 				"4: soft reset", "5: hard reset",
 				"6: get_src_cap", "7: get_sink_cap",
-				"8: discover_id", "9: discover_cable");
+				"8: discover_id", "9: discover_cable_id");
 		if (ret < 0)
 			dev_dbg(dev, "%s: ret=%d\n", __func__, ret);
 		break;
@@ -226,6 +231,16 @@ static ssize_t tcpc_show_property(struct device *dev,
 		}
 		break;
 #endif
+	case TCPC_TCPM_VBUS_LEVEL:
+		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_vbus_level(tcpc, true));
+		if (ret < 0)
+			return ret;
+		break;
+	case TCPC_TCPM_CC_HIGH:
+		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_cc_high(tcpc));
+		if (ret < 0)
+			return ret;
+		break;
 	default:
 		break;
 	}
@@ -261,7 +276,7 @@ static ssize_t tcpc_store_property(struct device *dev,
 	struct tcpc_device *tcpc = to_tcpc_device(dev);
 	const ptrdiff_t offset = attr - tcpc_device_attributes;
 	int ret;
-	long val;
+	unsigned long val;
 
 	switch (offset) {
 	case TCPC_DESC_ROLE_DEF:
@@ -279,7 +294,7 @@ static ssize_t tcpc_store_property(struct device *dev,
 			dev_err(dev, "get parameters fail\n");
 			return -EINVAL;
 		}
-		if (val >= 0 && val < PD_TIMER_NR)
+		if (val < PD_TIMER_NR)
 			tcpc_enable_timer(tcpc, val);
 		break;
 	#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
@@ -330,7 +345,7 @@ static ssize_t tcpc_store_property(struct device *dev,
 			tcpm_dpm_vdm_discover_id(tcpc, NULL);
 			break;
 		case 9:
-			tcpm_dpm_vdm_discover_cable(tcpc, NULL);
+			tcpm_dpm_vdm_discover_cable_id(tcpc, NULL);
 			break;
 		default:
 			break;
@@ -394,7 +409,6 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 	for (i = 0; i < TCP_NOTIFY_IDX_NR; i++)
 		srcu_init_notifier_head(&tcpc->evt_nh[i]);
 
-	init_completion(&tcpc->alert_done);
 	mutex_init(&tcpc->access_lock);
 	mutex_init(&tcpc->typec_lock);
 	mutex_init(&tcpc->timer_lock);
@@ -414,6 +428,7 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 	tcpc->typec_remote_rp_level = TYPEC_CC_VOLT_SNK_DFT;
 	tcpc->typec_polarity = false;
 	tcpc->bootmode = bootmode;
+	tcpc->cc_hi = INT_MAX;
 
 #if CONFIG_TCPC_VCONN_SUPPLY_MODE
 	tcpc->tcpc_vconn_supply = tcpc_desc->vconn_supply;
@@ -429,6 +444,7 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 
 	INIT_DELAYED_WORK(&tcpc->event_init_work, tcpc_event_init_work);
 
+	device_init_wakeup(&tcpc->dev, true);
 	tcpc->attach_wake_lock =
 		wakeup_source_register(NULL, "tcpc_attach_wake_lock");
 	tcpc->detach_wake_lock =
@@ -436,6 +452,9 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 
 	tcpci_timer_init(tcpc);
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	init_waitqueue_head(&tcpc->tx_wait_que);
+	atomic_set(&tcpc->tx_pending, 0);
+	INIT_DELAYED_WORK(&tcpc->tx_pending_work, tcpc_tx_pending_work_func);
 	pd_core_init(tcpc);
 #endif /* CONFIG_USB_POWER_DELIVERY */
 
@@ -486,7 +505,7 @@ static void bat_update_work_func(struct work_struct *work)
 	ret = power_supply_get_property(
 			tcpc->bat_psy, POWER_SUPPLY_PROP_CAPACITY, &value);
 	if (ret == 0) {
-		TCPC_INFO("%s battery update soc = %d\n",
+		TCPC_DBG("%s battery update soc = %d\n",
 					__func__, value.intval);
 		tcpc->bat_soc = value.intval;
 	} else
@@ -496,13 +515,16 @@ static void bat_update_work_func(struct work_struct *work)
 		POWER_SUPPLY_PROP_STATUS, &value);
 	if (ret == 0) {
 		if (value.intval == POWER_SUPPLY_STATUS_CHARGING) {
-			TCPC_INFO("%s Battery Charging\n", __func__);
+			TCPC_INFO("%s Battery Charging, soc = %d\n",
+				  __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_CHARGING;
 		} else if (value.intval == POWER_SUPPLY_STATUS_DISCHARGING) {
-			TCPC_INFO("%s Battery Discharging\n", __func__);
+			TCPC_INFO("%s Battery Discharging, soc = %d\n",
+				  __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_DISCHARGING;
 		} else {
-			TCPC_INFO("%s Battery Idle\n", __func__);
+			TCPC_INFO("%s Battery Idle, soc = %d\n",
+				  __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_IDLE;
 		}
 	}
@@ -589,7 +611,7 @@ static int tcp_notifier_func_stub(struct notifier_block *nb,
 		container_of(nb, struct tcp_notifier_block_wrapper, stub_nb);
 	struct notifier_block *action_nb = nb_wrapper->action_nb;
 
-	return nb_wrapper->action_nb->notifier_call(action_nb, action, data);
+	return action_nb->notifier_call(action_nb, action, data);
 }
 
 struct tcpc_managed_res {
@@ -599,55 +621,54 @@ struct tcpc_managed_res {
 	struct tcpc_managed_res *next;
 };
 
-
-static int __add_wrapper_to_managed_res_list(struct tcpc_device *tcp_dev,
+static int __add_wrapper_to_managed_res_list(struct tcpc_device *tcpc,
 	void *res, void *key, int prv_id)
 {
 	struct tcpc_managed_res *tail;
 	struct tcpc_managed_res *mres;
 
-	mres = devm_kzalloc(&tcp_dev->dev, sizeof(*mres), GFP_KERNEL);
+	mres = devm_kzalloc(&tcpc->dev, sizeof(*mres), GFP_KERNEL);
 	if (!mres)
 		return -ENOMEM;
 	mres->res = res;
 	mres->key = key;
 	mres->prv_id = prv_id;
-	mutex_lock(&tcp_dev->mr_lock);
-	tail = tcp_dev->mr_head;
+	mutex_lock(&tcpc->mr_lock);
+	tail = tcpc->mr_head;
 	if (tail) {
 		while (tail->next)
 			tail = tail->next;
 		tail->next = mres;
 	} else
-		tcp_dev->mr_head = mres;
-	mutex_unlock(&tcp_dev->mr_lock);
+		tcpc->mr_head = mres;
+	mutex_unlock(&tcpc->mr_lock);
 
 	return 0;
 }
 
-static int __register_tcp_dev_notifier(struct tcpc_device *tcp_dev,
+static int __register_tcp_dev_notifier(struct tcpc_device *tcpc,
 	struct notifier_block *nb, uint8_t idx)
 {
 	struct tcp_notifier_block_wrapper *nb_wrapper;
 	int retval;
 
 	nb_wrapper = devm_kzalloc(
-		&tcp_dev->dev, sizeof(*nb_wrapper), GFP_KERNEL);
+		&tcpc->dev, sizeof(*nb_wrapper), GFP_KERNEL);
 	if (!nb_wrapper)
 		return -ENOMEM;
 	nb_wrapper->action_nb = nb;
 	nb_wrapper->stub_nb.notifier_call = tcp_notifier_func_stub;
 	retval = srcu_notifier_chain_register(
-		tcp_dev->evt_nh + idx, &nb_wrapper->stub_nb);
+		tcpc->evt_nh + idx, &nb_wrapper->stub_nb);
 	if (retval < 0) {
-		devm_kfree(&tcp_dev->dev, nb_wrapper);
+		devm_kfree(&tcpc->dev, nb_wrapper);
 		return retval;
 	}
 	retval = __add_wrapper_to_managed_res_list(
-				tcp_dev, nb_wrapper, nb, idx);
+				tcpc, nb_wrapper, nb, idx);
 	if (retval < 0)
-		dev_warn(&tcp_dev->dev,
-			"Failed to add resource to manager(%d)\n", retval);
+		dev_notice(&tcpc->dev,
+			   "Failed to add resource to manager(%d)\n", retval);
 
 	return 0;
 }
@@ -662,7 +683,7 @@ static bool __is_mulit_bits_set(uint32_t flags)
 	return false;
 }
 
-int register_tcp_dev_notifier(struct tcpc_device *tcp_dev,
+int register_tcp_dev_notifier(struct tcpc_device *tcpc,
 			struct notifier_block *nb, uint8_t flags)
 {
 	int ret = 0, i = 0;
@@ -671,7 +692,7 @@ int register_tcp_dev_notifier(struct tcpc_device *tcp_dev,
 		for (i = 0; i < TCP_NOTIFY_IDX_NR; i++) {
 			if (flags & (1 << i)) {
 				ret = __register_tcp_dev_notifier(
-							tcp_dev, nb, i);
+							tcpc, nb, i);
 				if (ret < 0)
 					return ret;
 			}
@@ -680,7 +701,7 @@ int register_tcp_dev_notifier(struct tcpc_device *tcp_dev,
 		for (i = 0; i < TCP_NOTIFY_IDX_NR; i++) {
 			if (flags & (1 << i)) {
 				ret = srcu_notifier_chain_register(
-				&tcp_dev->evt_nh[i], nb);
+				&tcpc->evt_nh[i], nb);
 				break;
 			}
 		}
@@ -690,63 +711,60 @@ int register_tcp_dev_notifier(struct tcpc_device *tcp_dev,
 }
 EXPORT_SYMBOL(register_tcp_dev_notifier);
 
-
 static void *__remove_wrapper_from_managed_res_list(
-	struct tcpc_device *tcp_dev, void *key, int prv_id)
+	struct tcpc_device *tcpc, void *key, int prv_id)
 {
 	void *retval = NULL;
-	struct tcpc_managed_res *mres = tcp_dev->mr_head;
+	struct tcpc_managed_res *mres = tcpc->mr_head;
 	struct tcpc_managed_res *prev = NULL;
 
-	mutex_lock(&tcp_dev->mr_lock);
-	if (mres) {
-		while (mres) {
-			if (mres->key == key && mres->prv_id == prv_id) {
-				retval = mres->res;
-				if (prev)
-					prev->next = mres->next;
-				else
-					tcp_dev->mr_head = NULL;
-				devm_kfree(&tcp_dev->dev, mres);
-				break;
-			}
-			prev = mres;
-			mres = mres->next;
+	mutex_lock(&tcpc->mr_lock);
+	while (mres) {
+		if (mres->key == key && mres->prv_id == prv_id) {
+			retval = mres->res;
+			if (prev)
+				prev->next = mres->next;
+			else
+				tcpc->mr_head = mres->next;
+			devm_kfree(&tcpc->dev, mres);
+			break;
 		}
+		prev = mres;
+		mres = mres->next;
 	}
-	mutex_unlock(&tcp_dev->mr_lock);
+	mutex_unlock(&tcpc->mr_lock);
 
 	return retval;
 }
 
-static int __unregister_tcp_dev_notifier(struct tcpc_device *tcp_dev,
+static int __unregister_tcp_dev_notifier(struct tcpc_device *tcpc,
 	struct notifier_block *nb, uint8_t idx)
 {
 	struct tcp_notifier_block_wrapper *nb_wrapper;
 	int retval;
 
-	nb_wrapper = __remove_wrapper_from_managed_res_list(tcp_dev, nb, idx);
+	nb_wrapper = __remove_wrapper_from_managed_res_list(tcpc, nb, idx);
 	if (nb_wrapper) {
 		retval = srcu_notifier_chain_unregister(
-			tcp_dev->evt_nh + idx, &nb_wrapper->stub_nb);
-		devm_kfree(&tcp_dev->dev, nb_wrapper);
+			tcpc->evt_nh + idx, &nb_wrapper->stub_nb);
+		devm_kfree(&tcpc->dev, nb_wrapper);
 		return retval;
 	}
 
 	return -ENOENT;
 }
 
-int unregister_tcp_dev_notifier(struct tcpc_device *tcp_dev,
+int unregister_tcp_dev_notifier(struct tcpc_device *tcpc,
 				struct notifier_block *nb, uint8_t flags)
 {
 	int i = 0, ret = 0;
 
 	for (i = 0; i < TCP_NOTIFY_IDX_NR; i++) {
 		if (flags & (1 << i)) {
-			ret = __unregister_tcp_dev_notifier(tcp_dev, nb, i);
+			ret = __unregister_tcp_dev_notifier(tcpc, nb, i);
 			if (ret == -ENOENT)
 				ret = srcu_notifier_chain_unregister(
-					tcp_dev->evt_nh + i, nb);
+					tcpc->evt_nh + i, nb);
 			if (ret < 0)
 				return ret;
 		}
@@ -755,7 +773,6 @@ int unregister_tcp_dev_notifier(struct tcpc_device *tcp_dev,
 }
 EXPORT_SYMBOL(unregister_tcp_dev_notifier);
 
-
 void tcpc_device_unregister(struct device *dev, struct tcpc_device *tcpc)
 {
 	if (!tcpc)
@@ -763,9 +780,6 @@ void tcpc_device_unregister(struct device *dev, struct tcpc_device *tcpc)
 
 	tcpc_typec_deinit(tcpc);
 
-#if CONFIG_USB_PD_REV30
-	wakeup_source_unregister(tcpc->pd_port.pps_request_wake_lock);
-#endif /* CONFIG_USB_PD_REV30 */
 	wakeup_source_unregister(tcpc->detach_wake_lock);
 	wakeup_source_unregister(tcpc->attach_wake_lock);
 
@@ -813,10 +827,6 @@ static int __init tcpc_class_init(void)
 
 	pr_info("%s (%s)\n", __func__, TCPC_CORE_VERSION);
 
-#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-	dpm_check_supported_modes();
-#endif /* CONFIG_USB_POWER_DELIVERY */
-
 	tcpc_class = class_create(THIS_MODULE, "tcpc");
 	if (IS_ERR(tcpc_class)) {
 		pr_info("Unable to create tcpc class; errno = %ld\n",
@@ -824,6 +834,8 @@ static int __init tcpc_class_init(void)
 		return PTR_ERR(tcpc_class);
 	}
 	tcpc_init_attrs(&tcpc_dev_type);
+
+	regmap_plat_init();
 
 	/* mediatek boot mode */
 	of_chosen = of_find_node_by_path("/chosen");
@@ -846,6 +858,8 @@ out:
 
 static void __exit tcpc_class_exit(void)
 {
+	regmap_plat_exit();
+
 	class_destroy(tcpc_class);
 	pr_info("TCPC class un-init OK\n");
 }
@@ -866,6 +880,76 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.27_MTK
+ * (1) Do not discharge VBUS when Attached.SNK
+ * (2) Bump the PD revision/version to R3.1 V1.6
+ * (3) Revise WD, FOD and CTD flows
+ * (4) Fix coverity issues
+ * (5) Revise CC high status
+ * (6) Fix PD compliance failures of Ellisys and MQP
+ *
+ * 2.0.26_MTK
+ * (1) Fix coverity issues
+ * (2) PD DP Alt Mode V2.1
+ * (3) Revise WD
+ * (4) Decrease tDRP to 51.2ms and dcSRC.DRP to 30%
+ * (5) Remove old code
+ *
+ * 2.0.25_MTK
+ * (1) Fix COMMON.CHECK.PD.9#1 of MQP
+ * (2) Revise PR_Swap flow
+ * (3) Revise WD for Titan's multi-port accessory
+ *
+ * 2.0.24_MTK
+ * (1) Revise PR_Swap flow
+ * (2) Add a dts option of attempt-discover-id-dfp;
+ *
+ * 2.0.23_MTK
+ * (1) Revise Request flow
+ * (2) Revise WD, FOD and OTP flows
+ * (3) Add a tcpm function for inquiring CC high status
+ *
+ * 2.0.22_MTK
+ * (1) Revise Vconn
+ * (2) Notify in PD mode when receiving the first PD message
+ * (3) VPDO support
+ *
+ * 2.0.21_MTK
+ * (1) Add tcpm functions for manipulating local source caps
+ * (2) Add tcpm functions for exiting Attached.SNK when CC opens during PD
+ * (3) Enable force discharge during TYPEC_WAIT_PS_SRC_VSAFE0V
+ * (4) Keep pd_traffic_idle false if tcp_event_count not zero
+ * (5) Fix NoRp.SRC support
+ *
+ * 2.0.20_MTK
+ * (1) Revise pd_dbg_info
+ *
+ * 2.0.19_MTK
+ * (1) Revise low power mode
+ * (2) Remove unused members in struct tcpc_device
+ * (3) #undef CONFIG_TYPEC_CAP_RA_DETACH and CONFIG_TYPEC_CAP_POWER_OFF_CHARGE
+ * (4) Use alarm timer in tcpci_timer.c
+ * (5) Wait previous PD Tx done before sending next PD Tx
+ * (6) Revise __remove_wrapper_from_managed_res_list()
+ * (7) Revise pd_sync_sop_spec_revision()
+ * (8) #undef CONFIG_USB_PD_DPM_AUTO_SEND_ALERT
+ * (9) Revise water detection/protection
+ * (10) CC open for 20ms in tcpc_typec_init()
+ * (11) Fix ErrorRecovery when RX_OVERFLOW
+ * (12) Change pps_request_task as pps_request_dwork
+ * (13) Not to send unnecessary Discover Identity
+ * (14) Deny requests of data role swap during modal operation
+ * (15) Disable sink/ufp delay by default
+ * (16) Check vSafe0V during Hard Reset
+ * (17) Call tcpci_vbus_level_changed() with vbus_level changed for ALERT_V20
+ * (18) Revise PD DP Alternative Mode
+ * (19) Revise pd_traffic_control
+ * (20) Revise *_tcpc_deinit()
+ * (21) Delay IRQ processing of water detection for 100ms
+ * (22) Revise SW workaround of cap miss match
+ * (23) Change to Sink only when KPOC
+ * (24) Response Discover Identity with less VDOs if requested repeatedly
+ *
  * 2.0.18_MTK
  * (1) Fix typos
  * (2) Revise tcpci_alert.c

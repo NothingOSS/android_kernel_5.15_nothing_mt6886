@@ -27,10 +27,10 @@ static DECLARE_DELAYED_WORK(print_out_dwork, print_out_dwork_fn);
 
 static void clean_up_list(void)
 {
-	struct msg_node *mn = NULL;
+	struct msg_node *mn = NULL, *mnn = NULL;
 
 	mutex_lock(&list_lock);
-	list_for_each_entry(mn, &msg_list, list) {
+	list_for_each_entry_safe(mn, mnn, &msg_list, list) {
 		list_del(&mn->list);
 		kfree(mn);
 	}
@@ -103,7 +103,7 @@ int pd_dbg_info(const char *fmt, ...)
 	va_end(args);
 
 	mn = kzalloc(sizeof(*mn) + ts_size + msg_size + 1, GFP_KERNEL);
-	if (IS_ERR_OR_NULL(mn))
+	if (!mn)
 		return -ENOMEM;
 
 	size = snprintf(mn->msg, ts_size + 1, "<%5lu.%03lu>", (unsigned long)ts, rem_msec);

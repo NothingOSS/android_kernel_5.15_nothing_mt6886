@@ -12,6 +12,7 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/thermal.h>
+#include <trace/hooks/thermal.h>
 
 #define READ_TIA_REG_COUNT_MAX 3
 
@@ -350,6 +351,12 @@ static int board_ntc_parse_lookup_table(struct device *dev,
 	return 0;
 }
 
+static void tz_is_irq(void *unused, struct thermal_zone_device *tz, int *irq_wakeable)
+{
+    if (tz->polling_delay_jiffies == 0)
+        *irq_wakeable = 1;
+}
+
 static int board_ntc_probe(struct platform_device *pdev)
 {
 	struct board_ntc_info *ntc_info;
@@ -410,6 +417,8 @@ static int board_ntc_probe(struct platform_device *pdev)
 			ret);
 		return ret;
 	}
+
+    register_trace_android_vh_thermal_pm_notify_suspend(tz_is_irq, NULL);
 
 	return 0;
 }

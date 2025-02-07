@@ -107,7 +107,8 @@
 #define I2C_CH3_INTR_EN         0x4
 #define I2C_FIFO_DATA_LEN_MASK	0x001f
 #define MAX_POLLING_CNT		10
-
+#define DUTY_CYCLE		45
+#define HALF_DUTY_CYCLE		50
 #define I2C_DRV_NAME		"i2c-mt65xx"
 
 /* mt6873 use DMA_HW_VERSION1 */
@@ -677,7 +678,7 @@ int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
 	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
 		i2c->clk_ex_flag = 1;
 		spin_lock_irqsave(&i2c->multi_host_lock, flags);
-		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0) {
+		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0x20) {
 			mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
 			/* Make sure shadow reg mode is ready before writing register */
 			mb();
@@ -717,7 +718,7 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 
 	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
 		spin_lock_irqsave(&i2c->multi_host_lock, flags);
-		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0) {
+		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0x20) {
 			mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
 			/* Make sure shadow reg mode is ready before writing register */
 			mb();
@@ -1069,7 +1070,7 @@ static int mtk_i2c_set_speed(struct mtk_i2c *i2c, unsigned int parent_clk)
 	unsigned int clk_div;
 	unsigned int max_clk_div;
 	int ret;
-
+	unsigned int duty = HALF_DUTY_CYCLE;
 	target_speed = i2c->speed_hz;
 	parent_clk /= i2c->clk_src_div;
 
@@ -1110,9 +1111,18 @@ static int mtk_i2c_set_speed(struct mtk_i2c *i2c, unsigned int parent_clk)
 					(l_sample_cnt << 6) | l_step_cnt |
 					(sample_cnt << 12) | (step_cnt << 9);
 		} else {
+			/*
+				ret = mtk_i2c_calculate_speed(i2c, clk_src,
+						target_speed, &l_step_cnt,
+						&l_sample_cnt);
+			*/
+			if (target_speed > I2C_MAX_FAST_MODE_FREQ
+				&& target_speed <= I2C_MAX_FAST_MODE_PLUS_FREQ)
+				duty = DUTY_CYCLE;
+
 			ret = mtk_i2c_calculate_speed(i2c, clk_src,
-						      target_speed, &l_step_cnt,
-						      &l_sample_cnt);
+					(target_speed  * 50 / (100 - duty)), &l_step_cnt,
+					&l_sample_cnt);
 			if (ret < 0)
 				continue;
 

@@ -13,7 +13,7 @@
 #define TA_START_BATTERY_SOC	0
 #define TA_STOP_BATTERY_SOC	85
 #define PE20_V_CHARGER_MIN 4600000 /* 4.6 V */
-
+#define PE20_V_CHARGER_MAX 12000000 /* 12 V */
 /* single chager */
 #define SC_INPUT_CURRENT		3200000
 #define SC_CHARGING_CURRENT	3000000
@@ -106,7 +106,7 @@ struct mtk_pe20 {
 	int ta_start_battery_soc;
 	int ta_stop_battery_soc;
 	int min_charger_voltage;
-
+	int max_charger_voltage;
 	/* single charger dtsi setting*/
 	int sc_input_current;
 	int sc_charger_current;
@@ -138,7 +138,7 @@ struct mtk_pe20 {
 	int charging_current1;
 	int input_current2;
 	int charging_current2;
-
+	struct power_supply  *chg_psy;
 
 	enum pe2_state_enum state;
 

@@ -257,8 +257,9 @@ static irqreturn_t mtk_pmic_keys_release_irq_handler_thread(
 	input_sync(info->keys->input_dev);
 	if (info->suspend_lock)
 		__pm_relax(info->suspend_lock);
-	dev_dbg(info->keys->dev, "release key =%d using PMIC\n",
+	dev_info(info->keys->dev, "release key =%d using PMIC\n",
 			info->keycode);
+
 	return IRQ_HANDLED;
 }
 
@@ -282,7 +283,7 @@ static irqreturn_t mtk_pmic_keys_irq_handler_thread(int irq, void *data)
 		__pm_stay_awake(info->suspend_lock);
 	else if (info->suspend_lock)
 		__pm_relax(info->suspend_lock);
-	dev_dbg(info->keys->dev, "(%s) key =%d using PMIC\n",
+	dev_info(info->keys->dev, "(%s) key =%d using PMIC\n",
 		 pressed ? "pressed" : "released", info->keycode);
 
 	return IRQ_HANDLED;

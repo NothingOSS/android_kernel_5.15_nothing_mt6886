@@ -23,6 +23,7 @@
 #define AAL_HIST_NUM (768)
 #define AAL_DUAL_INFO_NUM (16)
 #define AAL_CLARITY_STATUS_NUM (7)
+#define MAX_REG_NUM (180)
 
 #define CMDQ_GPR_UPDATE	(2)
 
@@ -307,6 +308,13 @@ int mml_pq_set_comp_config(struct mml_task *task);
  * Return:	if value < 0, means PQ update failed should debug
  */
 int mml_pq_get_comp_config_result(struct mml_task *task, u32 timeout_ms);
+
+/*
+ * mml_pq_init_comp_config_result - init result for first frame
+ *
+ * @result:	hw setting data
+ */
+void mml_pq_init_comp_config_result(struct mml_pq_comp_config_result *result);
 
 /*
  * mml_pq_put_comp_config_result - put away result

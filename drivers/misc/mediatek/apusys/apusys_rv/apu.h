@@ -45,6 +45,7 @@ struct mtk_apu_hw_ops {
 #define F_SECURE_BOOT		BIT(3)
 #define F_SECURE_COREDUMP	BIT(4)
 #define F_DEBUG_LOG_ON		BIT(5)
+#define F_EXCEPTION_KE		BIT(15)
 
 struct mtk_apu_platdata {
 	uint32_t flags;
@@ -172,6 +173,8 @@ struct mtk_apu {
 	struct mtk_apu_platdata	*platdata;
 	struct device *power_dev;
 	struct device *apu_iommu0, *apu_iommu1;
+
+	bool disable_ke;
 };
 
 #define TCM_SIZE (128UL * 1024UL)
@@ -187,6 +190,10 @@ struct mtk_apu {
 #define TCM_OFFSET (0x1d000000UL)
 #define CODE_BUF_DA (DRAM_OFFSET)
 #define APU_SEC_FW_IOVA (0x200000UL)
+/* delay 30s and trigger KE */
+#define APU_KE_DELAY_MS (30 * 1000)
+/* bypass trigger KE while system bootup */
+#define BOOT_BYPASS_APU_KE_MS (60 * 1000)
 
 struct apu_coredump {
 	char tcmdump[TCM_SIZE];

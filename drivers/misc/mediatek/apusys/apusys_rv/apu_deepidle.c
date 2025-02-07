@@ -158,6 +158,12 @@ wait_for_warm_boot:
 				apu->bypass_pwr_off_chk = true;
 				apusys_rv_aee_warn("APUSYS_RV",
 					"APUSYS_RV_TIMEOUT");
+
+				/* trigger panic to prevent issue spreading */
+				if (apu->platdata->flags & F_EXCEPTION_KE) {
+					msleep(APU_KE_DELAY_MS);
+					panic("APUSYS_RV boot timeout: APUSYS_RV_TIMEOUT\n");
+				}
 				return -1;
 			}
 			if (retry % 50 == 0)
@@ -175,6 +181,12 @@ wait_for_warm_boot:
 			apu->bypass_pwr_off_chk = true;
 			apusys_rv_aee_warn("APUSYS_RV",
 				"APUSYS_RV_TIMEOUT");
+
+			/* trigger panic to prevent issue spreading */
+			if (apu->platdata->flags & F_EXCEPTION_KE) {
+				msleep(APU_KE_DELAY_MS);
+				panic("APUSYS_RV boot timeout: APUSYS_RV_TIMEOUT\n");
+			}
 			return -1;
 		}
 

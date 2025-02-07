@@ -18,40 +18,6 @@
 #define CONFIG_USB_PD_TCPM_CB_2ND	1
 #define CONFIG_USB_PD_BLOCK_TCPM	1
 
-#define CONFIG_USB_PD_RICHTEK_UVDM	0
-
-/**********************************************************
- * Mode Operation
- **********************************************************/
-
-#define CONFIG_USB_PD_MODE_OPERATION	1
-
-#if CONFIG_USB_PD_MODE_OPERATION
-
-#define CONFIG_USB_PD_ATTEMPT_ENTER_MODE	1
-#define CONFIG_USB_PD_ALT_MODE	1
-
-#if CONFIG_USB_PD_ALT_MODE
-#define CONFIG_USB_PD_ALT_MODE_DFP	1
-#define CONFIG_USB_PD_ALT_MODE_RTDC	0
-#else
-#define CONFIG_USB_PD_ALT_MODE_DFP	0
-#define CONFIG_USB_PD_ALT_MODE_RTDC	0
-#endif	/* CONFIG_USB_PD_ALT_MODE */
-
-#define CONFIG_USB_PD_DP_CHECK_CABLE	0
-#define CONFIG_USB_PD_RTDC_CHECK_CABLE	0
-
-#else /* no CONFIG_USB_PD_MODE_OPERATION */
-#define CONFIG_USB_PD_ATTEMPT_ENTER_MODE	0
-#define CONFIG_USB_PD_ALT_MODE	0
-#define CONFIG_USB_PD_ALT_MODE_DFP	0
-#define CONFIG_USB_PD_ALT_MODE_RTDC	0
-#define CONFIG_USB_PD_DP_CHECK_CABLE	0
-#define CONFIG_USB_PD_RTDC_CHECK_CABLE	0
-
-#endif	/* CONFIG_USB_PD_MODE_OPERATION */
-
 /**********************************************************
  * PD revision 3.0 feature
  **********************************************************/
@@ -96,12 +62,7 @@
  * PD direct charge support
  **********************************************************/
 
-#if CONFIG_USB_PD_ALT_MODE_RTDC
-#define CONFIG_USB_PD_DIRECT_CHARGE	1
-#else
 #define CONFIG_USB_PD_DIRECT_CHARGE	0
-#endif	/* CONFIG_USB_PD_ALT_MODE_RTDC */
-
 #if CONFIG_USB_PD_REV30_PPS_SINK
 #undef CONFIG_USB_PD_DIRECT_CHARGE
 #define CONFIG_USB_PD_DIRECT_CHARGE	1
@@ -128,7 +89,7 @@
 #define CONFIG_USB_PD_VCONN_SAFE5V_ONLY		1
 
 #define CONFIG_USB_PD_ATTEMPT_DISCOVER_ID	1
-#define CONFIG_USB_PD_ATTEMPT_DISCOVER_SVID	1
+#define CONFIG_USB_PD_ATTEMPT_DISCOVER_SVIDS	1
 
 #define CONFIG_USB_PD_DISCOVER_CABLE_REQUEST_VCONN	1
 #define CONFIG_USB_PD_DISCOVER_CABLE_RETURN_VCONN	0
@@ -160,9 +121,6 @@
 /* S/W patch for NoGoodCRC after PR_SWAP (repeat PS_RDY) */
 #define CONFIG_USB_PD_IGNORE_PS_RDY_AFTER_PR_SWAP	1
 
-/* S/W patch for delayed ps_change related to PS_RDY during PR_SWAP */
-#define CONFIG_USB_PD_VBUS_DETECTION_DURING_PR_SWAP	1
-
 /*
  * S/W patch for INT handler was stuck by other task (system busy)
  *
@@ -173,10 +131,6 @@
  */
 
 #define CONFIG_USB_PD_CHECK_RX_PENDING_IF_SRTOUT	1
-#define CONFIG_USB_PD_ONLY_PRINT_SYSTEM_BUSY		1
-
-#define CONFIG_USB_PD_TRY_TIMEDELAY_IF_SRTOUT   3000
-#define CONFIG_USB_PD_TRY_TIMEDELAY_MAX 10000
 
 /*
  * S/W patch for
@@ -218,9 +172,9 @@
 #define CONFIG_USB_PD_STOP_SEND_VDM_IF_RX_BUSY	0
 #define CONFIG_USB_PD_STOP_REPLY_VDM_IF_RX_BUSY	1
 
-#define CONFIG_USB_PD_SAFE0V_DELAY	0
-#define CONFIG_USB_PD_SAFE0V_TIMEOUT	1
-#define CONFIG_USB_PD_SAFE5V_DELAY	1
+#define CONFIG_USB_PD_SAFE0V_DELAY	200
+#define CONFIG_USB_PD_SAFE0V_TIMEOUT	600
+#define CONFIG_USB_PD_SAFE5V_DELAY	20
 
 #ifndef CONFIG_USB_PD_DPM_SVDM_RETRY
 #define CONFIG_USB_PD_DPM_SVDM_RETRY     2
@@ -254,6 +208,6 @@
 #define CONFIG_USB_PD_PPS_REQUEST_INTERVAL	7000
 #endif	/* CONFIG_USB_PD_PPS_REQUEST_INTERVAL */
 
-#define CONFIG_USB_PD_WAIT_BC12		0
+#define CONFIG_USB_PD_WAIT_BC12		1
 
 #endif /* __LINUX_TCPC_PD_CONFIG_H */

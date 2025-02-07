@@ -8,6 +8,7 @@
  */
 
 #include <linux/usb/composite.h>
+#include <linux/power_supply.h>
 
 #include "mtu3.h"
 #include "mtu3_trace.h"
@@ -714,6 +715,36 @@ static int mtu3_gadget_stop(struct usb_gadget *g)
 	return 0;
 }
 
+static void mtu3_vbus_draw_work(struct work_struct *data)
+{
+	struct mtu3 *mtu = container_of(data, struct mtu3, draw_work);
+	static struct power_supply *chg_psy;
+	union power_supply_propval val;
+
+	dev_info(mtu->dev, "%s %d mA\n", __func__, mtu->vbus_draw);
+
+	if (chg_psy == NULL)
+		chg_psy = power_supply_get_by_name("mtk-master-charger");
+	if (chg_psy == NULL || IS_ERR(chg_psy)) {
+		dev_info(mtu->dev, "%s Couldn't get chg_psy\n", __func__);
+		return;
+	}
+
+	val.intval = !(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW);
+	power_supply_set_property(chg_psy,
+		 POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+}
+
+static mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned mA)
+{
+	struct mtu3 *mtu = gadget_to_mtu3(g);
+
+	mtu->vbus_draw = mA;
+	schedule_work(&mtu->draw_work);
+
+	return 0;
+}
+
 static void
 mtu3_gadget_set_speed(struct usb_gadget *g, enum usb_device_speed speed)
 {
@@ -746,6 +777,7 @@ static const struct usb_gadget_ops mtu3_gadget_ops = {
 	.udc_stop = mtu3_gadget_stop,
 	.udc_set_speed = mtu3_gadget_set_speed,
 	.udc_async_callbacks = mtu3_gadget_async_callbacks,
+	.vbus_draw = mtu3_gadget_vbus_draw,
 };
 
 static void mtu3_state_reset(struct mtu3 *mtu)
@@ -831,6 +863,8 @@ int mtu3_gadget_setup(struct mtu3 *mtu)
 	mtu->delayed_status = false;
 
 	mtu3_gadget_init_eps(mtu);
+
+	INIT_WORK(&mtu->draw_work, mtu3_vbus_draw_work);
 
 	return usb_add_gadget_udc(mtu->dev, &mtu->g);
 }

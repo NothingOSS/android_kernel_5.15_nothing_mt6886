@@ -43,11 +43,21 @@ do { \
 		pr_info(PFX "[%s] " format, __func__, ##args); \
 	} \
 } while (0)
+#if IS_ENABLED(CONFIG_MTK_CAMERA_DEBUG_LOG)
+	#define DEBUG_CAM_DEBUG 1
+#else
+	#define DEBUG_CAM_DEBUG 0
+#endif
+
+#define LOG_MUST(format, args...)		\
+	do {					\
+		if (DEBUG_CAM_DEBUG >= 1){	\
+			pr_info(PFX "[%s] " format, __func__, ##args); \
+		} \
+	} while (0)
 
 #define LOG_INF(format, args...) DY_INFO(log_tracer, format, args)
 #define LOG_PF_INF(format, args...) DY_INFO(pf_log_tracer, format, args)
-#define LOG_MUST(format, args...) pr_info(PFX "[%s] " format, __func__, ##args)
-
 
 #define LOG_PR_WARN(format, args...) pr_warn(PFX "[%s] " format, __func__, ##args)
 #define LOG_PR_ERR(format, args...) pr_err(PFX "[%s] " format, __func__, ##args)

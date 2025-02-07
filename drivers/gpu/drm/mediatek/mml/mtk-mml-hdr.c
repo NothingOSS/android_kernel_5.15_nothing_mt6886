@@ -371,7 +371,6 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_err("get hdr param timeout: %d in %dms",
 				ret, HDR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
-			goto exit;
 		}
 
 		result = get_hdr_comp_config_result(task);
@@ -381,6 +380,13 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 			goto exit;
 		}
 	} while ((mml_pq_debug_mode & MML_PQ_SET_TEST) && result->is_set_test);
+
+	if (!result->hdr_reg_cnt) {
+		hdr_frm->config_success = false;
+		mml_pq_err("%s: not get correct reg count", __func__);
+		hdr_relay(comp, pkt, base_pa, 0x1);
+		goto exit;
+	}
 
 	regs = result->hdr_regs;
 	curve = result->hdr_curve;
@@ -752,7 +758,6 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_err("get hdr param timeout: %d in %dms",
 				ret, HDR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
-			goto exit;
 		}
 
 		result = get_hdr_comp_config_result(task);

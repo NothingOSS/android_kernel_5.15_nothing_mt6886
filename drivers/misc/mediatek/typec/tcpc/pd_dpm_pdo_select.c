@@ -71,10 +71,6 @@ void dpm_extract_pdo_info(uint32_t pdo, struct dpm_pdo_info_t *info)
 	}
 }
 
-#ifndef MIN
-#define MIN(a, b)	((a < b) ? (a) : (b))
-#endif
-
 static inline int dpm_calc_src_cap_power_uw(
 	struct dpm_pdo_info_t *source, struct dpm_pdo_info_t *sink)
 {
@@ -108,41 +104,6 @@ static bool dpm_select_pdo_from_vsafe5v(
 }
 
 /*
- * Select PDO from Direct Charge
- */
-
-#if CONFIG_USB_PD_ALT_MODE_RTDC
-static bool dpm_select_pdo_from_direct_charge(
-	struct dpm_select_info_t *select_info,
-	struct dpm_pdo_info_t *sink, struct dpm_pdo_info_t *source)
-{
-	int uw;
-
-	if (sink->type != DPM_PDO_TYPE_VAR ||
-	    source->type != DPM_PDO_TYPE_VAR)
-		return false;
-
-	if (source->vmin >= TCPC_VBUS_SINK_5V)
-		return false;
-
-	if (sink->vmin > source->vmin)
-		return false;
-
-	if (sink->vmax < source->vmax)
-		return false;
-
-	uw = dpm_calc_src_cap_power_uw(source, sink);
-	if (uw > select_info->max_uw) {
-		select_info->max_uw = uw;
-		select_info->cur_mv = source->vmax;
-		return true;
-	}
-
-	return false;
-}
-#endif	/* CONFIG_USB_PD_ALT_MODE_RTDC */
-
-/*
  * Select PDO from Custom
  */
 
@@ -159,13 +120,21 @@ static bool dpm_select_pdo_from_custom(
  */
 
 static inline bool dpm_is_valid_pdo_pair(struct dpm_pdo_info_t *sink,
-	struct dpm_pdo_info_t *source, uint32_t policy)
+	struct dpm_pdo_info_t *source, uint32_t policy, bool fixed_or_apdo)
 {
-	if (sink->vmin > source->vmin)
-		return false;
+	if (fixed_or_apdo) {
+		if (sink->vmin < source->vmin)
+			return false;
 
-	if (sink->vmax < source->vmax)
-		return false;
+		if (sink->vmax > source->vmax)
+			return false;
+	} else {
+		if (sink->vmin > source->vmin)
+			return false;
+
+		if (sink->vmax < source->vmax)
+			return false;
+	}
 
 	if (policy & DPM_CHARGING_POLICY_IGNORE_MISMATCH_CURR)
 		return true;
@@ -180,17 +149,12 @@ static bool dpm_select_pdo_from_max_power(
 	bool overload;
 	int uw;
 
-#if CONFIG_USB_PD_ALT_MODE_RTDC
-	/* Variable for direct charge only */
-	if ((sink->type == DPM_PDO_TYPE_VAR) && (sink->vmin < 5000))
-		return false;
-#endif	/* CONFIG_USB_PD_ALT_MODE_RTDC */
-
 	if (sink->type == DPM_PDO_TYPE_APDO ||
 	    source->type == DPM_PDO_TYPE_APDO)
 		return false;
 
-	if (!dpm_is_valid_pdo_pair(sink, source, select_info->policy))
+	if (!dpm_is_valid_pdo_pair(sink, source, select_info->policy,
+				   sink->type == DPM_PDO_TYPE_FIXED))
 		return false;
 
 	uw = dpm_calc_src_cap_power_uw(source, sink);
@@ -234,14 +198,7 @@ static bool dpm_select_pdo_from_pps(
 	if (!(source->apdo_type & DPM_APDO_TYPE_PPS))
 		return false;
 
-	if (sink->vmin < source->vmin)
-		return false;
-
-	if (sink->vmax > source->vmax)
-		return false;
-
-	if (!(select_info->policy & DPM_CHARGING_POLICY_IGNORE_MISMATCH_CURR) &&
-	     (source->ma < sink->ma))
+	if (!dpm_is_valid_pdo_pair(sink, source, select_info->policy, true))
 		return false;
 
 	uw = sink->vmax * source->ma;
@@ -273,7 +230,8 @@ typedef bool (*dpm_select_pdo_fun)(
 	struct dpm_select_info_t *select_info,
 	struct dpm_pdo_info_t *sink, struct dpm_pdo_info_t *source);
 
-bool dpm_find_match_req_info(struct dpm_rdo_info_t *req_info,
+bool dpm_find_match_req_info(struct pd_port *pd_port,
+		struct dpm_rdo_info_t *req_info,
 		struct dpm_pdo_info_t *sink, int cnt, uint32_t *src_pdos,
 		int max_uw, uint32_t policy)
 {
@@ -295,12 +253,6 @@ bool dpm_find_match_req_info(struct dpm_rdo_info_t *req_info,
 	case DPM_CHARGING_POLICY_CUSTOM:
 		select_pdo_fun = dpm_select_pdo_from_custom;
 		break;
-
-#if CONFIG_USB_PD_ALT_MODE_RTDC
-	case DPM_CHARGING_POLICY_DIRECT_CHARGE:
-		select_pdo_fun = dpm_select_pdo_from_direct_charge;
-		break;
-#endif	/* CONFIG_USB_PD_ALT_MODE_RTDC */
 
 #if CONFIG_USB_PD_REV30_PPS_SINK
 	case DPM_CHARGING_POLICY_PPS:
@@ -344,6 +296,8 @@ bool dpm_find_match_req_info(struct dpm_rdo_info_t *req_info,
 			req_info->vmax = sink->vmax;
 		}
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
+
+		pd_port->last_sink_pdo_info = *sink;
 
 		return true;
 	}

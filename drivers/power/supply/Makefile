@@ -3,6 +3,7 @@ subdir-ccflags-$(CONFIG_POWER_SUPPLY_DEBUG) := -DDEBUG
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/typec/tcpc/inc
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/power_throttling
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
+subdir-ccflags-y += -I$(srctree)/drivers/misc/hardware_info
 
 power_supply-y				:= power_supply_core.o
 power_supply-$(CONFIG_SYSFS)		+= power_supply_sysfs.o
@@ -20,6 +21,7 @@ obj-$(CONFIG_WM831X_BACKUP)	+= wm831x_backup.o
 obj-$(CONFIG_WM831X_POWER)	+= wm831x_power.o
 obj-$(CONFIG_WM8350_POWER)	+= wm8350_power.o
 obj-$(CONFIG_TEST_POWER)	+= test_power.o
+obj-$(CONFIG_NT_USB_TS)	+= nt_usb_ts.o
 
 obj-$(CONFIG_BATTERY_88PM860X)	+= 88pm860x_battery.o
 obj-$(CONFIG_CHARGER_ADP5061)	+= adp5061.o
@@ -141,3 +143,8 @@ mtk_hvbpc-objs := mtk_hvbp.o mtk_hvbp_hal.o
 obj-$(CONFIG_BATTERY_ACER_A500)	+= acer_a500_battery.o
 obj-$(CONFIG_BATTERY_SURFACE)	+= surface_battery.o
 obj-$(CONFIG_CHARGER_SURFACE)	+= surface_charger.o
+obj-$(CONFIG_CHARGER_AW32280)	+= aw32280_charger.o
+obj-$(CONFIG_CHARGER_SC8562)	+= sc8562_charger.o
+obj-$(CONFIG_CHARGER_NT)	+= nt_chg.o
+obj-$(CONFIG_MTK_PPS_SUPPORT) += mtk_pps_charging.o
+mtk_pps_charging-objs := mtk_pps.o  mtk_pps_hal.o
