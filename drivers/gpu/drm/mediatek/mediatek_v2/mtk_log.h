@@ -115,6 +115,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		DRM_MMP_EVENT_START(mutex_lock, (unsigned long)lock,	   \
 				line);	   \
 		mtk_drm_trace_tag_begin("M_LOCK_%s", name);	\
+		mutex_lock(lock);		   \
 		mutex_time_start = sched_clock();		   \
 		mutex_locker = name;		   \
 	} while (0)
