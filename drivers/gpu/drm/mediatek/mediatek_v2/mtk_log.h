@@ -17,6 +17,26 @@ extern unsigned long long mutex_time_start;
 extern unsigned long long mutex_time_end;
 extern long long mutex_time_period;
 extern const char *mutex_locker;
+extern unsigned int g_trace_log;
+
+#ifndef DRM_TRACE_ID
+#define DRM_TRACE_ID 0xFFFF0000
+#endif
+extern void mtk_drm_print_trace(char *fmt, ...);
+
+#define mtk_drm_trace_tag_begin(fmt, args...) do { \
+	if (g_trace_log) { \
+		mtk_drm_print_trace( \
+			"B|%d|"fmt"\n", DRM_TRACE_ID, ##args); \
+	} \
+} while (0)
+
+#define mtk_drm_trace_tag_end(fmt, args...) do { \
+	if (g_trace_log) { \
+		mtk_drm_print_trace( \
+			"E|%d|"fmt"\n", DRM_TRACE_ID, ##args); \
+	} \
+} while (0)
 
 enum DPREC_LOGGER_PR_TYPE {
 	DPREC_LOGGER_ERROR,
@@ -94,7 +114,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		DDPINFO("M_LOCK:%s[%d] +\n", name, line);		   \
 		DRM_MMP_EVENT_START(mutex_lock, (unsigned long)lock,	   \
 				line);	   \
-		mutex_lock(lock);		   \
+		mtk_drm_trace_tag_begin("M_LOCK_%s", name);	\
 		mutex_time_start = sched_clock();		   \
 		mutex_locker = name;		   \
 	} while (0)
@@ -114,18 +134,21 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		mutex_unlock(lock);		   \
 		DRM_MMP_EVENT_END(mutex_lock, (unsigned long)lock,	   \
 			line);	   \
+		mtk_drm_trace_tag_end("M_LOCK_%s", name);	\
 		DDPINFO("M_ULOCK:%s[%d] -\n", name, line);		   \
 	} while (0)
 
 #define DDP_MUTEX_LOCK_NESTED(lock, i, name, line)                             \
 	do {                                                                   \
 		DDPINFO("M_LOCK_NST[%d]:%s[%d] +\n", i, name, line);   \
+		mtk_drm_trace_tag_begin("M_LOCK_NST_%s", name);	\
 		mutex_lock_nested(lock, i);		   \
 	} while (0)
 
 #define DDP_MUTEX_UNLOCK_NESTED(lock, i, name, line)                           \
 	do {                                                                   \
 		mutex_unlock(lock);		   \
+		mtk_drm_trace_tag_end("M_LOCK_NST_%s", name);	\
 		DDPINFO("M_ULOCK_NST[%d]:%s[%d] -\n", i, name, line);	\
 	} while (0)
 

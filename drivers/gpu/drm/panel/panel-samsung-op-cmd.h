@@ -24,7 +24,7 @@ enum MODE_ID {
 	MODE_NUM = 6
 };
 
-extern bool g_trace_log;
+extern unsigned int g_trace_log;
 extern unsigned long mtk_drm_get_tracing_mark(void);
 
 #define mtk_drm_trace_begin(fmt, args...) do { \

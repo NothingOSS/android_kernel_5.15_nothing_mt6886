@@ -47,18 +47,43 @@ void mtk_drm_print_trace(char *fmt, ...)
 
 void drm_trace_tag_start(const char *tag)
 {
-	mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 1);
+	if (g_trace_log)
+		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 1);
 }
 
 void drm_trace_tag_end(const char *tag)
 {
-	mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 0);
+	if (g_trace_log)
+		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 0);
 }
 
 void drm_trace_tag_mark(const char *tag)
 {
-	mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 1);
-	mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 0);
+	if (g_trace_log) {
+		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 1);
+		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 0);
+	}
+}
+
+void drm_trace_tag_value(const char *tag, unsigned long value)
+{
+	if (g_trace_log) {
+		mtk_drm_print_trace("C|%d|%s|%lu\n", DRM_TRACE_ID, tag, value);
+		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 0);
+	}
+}
+
+void drm_trace_tag_mark_bycrtc(const char *tag, int crtc_index)
+{
+	char tag_name[100] = {'\0'};
+	int len;
+
+	len = snprintf(tag_name, 99, "%s crtc%d", tag, crtc_index);
+	if (len < 0) {
+		/* Handle snprintf() error */
+		DDPDBG("snprintf error\n");
+	}
+	drm_trace_tag_mark(tag_name);
 }
 
 void mtk_drm_refresh_tag_start(struct mtk_ddp_comp *ddp_comp)

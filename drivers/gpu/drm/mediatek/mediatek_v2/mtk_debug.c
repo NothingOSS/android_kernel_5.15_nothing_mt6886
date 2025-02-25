@@ -91,7 +91,7 @@ EXPORT_SYMBOL(g_vidle_apsrc_debug);
 bool g_profile_log;
 
 bool g_irq_log;
-bool g_trace_log;
+unsigned int g_trace_log;
 unsigned int mipi_volt;
 unsigned int disp_met_en;
 unsigned int disp_met_condition;
@@ -487,7 +487,7 @@ int mtk_drm_set_conn_backlight_level(unsigned int conn_id, unsigned int level,
 
 	mtk_dsi = container_of(conn, struct mtk_dsi, conn);
 
-	mutex_lock(&priv->commit.lock);
+	DDP_MUTEX_LOCK(&priv->commit.lock, __func__, __LINE__);
 	mtk_crtc = mtk_dsi->ddp_comp.mtk_crtc;
 	crtc = (mtk_crtc) ? &mtk_crtc->base : NULL;
 
@@ -500,7 +500,7 @@ int mtk_drm_set_conn_backlight_level(unsigned int conn_id, unsigned int level,
 	ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag);
 out:
 	drm_connector_put(conn);
-	mutex_unlock(&priv->commit.lock);
+	DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, __LINE__);
 
 	return ret;
 }
@@ -2572,10 +2572,13 @@ static void process_dbg_opt(const char *opt)
 		else if (strncmp(opt + 8, "off", 3) == 0)
 			g_profile_log = 0;
 	} else if (strncmp(opt, "trace:", 6) == 0) {
-		if (strncmp(opt + 6, "on", 2) == 0)
+		if (strncmp(opt + 6, "on", 2) == 0) {
 			g_trace_log = 1;
-		else if (strncmp(opt + 6, "off", 3) == 0)
+		} else if (strncmp(opt + 6, "onlv2", 5) == 0) {
+			g_trace_log = 2;
+		} else if (strncmp(opt + 6, "off", 3) == 0) {
 			g_trace_log = 0;
+		}
 	} else if (strncmp(opt, "logger:", 7) == 0) {
 		if (strncmp(opt + 7, "on", 2) == 0) {
 			init_log_buffer();

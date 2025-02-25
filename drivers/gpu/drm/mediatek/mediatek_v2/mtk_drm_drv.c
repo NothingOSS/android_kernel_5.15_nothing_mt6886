@@ -60,6 +60,7 @@
 #include "mtk_lease.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 #include "platform/mtk_drm_platform.h"
+#include "mtk_drm_trace.h"
 
 #include "mtk_drm_mmp.h"
 /* *******Panel Master******** */
@@ -180,10 +181,14 @@ void disp_plat_dbg_init(void)
 				DDPMSG("%s: tinfo or tinfo->ph is wrong!!\n", __func__);
 				tinfo = NULL;
 				} else {
-					of_property_read_u32(tinfo->sdev->dev.of_node,
+					err = of_property_read_u32(tinfo->sdev->dev.of_node,
 						"scmi_dispplatdbg", &feature_id);
-					DDPMSG("%s: get scmi_smi succeed id=%d!!\n",
-						__func__, feature_id);
+					if (err)
+						DDPMSG("%s: scmi_dispplatdbg err=%d\n",
+							__func__, err);
+					else
+						DDPMSG("%s: get scmi_smi succeed id=%d!!\n",
+							__func__, feature_id);
 
 					err = scmi_tinysys_common_set(tinfo->ph, feature_id,
 					g_disp_plat_dbg_addr, g_disp_plat_dbg_size, 0, 0, 0);
@@ -1870,6 +1875,7 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		DRM_MMP_MARK(mutex_lock, (unsigned long)&mtk_crtc->lock, i);
 		DDP_MUTEX_LOCK_NESTED(&mtk_crtc->lock, i, __func__, __LINE__);
 		CRTC_MMP_EVENT_START((int)drm_crtc_index(crtc), atomic_commit, 0, 0);
+		drm_trace_tag_mark_bycrtc("atomic_commit", drm_crtc_index(crtc));
 	}
 	mutex_nested_time_start = sched_clock();
 
