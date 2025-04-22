@@ -45,8 +45,6 @@ struct static_key sched_feat_keys[__SCHED_FEAT_NR] = {
 
 #undef SCHED_FEAT
 
-/*TODO: find the magic bias number */
-#define TOP_APP_GROUP_ID	((4-1)*10)
 #define TURBO_PID_COUNT		8
 #define RENDER_THREAD_NAME	"RenderThread"
 #define TAG			"Task-Turbo"
@@ -109,6 +107,7 @@ static uint32_t launch_turbo =  SUB_FEAT_LOCK | SUB_FEAT_BINDER |
 static DEFINE_SPINLOCK(TURBO_SPIN_LOCK);
 static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
+static struct cgroup_subsys_state *top_app_css;
 
 static bool is_turbo_task(struct task_struct *p);
 static void set_load_weight(struct task_struct *p, bool update_load);
@@ -1073,18 +1072,17 @@ module_param_cb(unset_turbo_pid, &unset_turbo_pid_param_ops,
 		&unset_turbo_pid_param, 0644);
 MODULE_PARM_DESC(unset_turbo_pid, "unset turbo task by pid");
 
-static inline int get_st_group_id(struct task_struct *task)
+static inline bool is_top_app(struct task_struct *task)
 {
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
-	const int subsys_id = cpu_cgrp_id;
-	struct cgroup *grp;
+	bool ret;
 
 	rcu_read_lock();
-	grp = task_cgroup(task, subsys_id);
+	ret = (top_app_css == task_css(task, cpu_cgrp_id));
 	rcu_read_unlock();
-	return grp->kn->id;
+	return ret;
 #else
-	return 0;
+	return false;
 #endif
 }
 
@@ -1185,7 +1183,7 @@ static void probe_android_vh_cgroup_set_task(void *ignore, int ret, struct task_
 	if (ret)
 		return;
 
-	if (get_st_group_id(p) == TOP_APP_GROUP_ID) {
+	if (is_top_app(p)) {
 		if (!cgroup_check_set_turbo(p))
 			return;
 		add_turbo_list(p);
@@ -1273,6 +1271,22 @@ void init_hmp_domains(void)
 	hmp_cpu_mask_setup();
 }
 
+static void init_top_app_css(void)
+{
+	struct cgroup_subsys_state *root_css = &root_task_group.css;
+	struct cgroup_subsys_state *css = root_css;
+
+	rcu_read_lock();
+	css_for_each_child(css, root_css)
+		if (css && css->cgroup && css->cgroup->kn && css->cgroup->kn->name &&
+		    !strcmp(css->cgroup->kn->name, "top-app")) {
+			top_app_css = css;
+			rcu_read_unlock();
+			return;
+		}
+	rcu_read_unlock();
+}
+
 void hmp_cpu_mask_setup(void)
 {
 	struct hmp_domain *domain;
@@ -1337,7 +1351,7 @@ static void sys_set_turbo_task(struct task_struct *p)
 	if (!launch_turbo_enable())
 		return;
 
-	if (get_st_group_id(p) != TOP_APP_GROUP_ID)
+	if (!is_top_app(p))
 		return;
 
 	turbo_data = get_task_turbo_t(p);
@@ -1462,6 +1476,7 @@ static int __init init_task_turbo(void)
 	}
 
 	init_hmp_domains();
+	init_top_app_css();
 
 failed:
 	if (ret)
