@@ -10,6 +10,9 @@
 3. OS 3.0 (Pacman-V3.0-250304-1904)
   - Improve performance
 
+4. OS 3.0 (Pacman-V3.0-250429-1922)
+  - No update
+
 # How do I submit patches to Android Common Kernels
 
 1. BEST: Make all of your changes to upstream Linux. If appropriate, backport to the stable releases.
