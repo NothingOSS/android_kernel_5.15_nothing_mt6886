@@ -3,9 +3,12 @@
   - First release opensource of kernel and kernel modules
   - Kernel modules path
      - vendor/mediatek/kernel_modules/
+
 2. OS 3.0 (Pacman-V3.0-150114-1909)
   - Improve USB and charger 
 
+3. OS 3.0 (Pacman-V3.0-250304-1904)
+  - Improve performance
 
 # How do I submit patches to Android Common Kernels
 
