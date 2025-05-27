@@ -224,7 +224,12 @@ u32 cmdq_dev_enable_device_clock(bool enable,
 
 bool cmdq_dev_device_clock_is_enable(struct clk *clk_module)
 {
-	return true;
+	if (IS_ERR(clk_module)) {
+		CMDQ_LOG("[WARN]clock not supported\n");
+		return false;
+	}
+
+	return __clk_is_enabled(clk_module);
 }
 
 /* Common Clock Framework */
