@@ -781,11 +781,6 @@ static ssize_t show_debugAttr(struct file *filp, char __user *buffer,
 	unsigned int len = 0;
 	unsigned long flags;
 
-	len += scnprintf(buf + len,
-		sizeof(buf) - len,
-		"hw_log_buf = 0x%llx\n",
-		(unsigned long long)hw_log_buf);
-
 	spin_lock_irqsave(&hw_logger_spinlock, flags);
 	len += scnprintf(buf + len,
 		sizeof(buf) - len,
