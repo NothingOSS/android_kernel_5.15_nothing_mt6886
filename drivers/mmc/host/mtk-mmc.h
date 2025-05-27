@@ -363,6 +363,9 @@
 #define DEFAULT_DEBOUNCE	(8)	/* 8 cycles CD debounce */
 
 #define PAD_DELAY_MAX	32 /* PAD delay cells */
+#define PAD_DELAY_1CELL_MAX	32 /* PAD delay cells */
+#define PAD_DELAY_2CELL_MAX	64 /* PAD delay cells * 2 */
+
 #if IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 #define MSDC_OCR_AVAIL\
 	(MMC_VDD_28_29 | MMC_VDD_29_30 | MMC_VDD_30_31 \

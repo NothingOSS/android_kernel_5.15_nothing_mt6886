@@ -1765,24 +1765,25 @@ static void msdc_ops_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 }
 #endif
 
-static u32 test_delay_bit(u32 delay, u32 bit)
+static u32 test_delay_bit(u64 delay, u32 bit, u32 max_gears)
 {
-	bit %= PAD_DELAY_MAX;
-	return delay & (1 << bit);
+	bit %= max_gears;
+	return delay & (1ULL << bit) ? 1 : 0;
 }
 
-static int get_delay_len(u32 delay, u32 start_bit)
+static int get_delay_len(u64 delay, u32 start_bit, u32 max_gears)
 {
 	int i;
 
-	for (i = 0; i < (PAD_DELAY_MAX - start_bit); i++) {
-		if (test_delay_bit(delay, start_bit + i) == 0)
+	for (i = 0; i < (max_gears - start_bit); i++) {
+		if (test_delay_bit(delay, start_bit + i, max_gears) == 0)
 			return i;
 	}
-	return PAD_DELAY_MAX - start_bit;
+	return max_gears - start_bit;
 }
 
-static struct msdc_delay_phase get_best_delay(struct msdc_host *host, u32 delay)
+static struct msdc_delay_phase get_best_delay(struct msdc_host *host, u64 delay,
+		u32 max_gears, int full_scan)
 {
 	int start = 0, len = 0;
 	int start_final = 0, len_final = 0;
@@ -1790,28 +1791,30 @@ static struct msdc_delay_phase get_best_delay(struct msdc_host *host, u32 delay)
 	struct msdc_delay_phase delay_phase = { 0, };
 
 	if (delay == 0) {
-		dev_err(host->dev, "phase error: [map:%x]\n", delay);
+		dev_info(host->dev, "phase error: [map:%llx]\n", delay);
 		delay_phase.final_phase = final_phase;
 		return delay_phase;
 	}
 
-	while (start < PAD_DELAY_MAX) {
-		len = get_delay_len(delay, start);
+	while (start < max_gears) {
+		len = get_delay_len(delay, start, max_gears);
 		if (len_final < len) {
 			start_final = start;
 			len_final = len;
 		}
 		start += len ? len : 1;
-		if (len >= 12 && start_final < 4)
-			break;
+		if (!full_scan)
+			if (len >= 12 && start_final < 4)
+				break;
 	}
 
 	/* The rule is that to find the smallest delay cell */
-	if (start_final == 0)
-		final_phase = (start_final + len_final / 3) % PAD_DELAY_MAX;
+	BUG_ON(max_gears == 0);
+	if (start_final == 0 && !full_scan)
+		final_phase = (start_final + len_final / 3) % max_gears;
 	else
-		final_phase = (start_final + len_final / 2) % PAD_DELAY_MAX;
-	dev_err(host->dev, "phase: [map:%x] [maxlen:%d] [final:%d]\n",
+		final_phase = (start_final + len_final / 2) % max_gears;
+	dev_info(host->dev, "phase: [map:%llx] [maxlen:%d] [final:%d]\n",
 		 delay, len_final, final_phase);
 
 	delay_phase.maxlen = len_final;
@@ -1822,26 +1825,50 @@ static struct msdc_delay_phase get_best_delay(struct msdc_host *host, u32 delay)
 
 static inline void msdc_set_cmd_delay(struct msdc_host *host, u32 value)
 {
-	u32 tune_reg = host->dev_comp->pad_tune_reg;
+	u32 pad_dly1, pad_dly2;
+	u32 dly1_sel, dly2_sel;
 
-	if (host->top_base)
-		sdr_set_field(host->top_base + EMMC_TOP_CMD, PAD_CMD_RXDLY,
-			      value);
-	else
-		sdr_set_field(host->base + tune_reg, MSDC_PAD_TUNE_CMDRDLY,
-			      value);
+	pad_dly1 = value < 32 ? value : 31;
+	pad_dly2 = value < 32 ? 0 : (value - 32);
+
+	dly1_sel = 1;
+	dly2_sel = value < 32 ? 0 : 1;
+
+	if (host->top_base) {
+		sdr_set_field(host->top_base + EMMC_TOP_CMD, PAD_CMD_RXDLY, pad_dly1);
+		sdr_set_field(host->top_base + EMMC_TOP_CMD, PAD_CMD_RXDLY2, pad_dly2);
+		sdr_set_field(host->top_base + EMMC_TOP_CMD, PAD_CMD_RD_RXDLY_SEL, dly1_sel);
+		sdr_set_field(host->top_base + EMMC_TOP_CMD, PAD_CMD_RD_RXDLY2_SEL, dly2_sel);
+	} else {
+		sdr_set_field(host->base + MSDC_PAD_TUNE0, MSDC_PAD_TUNE_CMDRDLY, pad_dly1);
+		sdr_set_field(host->base + MSDC_PAD_TUNE1, MSDC_PAD_TUNE_CMDRDLY, pad_dly2);
+		sdr_set_field(host->base + MSDC_PAD_TUNE0, MSDC_PAD_TUNE_CMD_SEL, dly1_sel);
+		sdr_set_field(host->base + MSDC_PAD_TUNE1, MSDC_PAD_TUNE_CMD_SEL, dly2_sel);
+	}
 }
 
 static inline void msdc_set_data_delay(struct msdc_host *host, u32 value)
 {
-	u32 tune_reg = host->dev_comp->pad_tune_reg;
+	u32 pad_dly1, pad_dly2;
+	u32 dly1_sel, dly2_sel;
 
-	if (host->top_base)
-		sdr_set_field(host->top_base + EMMC_TOP_CONTROL,
-			      PAD_DAT_RD_RXDLY, value);
-	else
-		sdr_set_field(host->base + tune_reg, MSDC_PAD_TUNE_DATRRDLY,
-			      value);
+	pad_dly1 = value < 32 ? value : 31;
+	pad_dly2 = value < 32 ? 0 : (value - 32);
+
+	dly1_sel = 1;
+	dly2_sel = value < 32 ? 0 : 1;
+
+	if (host->top_base) {
+		sdr_set_field(host->top_base + EMMC_TOP_CONTROL, PAD_DAT_RD_RXDLY, pad_dly1);
+		sdr_set_field(host->top_base + EMMC_TOP_CONTROL, PAD_DAT_RD_RXDLY2, pad_dly2);
+		sdr_set_field(host->top_base + EMMC_TOP_CONTROL, PAD_DAT_RD_RXDLY_SEL, dly1_sel);
+		sdr_set_field(host->top_base + EMMC_TOP_CONTROL, PAD_DAT_RD_RXDLY2_SEL, dly2_sel);
+	} else {
+		sdr_set_field(host->base + MSDC_PAD_TUNE0, MSDC_PAD_TUNE_DATRRDLY, pad_dly1);
+		sdr_set_field(host->base + MSDC_PAD_TUNE1, MSDC_PAD_TUNE_DATRRDLY, pad_dly2);
+		sdr_set_field(host->base + MSDC_PAD_TUNE0, MSDC_PAD_TUNE_RD_SEL, dly1_sel);
+		sdr_set_field(host->base + MSDC_PAD_TUNE1, MSDC_PAD_TUNE_RD_SEL, dly2_sel);
+	}
 }
 
 static int autok_simple_score64(char *res_str64, u64 result64)
@@ -1888,7 +1915,7 @@ static int autok_simple_score64(char *res_str64, u64 result64)
 static int msdc_tune_response(struct mmc_host *mmc, u32 opcode)
 {
 	struct msdc_host *host = mmc_priv(mmc);
-	u32 rise_delay = 0, fall_delay = 0;
+	u64 rise_delay = 0, fall_delay = 0;
 	struct msdc_delay_phase final_rise_delay, final_fall_delay = { 0,};
 	struct msdc_delay_phase internal_delay_phase;
 	u8 final_delay, final_maxlen;
@@ -1896,6 +1923,7 @@ static int msdc_tune_response(struct mmc_host *mmc, u32 opcode)
 	u32 tune_reg = host->dev_comp->pad_tune_reg;
 	int cmd_err = 0;
 	int i, j;
+	dev_info(host->dev,"[%s %d]opcode=%d\n", __func__, __LINE__, opcode);
 
 	if (mmc->ios.timing == MMC_TIMING_MMC_HS200 ||
 	    mmc->ios.timing == MMC_TIMING_UHS_SDR104)
@@ -1904,7 +1932,7 @@ static int msdc_tune_response(struct mmc_host *mmc, u32 opcode)
 			      host->hs200_cmd_int_delay);
 
 	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
-	for (i = 0 ; i < PAD_DELAY_MAX; i++) {
+	for (i = 0 ; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_cmd_delay(host, i);
 		/*
 		 * Using the same parameters, it may sometimes pass the test,
@@ -1914,21 +1942,21 @@ static int msdc_tune_response(struct mmc_host *mmc, u32 opcode)
 		for (j = 0; j < 3; j++) {
 			mmc_send_tuning(mmc, opcode, &cmd_err);
 			if (!cmd_err) {
-				rise_delay |= (1 << i);
+				rise_delay |= (1ULL << i);
 			} else {
-				rise_delay &= ~(1 << i);
+				rise_delay &= ~(1ULL << i);
 				break;
 			}
 		}
 	}
-	final_rise_delay = get_best_delay(host, rise_delay);
+	final_rise_delay = get_best_delay(host, rise_delay, PAD_DELAY_2CELL_MAX, 0);
 	/* if rising edge has enough margin, then do not scan falling edge */
 	if (final_rise_delay.maxlen >= 12 ||
 	    (final_rise_delay.start == 0 && final_rise_delay.maxlen >= 4))
 		goto skip_fall;
 
 	sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
-	for (i = 0; i < PAD_DELAY_MAX; i++) {
+	for (i = 0; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_cmd_delay(host, i);
 		/*
 		 * Using the same parameters, it may sometimes pass the test,
@@ -1938,14 +1966,14 @@ static int msdc_tune_response(struct mmc_host *mmc, u32 opcode)
 		for (j = 0; j < 3; j++) {
 			mmc_send_tuning(mmc, opcode, &cmd_err);
 			if (!cmd_err) {
-				fall_delay |= (1 << i);
+				fall_delay |= (1ULL << i);
 			} else {
-				fall_delay &= ~(1 << i);
+				fall_delay &= ~(1ULL << i);
 				break;
 			}
 		}
 	}
-	final_fall_delay = get_best_delay(host, fall_delay);
+	final_fall_delay = get_best_delay(host, fall_delay, PAD_DELAY_2CELL_MAX, 0);
 
 skip_fall:
 	final_maxlen = max(final_rise_delay.maxlen, final_fall_delay.maxlen);
@@ -1963,15 +1991,15 @@ skip_fall:
 	if (host->dev_comp->async_fifo || host->hs200_cmd_int_delay)
 		goto skip_internal;
 
-	for (i = 0; i < PAD_DELAY_MAX; i++) {
+	for (i = 0; i < PAD_DELAY_1CELL_MAX; i++) {
 		sdr_set_field(host->base + tune_reg,
 			      MSDC_PAD_TUNE_CMDRRDLY, i);
 		mmc_send_tuning(mmc, opcode, &cmd_err);
 		if (!cmd_err)
-			internal_delay |= (1 << i);
+			internal_delay |= (1U << i);
 	}
 	dev_dbg(host->dev, "Final internal delay: 0x%x\n", internal_delay);
-	internal_delay_phase = get_best_delay(host, internal_delay);
+	internal_delay_phase = get_best_delay(host, (u64)internal_delay, PAD_DELAY_1CELL_MAX, 0);
 	sdr_set_field(host->base + tune_reg, MSDC_PAD_TUNE_CMDRRDLY,
 		      internal_delay_phase.final_phase);
 skip_internal:
@@ -2002,7 +2030,7 @@ static int hs400_tune_response(struct mmc_host *mmc, u32 opcode)
 		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
 	else
 		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
-	for (i = 0 ; i < PAD_DELAY_MAX; i++) {
+	for (i = 0 ; i < PAD_DELAY_1CELL_MAX; i++) {
 		sdr_set_field(host->base + PAD_CMD_TUNE,
 			      PAD_CMD_TUNE_RX_DLY3, i);
 		/*
@@ -2013,14 +2041,14 @@ static int hs400_tune_response(struct mmc_host *mmc, u32 opcode)
 		for (j = 0; j < 3; j++) {
 			mmc_send_tuning(mmc, opcode, &cmd_err);
 			if (!cmd_err) {
-				cmd_delay |= (1 << i);
+				cmd_delay |= (1U << i);
 			} else {
-				cmd_delay &= ~(1 << i);
+				cmd_delay &= ~(1U << i);
 				break;
 			}
 		}
 	}
-	final_cmd_delay = get_best_delay(host, cmd_delay);
+	final_cmd_delay = get_best_delay(host, (u64)cmd_delay, PAD_DELAY_1CELL_MAX, 0);
 	sdr_set_field(host->base + PAD_CMD_TUNE, PAD_CMD_TUNE_RX_DLY3,
 		      final_cmd_delay.final_phase);
 	final_delay = final_cmd_delay.final_phase;
@@ -2032,7 +2060,7 @@ static int hs400_tune_response(struct mmc_host *mmc, u32 opcode)
 static int msdc_tune_data(struct mmc_host *mmc, u32 opcode)
 {
 	struct msdc_host *host = mmc_priv(mmc);
-	u32 rise_delay = 0, fall_delay = 0;
+	u64 rise_delay = 0, fall_delay = 0;
 	struct msdc_delay_phase final_rise_delay, final_fall_delay = { 0,};
 	u8 final_delay, final_maxlen;
 	int i, ret;
@@ -2041,13 +2069,13 @@ static int msdc_tune_data(struct mmc_host *mmc, u32 opcode)
 		      host->latch_ck);
 	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
 	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
-	for (i = 0 ; i < PAD_DELAY_MAX; i++) {
+	for (i = 0 ; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_data_delay(host, i);
 		ret = mmc_send_tuning(mmc, opcode, NULL);
 		if (!ret)
-			rise_delay |= (1 << i);
+			rise_delay |= (1ULL << i);
 	}
-	final_rise_delay = get_best_delay(host, rise_delay);
+	final_rise_delay = get_best_delay(host, rise_delay, PAD_DELAY_2CELL_MAX, 0);
 	/* if rising edge has enough margin, then do not scan falling edge */
 	if (final_rise_delay.maxlen >= 12 ||
 	    (final_rise_delay.start == 0 && final_rise_delay.maxlen >= 4))
@@ -2055,13 +2083,13 @@ static int msdc_tune_data(struct mmc_host *mmc, u32 opcode)
 
 	sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
 	sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
-	for (i = 0; i < PAD_DELAY_MAX; i++) {
+	for (i = 0; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_data_delay(host, i);
 		ret = mmc_send_tuning(mmc, opcode, NULL);
 		if (!ret)
-			fall_delay |= (1 << i);
+			fall_delay |= (1ULL << i);
 	}
-	final_fall_delay = get_best_delay(host, fall_delay);
+	final_fall_delay = get_best_delay(host, fall_delay, PAD_DELAY_2CELL_MAX, 0);
 
 skip_fall:
 	final_maxlen = max(final_rise_delay.maxlen, final_fall_delay.maxlen);
@@ -2087,50 +2115,65 @@ skip_fall:
 static int msdc_tune_together(struct mmc_host *mmc, u32 opcode)
 {
 	struct msdc_host *host = mmc_priv(mmc);
-	u32 rise_delay = 0, fall_delay = 0;
+	u64 rise_delay = 0, fall_delay = 0;
 	struct msdc_delay_phase final_rise_delay, final_fall_delay = { 0,};
 	u8 final_delay, final_maxlen;
 	int i, ret;
+	char tune_result_str64[65];
+	unsigned int score = 0;
 
+	dev_info(host->dev, "[AUTOK][%s]opcode=%d,clock rising edge", __func__, opcode);
 	sdr_set_field(host->base + MSDC_PATCH_BIT, MSDC_INT_DAT_LATCH_CK_SEL,
 		      host->latch_ck);
 
 	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
 	sdr_clr_bits(host->base + MSDC_IOCON,
 		     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
-	for (i = 0 ; i < PAD_DELAY_MAX; i++) {
+	for (i = 0 ; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_cmd_delay(host, i);
 		msdc_set_data_delay(host, i);
 		ret = mmc_send_tuning(mmc, opcode, NULL);
 		if (!ret)
-			rise_delay |= (1 << i);
+			rise_delay |= (1ULL << i);//OK=1
 	}
-	final_rise_delay = get_best_delay(host, rise_delay);
+	score = autok_simple_score64(tune_result_str64, rise_delay);
+	dev_info(host->dev, "[AUTOK]rising %s 0x%llx %d", tune_result_str64, rise_delay, score);
+	final_rise_delay = get_best_delay(host, rise_delay, PAD_DELAY_2CELL_MAX, 0);
+	dev_info(host->dev, "[AUTOK][%s]final_rise_delay.start=%d,maxlen=%d,final_phase=%d", __func__,
+		final_rise_delay.start, final_rise_delay.maxlen, final_rise_delay.final_phase);
+
 	/* if rising edge has enough margin, then do not scan falling edge */
 	if (final_rise_delay.maxlen >= 12 ||
 	    (final_rise_delay.start == 0 && final_rise_delay.maxlen >= 4))
 		goto skip_fall;
 
+	dev_info(host->dev, "[AUTOK][%s]opcode=%d,clock falling edge", __func__, opcode);
 	sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
 	sdr_set_bits(host->base + MSDC_IOCON,
 		     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
-	for (i = 0; i < PAD_DELAY_MAX; i++) {
+	for (i = 0; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_cmd_delay(host, i);
 		msdc_set_data_delay(host, i);
 		ret = mmc_send_tuning(mmc, opcode, NULL);
 		if (!ret)
-			fall_delay |= (1 << i);
+			fall_delay |= (1ULL << i);//OK
 	}
-	final_fall_delay = get_best_delay(host, fall_delay);
+	score = autok_simple_score64(tune_result_str64, fall_delay);
+	dev_info(host->dev, "[AUTOK]falling %s 0x%llx %d", tune_result_str64, fall_delay, score);
+	final_fall_delay = get_best_delay(host, fall_delay, PAD_DELAY_2CELL_MAX, 0);
+	dev_info(host->dev, "[AUTOK][%s]final_fall_delay.start=%d,maxlen=%d,final_phase=%d", __func__,
+		final_fall_delay.start, final_fall_delay.maxlen, final_fall_delay.final_phase);
 
 skip_fall:
 	final_maxlen = max(final_rise_delay.maxlen, final_fall_delay.maxlen);
 	if (final_maxlen == final_rise_delay.maxlen) {
+		dev_info(host->dev, "[AUTOK][%s %d]rise\n", __func__, __LINE__);
 		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
 		sdr_clr_bits(host->base + MSDC_IOCON,
 			     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
 		final_delay = final_rise_delay.final_phase;
 	} else {
+		dev_info(host->dev, "[AUTOK][%s %d]fall\n", __func__, __LINE__);
 		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
 		sdr_set_bits(host->base + MSDC_IOCON,
 			     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
@@ -2140,7 +2183,7 @@ skip_fall:
 	msdc_set_cmd_delay(host, final_delay);
 	msdc_set_data_delay(host, final_delay);
 
-	dev_dbg(host->dev, "Final pad delay: %x\n", final_delay);
+	dev_info(host->dev, "[AUTOK][%s]Final pad delay: %d\n", __func__, final_delay);
 	return final_delay == 0xff ? -EIO : 0;
 }
 
@@ -2374,6 +2417,11 @@ static int msdc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	int ret;
 	u32 tune_reg = host->dev_comp->pad_tune_reg;
 
+	dev_info(host->dev,"[AUTOK][%s]start,opcode=%d,vcore=%d",
+		__func__, opcode,
+		host->dvfsrc_vcore_power ?
+		regulator_get_voltage(host->dvfsrc_vcore_power) : -1);
+
 	if ((!(mmc->caps2 & MMC_CAP2_NO_SD)) && host->need_tune) {
 		ret = msdc_detect_bad_sd(host, 0);
 		if (ret)
@@ -2422,7 +2470,10 @@ end:
 		if (!(mmc->caps2 & MMC_CAP2_NO_SD))
 			sdcard_reset_tuning(mmc);
 	} else if (!ret) {
-		dev_info(host->dev, "msdc tune pass\n");
+		host->autok_vcore = host->dvfsrc_vcore_power ?
+			regulator_get_voltage(host->dvfsrc_vcore_power) : -1;
+		dev_info(host->dev,"[AUTOK][%s]msdc tune pass,opcode=%d,vcore=%d",
+			__func__, opcode, host->autok_vcore);
 		host->need_tune = false;
 	}
 
@@ -2450,7 +2501,7 @@ static int msdc_prepare_hs400_tuning(struct mmc_host *mmc, struct mmc_ios *ios)
 static int msdc_execute_hs400_tuning_cmd(struct mmc_host *mmc, struct mmc_card *card)
 {
 	struct msdc_host *host = mmc_priv(mmc);
-	u32 rise_delay = 0, fall_delay = 0;
+	u64 rise_delay = 0, fall_delay = 0;
 	struct msdc_delay_phase final_rise_delay, final_fall_delay = { 0,};
 	u8 final_delay, final_maxlen;
 	int i, ret;
@@ -2466,18 +2517,18 @@ static int msdc_execute_hs400_tuning_cmd(struct mmc_host *mmc, struct mmc_card *
 	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
 	sdr_clr_bits(host->base + MSDC_IOCON,
 		     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
-	for (i = 0 ; i < PAD_DELAY_MAX; i++) {
+	for (i = 0 ; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_cmd_delay(host, i);
 		ret = mmc_send_status(card, &status);
 		if (!ret) {
-			rise_delay |= (1 << i);
+			rise_delay |= (1ULL << i);
 		}
 	}
 
 	score = autok_simple_score64(tune_result_str64, rise_delay);
 	dev_info(host->dev, "[%s]rising %s 0x%llx %d", __func__, tune_result_str64, rise_delay, score);
 
-	final_rise_delay = get_best_delay(host, rise_delay);
+	final_rise_delay = get_best_delay(host, rise_delay, PAD_DELAY_2CELL_MAX, 0);
 	dev_info(host->dev, "[%s]final_rise_delay.start=%d,maxlen=%d,final_phase=%d", __func__,
 		final_rise_delay.start, final_rise_delay.maxlen, final_rise_delay.final_phase);
 	/* if rising edge has enough margin, then do not scan falling edge */
@@ -2489,16 +2540,16 @@ static int msdc_execute_hs400_tuning_cmd(struct mmc_host *mmc, struct mmc_card *
 	sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
 	sdr_set_bits(host->base + MSDC_IOCON,
 		     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
-	for (i = 0; i < PAD_DELAY_MAX; i++) {
+	for (i = 0; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_cmd_delay(host, i);
 		ret = mmc_send_status(card, &status);
 		if (!ret) {
-			fall_delay |= (1 << i);
+			fall_delay |= (1ULL << i);
 		}
 	}
 	score = autok_simple_score64(tune_result_str64, fall_delay);
 	dev_info(host->dev, "[%s]falling %s 0x%llx %d", __func__, tune_result_str64, fall_delay, score);
-	final_fall_delay = get_best_delay(host, fall_delay);
+	final_fall_delay = get_best_delay(host, fall_delay, PAD_DELAY_2CELL_MAX, 0);
 	dev_info(host->dev, "[%s]final_fall_delay.start=%d,maxlen=%d,final_phase=%d", __func__,
 		final_fall_delay.start, final_fall_delay.maxlen, final_fall_delay.final_phase);
 
@@ -2540,7 +2591,7 @@ static int msdc_execute_hs400_tuning(struct mmc_host *mmc, struct mmc_card *card
 			return ret;
 	}
 
-	dev_info(host->dev,"[%s]start,opcode=%d,vcore=%d",
+	dev_info(host->dev,"[AUTOK][%s]start,opcode=%d,vcore=%d",
 		__func__, MMC_SEND_EXT_CSD,
 		host->dvfsrc_vcore_power ?
 		regulator_get_voltage(host->dvfsrc_vcore_power) : -1);
@@ -2576,10 +2627,10 @@ static int msdc_execute_hs400_tuning(struct mmc_host *mmc, struct mmc_card *card
 	}
 	host->hs400_tuning = false;
 	score = autok_simple_score64(tune_result_str64, result_dly1);
-	dev_info(host->dev, "[%s]%s 0x%x %d", __func__, tune_result_str64, result_dly1, score);
+	dev_info(host->dev, "[AUTOK][%s]%s 0x%x %d", __func__, tune_result_str64, result_dly1, score);
 
-	dly1_delay = get_best_delay(host, result_dly1);
-	dev_info(host->dev, "[%s]dly1_delay.start=%d,maxlen=%d,final_phase=%d\n", __func__,
+	dly1_delay = get_best_delay(host, result_dly1, PAD_DELAY_MAX, 0);
+	dev_info(host->dev, "[AUTOK][%s]dly1_delay.start=%d,maxlen=%d,final_phase=%d\n", __func__,
 		dly1_delay.start, dly1_delay.maxlen, dly1_delay.final_phase);
 	if (dly1_delay.maxlen == 0) {
 		dev_info(host->dev, "Failed to get DLY1 delay!\n");
@@ -2597,16 +2648,16 @@ static int msdc_execute_hs400_tuning(struct mmc_host *mmc, struct mmc_card *card
 	else
 		val = readl(host->base + PAD_DS_TUNE);
 
-	dev_info(host->dev, "Fianl PAD_DS_TUNE: 0x%x\n", val);
+	dev_info(host->dev, "[AUTOK]Fianl PAD_DS_TUNE: 0x%x\n", val);
 	host->autok_vcore = host->dvfsrc_vcore_power ?
 		regulator_get_voltage(host->dvfsrc_vcore_power) : -1;
-	dev_info(host->dev,"[%s]msdc tune pass,opcode=%d,vcore=%d",
+	dev_info(host->dev,"[AUTOK][%s]msdc tune pass,opcode=%d,vcore=%d",
 		__func__, MMC_SEND_EXT_CSD, host->autok_vcore);
 
 	return 0;
 
 fail:
-	dev_info(host->dev, "Failed to tuning DS pin delay!\n");
+	dev_info(host->dev, "[AUTOK]Failed to tuning DS pin delay!\n");
 	return -EIO;
 }
 
