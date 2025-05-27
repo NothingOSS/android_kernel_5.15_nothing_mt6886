@@ -6974,6 +6974,11 @@
 			dynamic-alloc = <0>;
 		};
 
+		connsys_power_domain: connsys-power-domain {
+			compatible = "mediatek,mt6985-connsys-pm";
+			power-domains = <&scpsys MT6985_POWER_DOMAIN_CONN>;
+		};
+
 		consys: consys@18000000 {
 			compatible = "mediatek,mt6985-consys";
 			reg = <0 0x18011000 0 0x138>, /* 0 conn_cfg*/
@@ -6994,7 +6999,6 @@
 				<0 0x1c00d000 0 0x7ec>, /* 15 SRCLKENRC */
 				<0 0x18023000 0 0x1000>; /* 16 conn_dbg_ctl */
 			radio-support = "gps", "mawd";
-			power-domains = <&scpsys MT6985_POWER_DOMAIN_CONN>;
 			emi-addr = <0>;
 			emi-size = <0>;
 			ro-emi-size = <0x3c0000>;
