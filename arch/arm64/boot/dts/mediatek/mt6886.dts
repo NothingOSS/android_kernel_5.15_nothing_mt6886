@@ -6857,6 +6857,7 @@
 			mediatek,syscon-wakeup = <&pericfg_ao_clk 0x200 104>;
 			wakeup-source;
 			usb-role-switch;
+			mediatek,u2-lpm-quirks = <0x1>;
 			cdp-block;
 			port {
 				mtu3_drd_switch: endpoint {

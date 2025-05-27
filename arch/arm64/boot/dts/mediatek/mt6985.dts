@@ -8170,6 +8170,7 @@
 			mediatek,vs-voter = <&pmic 0x149a 0x1 1>;
 			mediatek,uds = <&usb_dp_selector 19>;
 			usb-role-switch;
+			mediatek,u2-lpm-quirks = <0x1>;
 			cdp-block;
 			port {
 				mtu3_drd_switch: endpoint {
