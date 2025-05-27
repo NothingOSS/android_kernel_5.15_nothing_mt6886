@@ -94,7 +94,10 @@ struct mtu3_request;
 #define EP0_RESPONSE_BUF  6
 
 #define BULK_CLKS_CNT	6
+#define U2_LPM_LOCK_INIT_TIMEOUT 3000
 
+/* quirks for U2 LPM flow control */
+#define MTU3_U2_LPM_DELAY		BIT(0)
 /* device operated link and speed got from DEVICE_CONF register */
 enum mtu3_speed {
 	MTU3_SPEED_INACTIVE = 0,
@@ -161,6 +164,13 @@ enum mtu3_power_state {
 	MTU3_STATE_SUSPEND,
 	MTU3_STATE_RESUME,
 	MTU3_STATE_OFFLOAD,
+};
+
+enum mtu3_u2_lpm_mode {
+	MTU3_U2_LPM_DEFAULT = 0,
+	MTU3_U2_LPM_REJECT,
+	MTU3_U2_LPM_ACCEPT,
+	MTU3_U2_LPM_ACCEPT_ONCE,
 };
 
 enum mtu3_plat_type {
@@ -435,6 +445,9 @@ struct mtu3 {
 	unsigned gen2cp:1;
 	unsigned connected:1;
 
+  	enum mtu3_u2_lpm_mode u2_lpm_reject;
+  	struct timer_list lpm_timer;
+
 	u8 address;
 	u8 test_mode_nr;
 	u32 hw_version;
@@ -444,6 +457,9 @@ struct mtu3 {
 	int ep_slot_mode;
 
 	unsigned u3_lpm:1;
+	unsigned int u2_lpm_quirks;
+	bool lpm_timer_active;
+	spinlock_t lpm_lock;
 };
 
 /* struct ssusb_offload */
@@ -540,5 +556,6 @@ irqreturn_t mtu3_ep0_isr(struct mtu3 *mtu);
 extern const struct usb_ep_ops mtu3_ep0_ops;
 
 int get_dp_switch_status(struct ssusb_mtk *ssusb);
-
+void mtu3_gadget_u2_lpm_lock_init(struct mtu3 *mtu);
+void mtu3_gadget_u2_lpm_lock_deinit(struct mtu3 *mtu);
 #endif

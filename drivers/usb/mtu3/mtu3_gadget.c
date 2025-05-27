@@ -33,6 +33,81 @@ struct ffs_function {
 	struct usb_function function;
 };
 
+static void mtu3_set_u2_lpm(struct mtu3 *mtu, enum mtu3_u2_lpm_mode mode)
+{
+	if (mtu->u2_lpm_reject == mode)
+		return;
+
+	switch (mode) {
+	case MTU3_U2_LPM_REJECT:
+		mtu3_setbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_MODE_REJECT);
+		mtu3_setbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_HRWE);
+		break;
+	case MTU3_U2_LPM_ACCEPT:
+		mtu3_clrbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_MODE_REJECT);
+		mtu3_setbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_HRWE);
+		break;
+	case MTU3_U2_LPM_ACCEPT_ONCE:
+		mtu3_clrbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_HRWE);
+		mtu3_clrbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_MODE_REJECT);
+		mtu3_setbits(mtu->mac_base, U3D_USB20_MISC_CONTROL, LPM_U3_ACK_EN);
+		break;
+	default:
+		break; /* others are ignored */
+	}
+
+	mtu->u2_lpm_reject = mode;
+}
+
+static void mtu3_u2_lpm_timer_func(struct timer_list *t)
+{
+	struct mtu3 *mtu = from_timer(mtu, t, lpm_timer);
+	unsigned long flags;
+
+	spin_lock_irqsave(&mtu->lpm_lock, flags);
+
+	if (!mtu->is_active || !mtu->lpm_timer_active)
+		goto done;
+
+	mtu3_set_u2_lpm(mtu, MTU3_U2_LPM_ACCEPT);
+done:
+	spin_unlock_irqrestore(&mtu->lpm_lock, flags);
+}
+
+void mtu3_gadget_u2_lpm_lock_init(struct mtu3 *mtu)
+{
+	unsigned long flags;
+
+	if (!mtu->u2_lpm_quirks)
+		return;
+
+	spin_lock_irqsave(&mtu->lpm_lock, flags);
+
+	mtu->lpm_timer_active = true;
+
+	if (mtu->u2_lpm_quirks & MTU3_U2_LPM_DELAY) {
+		mtu3_set_u2_lpm(mtu, MTU3_U2_LPM_REJECT);
+		mod_timer(&mtu->lpm_timer, jiffies + msecs_to_jiffies(U2_LPM_LOCK_INIT_TIMEOUT));
+	}
+
+	spin_unlock_irqrestore(&mtu->lpm_lock, flags);
+}
+
+void mtu3_gadget_u2_lpm_lock_deinit(struct mtu3 *mtu)
+{
+	unsigned long flags;
+
+	if (!mtu->u2_lpm_quirks)
+		return;
+
+	spin_lock_irqsave(&mtu->lpm_lock, flags);
+
+	mtu->lpm_timer_active = false;
+	mtu3_set_u2_lpm(mtu, MTU3_U2_LPM_ACCEPT);
+
+	spin_unlock_irqrestore(&mtu->lpm_lock, flags);
+}
+
 static struct usb_function *mtu3_ep_to_func(struct mtu3_ep *mep)
 {
 	struct usb_ep *ep = &mep->ep;
@@ -830,6 +905,8 @@ int mtu3_gadget_setup(struct mtu3 *mtu)
 	mtu->is_active = 0;
 	mtu->delayed_status = false;
 
+	timer_setup(&mtu->lpm_timer, mtu3_u2_lpm_timer_func, 0);
+	spin_lock_init(&mtu->lpm_lock);
 	mtu3_gadget_init_eps(mtu);
 
 	return usb_add_gadget_udc(mtu->dev, &mtu->g);

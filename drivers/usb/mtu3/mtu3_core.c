@@ -383,6 +383,11 @@ void mtu3_dev_on_off(struct mtu3 *mtu, int is_on)
 		mtu3_hs_softconn_set(mtu, false);
 	}
 
+	if (is_on)
+		mtu3_gadget_u2_lpm_lock_init(mtu);
+	else
+		mtu3_gadget_u2_lpm_lock_deinit(mtu);
+
 	dev_info(mtu->dev, "gadget (%s) pullup D%s\n",
 		usb_speed_string(mtu->speed), is_on ? "+" : "-");
 }
@@ -1018,6 +1023,9 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 		dev_err(dev, "mtu3 hw init failed:%d\n", ret);
 		return ret;
 	}
+
+	of_property_read_u32(dev->of_node, "mediatek,u2-lpm-quirks", &mtu->u2_lpm_quirks);
+	dev_info(dev, "u2_lpm_quirks: 0x%x\n", mtu->u2_lpm_quirks);
 
 	ret = mtu3_set_dma_mask(mtu);
 	if (ret) {
