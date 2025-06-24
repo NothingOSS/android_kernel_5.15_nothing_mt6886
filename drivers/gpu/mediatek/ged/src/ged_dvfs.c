@@ -29,7 +29,6 @@
 #include "ged_global.h"
 #include "ged_eb.h"
 #include "ged_dcs.h"
-#include "ged_perfetto.h"
 
 #define MTK_DEFER_DVFS_WORK_MS          10000
 #define MTK_DVFS_SWITCH_INTERVAL_MS     50
@@ -612,15 +611,12 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 						batch_freq, BATCH_STR_SIZE);
 
 			trace_tracing_mark_write(5566, "gpu_freq", avg_freq);
-			ged_perfetto_update_frequency(avg_freq, 0);
 
 			trace_GPU_DVFS__Frequency(avg_freq*1000,
 				gpufreq_get_cur_freq(TARGET_DEFAULT));
 		} else {
 			trace_tracing_mark_write(5566, "gpu_freq",
 				(long long) ged_get_cur_freq() / 1000);
-			ged_perfetto_update_frequency(
-				((long long) ged_get_cur_freq() / 1000), 0);
 
 			trace_GPU_DVFS__Frequency(ged_get_cur_freq(),
 				gpufreq_get_cur_freq(TARGET_DEFAULT));
