@@ -504,6 +504,7 @@ enum{
 #define CAM_REG_FLKO_BASE_ADDR(module)         (isp_devs[module].regs + 0x4580)
 #define CAM_REG_LTMSO_BASE_ADDR(module)        (isp_devs[module].regs + 0x45F0)
 #define CAM_REG_TSFSO_BASE_ADDR(module)        (isp_devs[module].regs + 0x43C0)
+#define CAM_REG_LCESHO_BASE_ADDR(module)       (isp_devs[module].regs + 0x46D0)
 
 #define CAM_REG_FLKO_XSIZE(module)             (isp_devs[module].regs + 0x458C)
 #define CAM_REG_FLKO_YSIZE(module)             (isp_devs[module].regs + 0x4590)
