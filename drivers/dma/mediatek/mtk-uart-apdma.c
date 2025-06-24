@@ -90,13 +90,20 @@
 
 
 
-#define UART_RECORD_COUNT	5
+#define UART_RECORD_COUNT	10
 #define MAX_POLLING_CNT		5000
+#define MAX_FLUSH_CNT		51250
 #define UART_RECORD_MAXLEN	4096
 #define CONFIG_UART_DMA_DATA_RECORD
 #define DBG_STAT_WD_ACT		BIT(5)
 #define MAX_POLL_CNT_RX		200
 #define MAX_GLOBAL_VD_COUNT	5
+void mtk_uart_apdma_start_record(struct dma_chan *chan);
+void mtk_uart_apdma_end_record(struct dma_chan *chan);
+static char *mtk_uart_apdma_get_bus_registers(void);
+static unsigned int mtk_uart_apdma_get_peri_axi_status(void);
+static unsigned int mtk_uart_apdma_get_cg_status(void);
+static unsigned int mtk_uart_apdma_get_idle_en_status(void);
 
 struct uart_info {
 	unsigned int wpt_reg;
@@ -112,6 +119,41 @@ struct uart_info {
 	pid_t irq_cur_pid;
 	char irq_cur_comm[16]; /* task command name from sched.h */
 	int poll_cnt_rx;
+};
+
+struct DMA_info {
+	unsigned int _wpt;
+	unsigned int _rpt;
+	unsigned int _int_flag;
+	unsigned int _int_en;
+	unsigned int _en;
+	unsigned int _int_buf_size;
+	unsigned int _rst;
+	unsigned int _stop;
+	unsigned int _flush;
+	unsigned int _addr;
+	unsigned int _len;
+	unsigned int _thre;
+	unsigned int _rx_flowctl_thre;
+	unsigned int _valid_size;
+	unsigned int _left_size;
+	unsigned int _debug_status;
+	unsigned int _4g_support;
+	unsigned int _tx_wpt_valid;
+	unsigned int _tx_wpt_valid2;
+	unsigned int _tx_flush_act;
+	unsigned int _tx_hw_flush;
+	unsigned int _tx_wpt_real;
+	unsigned int _tx_sec_en;
+	char *end_bus_register;
+
+	unsigned long long starttime;
+	unsigned long long endtime;
+	unsigned long ns1;
+	unsigned long ns2;
+	unsigned int peri_dbg;
+	unsigned int apdma_cg_dbg;
+	unsigned int apdma_idle_en_dbg;
 };
 
 struct mtk_uart_apdmacomp {
@@ -183,6 +225,8 @@ struct mtk_chan {
 	unsigned int apdma_idle_en;
 	char *start_bus_register;
 	struct uart_info rec_info[UART_RECORD_COUNT];
+	struct DMA_info DMA_info[UART_RECORD_COUNT];
+	struct DMA_info DMA_info_before_tx[UART_RECORD_COUNT];
 };
 
 static unsigned long long num;
@@ -198,6 +242,16 @@ static unsigned int debug_dma_bus5; // 0x10000100
 static unsigned int debug_dma_bus6; // 0x11035018
 static unsigned int debug_dma_bus7; // 0x110220d4
 
+void __iomem *debug_dma_bus1_mapped_dma;
+void __iomem *debug_dma_bus2_mapped_dma;
+void __iomem *debug_dma_bus3_mapped_dma;
+void __iomem *debug_dma_bus4_mapped_dma;
+void __iomem *debug_dma_bus5_mapped_dma;
+void __iomem *debug_dma_bus6_mapped_dma;
+void __iomem *debug_dma_bus7_mapped_dma;
+void __iomem *peri_remap_0_axi_dbg;
+void __iomem *peri_remap_get_dma_cg_dbg;
+void __iomem *peri_remap_get_dma_idle_en_dbg;
 char register_values_buffer[512];
 
 static inline struct mtk_uart_apdmadev *
@@ -268,130 +322,188 @@ void mtk_save_uart_apdma_reg(struct dma_chan *chan, unsigned int *reg_buf)
 }
 EXPORT_SYMBOL(mtk_save_uart_apdma_reg);
 
+void mtk_save_DMA_bus_reg(struct dma_chan *chan, struct DMA_info *DMA_info)
+{
+	unsigned int idx;
+
+	struct mtk_chan *c = to_mtk_uart_apdma_chan(chan);
+
+	idx = (unsigned int)((c->rec_idx - 1) % UART_RECORD_COUNT);
+
+	DMA_info[idx]._wpt =  mtk_uart_apdma_read(c, VFF_WPT);
+	DMA_info[idx]._rpt = mtk_uart_apdma_read(c, VFF_RPT);
+	DMA_info[idx]._int_flag = mtk_uart_apdma_read(c, VFF_INT_FLAG);
+	DMA_info[idx]._int_en = mtk_uart_apdma_read(c, VFF_INT_EN);
+	DMA_info[idx]._en = mtk_uart_apdma_read(c, VFF_EN);
+	DMA_info[idx]._int_buf_size = mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE);
+	DMA_info[idx]._rst = mtk_uart_apdma_read(c, VFF_RST);
+	DMA_info[idx]._stop = mtk_uart_apdma_read(c, VFF_STOP);
+	DMA_info[idx]._flush = mtk_uart_apdma_read(c, VFF_FLUSH);
+	DMA_info[idx]._addr	= mtk_uart_apdma_read(c, VFF_ADDR);
+	DMA_info[idx]._len = mtk_uart_apdma_read(c, VFF_LEN);
+	DMA_info[idx]._thre = mtk_uart_apdma_read(c, VFF_THRE);
+	DMA_info[idx]._rx_flowctl_thre = mtk_uart_apdma_read(c, VFF_RX_FLOWCTL_THRE);
+	DMA_info[idx]._valid_size = mtk_uart_apdma_read(c, VFF_VALID_SIZE);
+	DMA_info[idx]._left_size = mtk_uart_apdma_read(c, VFF_LEFT_SIZE);
+	DMA_info[idx]._debug_status = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
+	DMA_info[idx]._4g_support = mtk_uart_apdma_read(c, VFF_4G_SUPPORT);
+	DMA_info[idx]._tx_wpt_valid = mtk_uart_apdma_read(c, VFF_TX_WPT_VALID);
+	DMA_info[idx]._tx_wpt_valid2 = mtk_uart_apdma_read(c, VFF_TX_WPT_VALID2);
+	DMA_info[idx]._tx_flush_act = mtk_uart_apdma_read(c, VFF_TX_FLUSH_ACT);
+	DMA_info[idx]._tx_hw_flush = mtk_uart_apdma_read(c, VFF_TX_HW_FLUSH);
+	DMA_info[idx]._tx_wpt_real = mtk_uart_apdma_read(c, VFF_TX_WPT_REAL);
+	DMA_info[idx]._tx_sec_en = mtk_uart_apdma_read(c, VFF_TX_SEC_EN);
+	DMA_info[idx].end_bus_register = mtk_uart_apdma_get_bus_registers();
+
+	DMA_info[idx].endtime = sched_clock();
+	DMA_info[idx].ns2 = do_div(DMA_info[idx].endtime, 1000000000);
+	DMA_info[idx].peri_dbg = mtk_uart_apdma_get_peri_axi_status();
+	DMA_info[idx].apdma_cg_dbg = mtk_uart_apdma_get_cg_status();
+	DMA_info[idx].apdma_idle_en_dbg = mtk_uart_apdma_get_idle_en_status();
+
+}
+
+void mtk_save_DMA_bus_reg_before_tx(struct dma_chan *chan, struct DMA_info *DMA_info_before_tx)
+{
+	unsigned int idx;
+
+	struct mtk_chan *c = to_mtk_uart_apdma_chan(chan);
+	idx = (unsigned int)(c->rec_idx % UART_RECORD_COUNT);
+
+	DMA_info_before_tx[idx]._wpt =  mtk_uart_apdma_read(c, VFF_WPT);
+	DMA_info_before_tx[idx]._rpt = mtk_uart_apdma_read(c, VFF_RPT);
+	DMA_info_before_tx[idx]._int_flag = mtk_uart_apdma_read(c, VFF_INT_FLAG);
+	DMA_info_before_tx[idx]._int_en = mtk_uart_apdma_read(c, VFF_INT_EN);
+	DMA_info_before_tx[idx]._en = mtk_uart_apdma_read(c, VFF_EN);
+	DMA_info_before_tx[idx]._int_buf_size = mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE);
+	DMA_info_before_tx[idx]._rst = mtk_uart_apdma_read(c, VFF_RST);
+	DMA_info_before_tx[idx]._stop = mtk_uart_apdma_read(c, VFF_STOP);
+	DMA_info_before_tx[idx]._flush = mtk_uart_apdma_read(c, VFF_FLUSH);
+	DMA_info_before_tx[idx]._addr	= mtk_uart_apdma_read(c, VFF_ADDR);
+	DMA_info_before_tx[idx]._len = mtk_uart_apdma_read(c, VFF_LEN);
+	DMA_info_before_tx[idx]._thre = mtk_uart_apdma_read(c, VFF_THRE);
+	DMA_info_before_tx[idx]._rx_flowctl_thre = mtk_uart_apdma_read(c, VFF_RX_FLOWCTL_THRE);
+	DMA_info_before_tx[idx]._valid_size = mtk_uart_apdma_read(c, VFF_VALID_SIZE);
+	DMA_info_before_tx[idx]._left_size = mtk_uart_apdma_read(c, VFF_LEFT_SIZE);
+	DMA_info_before_tx[idx]._debug_status = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
+	DMA_info_before_tx[idx]._4g_support = mtk_uart_apdma_read(c, VFF_4G_SUPPORT);
+	DMA_info_before_tx[idx]._tx_wpt_valid = mtk_uart_apdma_read(c, VFF_TX_WPT_VALID);
+	DMA_info_before_tx[idx]._tx_wpt_valid2 = mtk_uart_apdma_read(c, VFF_TX_WPT_VALID2);
+	DMA_info_before_tx[idx]._tx_flush_act = mtk_uart_apdma_read(c, VFF_TX_FLUSH_ACT);
+	DMA_info_before_tx[idx]._tx_hw_flush = mtk_uart_apdma_read(c, VFF_TX_HW_FLUSH);
+	DMA_info_before_tx[idx]._tx_wpt_real = mtk_uart_apdma_read(c, VFF_TX_WPT_REAL);
+	DMA_info_before_tx[idx]._tx_sec_en = mtk_uart_apdma_read(c, VFF_TX_SEC_EN);
+	DMA_info_before_tx[idx].end_bus_register = mtk_uart_apdma_get_bus_registers();
+
+	DMA_info_before_tx[idx].endtime = sched_clock();
+	DMA_info_before_tx[idx].ns2 = do_div(DMA_info_before_tx[idx].endtime, 1000000000);
+	DMA_info_before_tx[idx].peri_dbg = mtk_uart_apdma_get_peri_axi_status();
+	DMA_info_before_tx[idx].apdma_cg_dbg = mtk_uart_apdma_get_cg_status();
+	DMA_info_before_tx[idx].apdma_idle_en_dbg = mtk_uart_apdma_get_idle_en_status();
+
+}
+
 static unsigned int mtk_uart_apdma_get_peri_axi_status(void)
 {
-	void __iomem *peri_remap_0_axi_dbg = NULL;
 	unsigned int ret = 0;
-
-	if (peri_0_axi_dbg == 0) {
-		pr_info("[%s] Read peri_0_axi_dbg config fail\n", __func__);
-		return 0;
-        }
-	peri_remap_0_axi_dbg = ioremap(peri_0_axi_dbg, 0x10);
 	if (!peri_remap_0_axi_dbg) {
-		pr_info("[%s] peri_remap_0_axi_dbg(%x) ioremap fail\n",
-			__func__, peri_0_axi_dbg);
+		pr_info("Read peri_remap_0_axi_dbg fail\n");
 		return 0;
 	}
 	ret = readl(peri_remap_0_axi_dbg);
-
-	if (peri_remap_0_axi_dbg)
-		iounmap(peri_remap_0_axi_dbg);
-
 	return ret;
 }
 
 static unsigned int mtk_uart_apdma_get_cg_status(void)
 {
-	void __iomem *peri_remap_get_dma_cg_dbg = NULL;
 	unsigned int ret = 0;
 
-	if (apdma_cg == 0) {
-		pr_info("[%s] Read apdma_cg config fail\n", __func__);
-		return 0;
-        }
-	peri_remap_get_dma_cg_dbg = ioremap(apdma_cg, 0x10);
 	if (!peri_remap_get_dma_cg_dbg) {
-		pr_info("[%s] peri_remap_get_dma_cg_dbg(%x) ioremap fail\n",
-			__func__, apdma_cg);
+		pr_info("Read peri_remap_get_dma_cg_dbg fail\n");
 		return 0;
 	}
 	ret = readl(peri_remap_get_dma_cg_dbg);
-
-	if (peri_remap_get_dma_cg_dbg)
-		iounmap(peri_remap_get_dma_cg_dbg);
-
 	return ret;
 }
 
 static unsigned int mtk_uart_apdma_get_idle_en_status(void)
 {
-	void __iomem *peri_remap_get_dma_idle_en_dbg = NULL;
 	unsigned int ret = 0;
 
-	if (apdma_idle_en == 0) {
-		pr_info("[%s] Read apdma_idle_en config fail\n", __func__);
-		return 0;
-        }
-	peri_remap_get_dma_idle_en_dbg = ioremap(apdma_idle_en, 0x10);
 	if (!peri_remap_get_dma_idle_en_dbg) {
-		pr_info("[%s] peri_remap_get_dma_idle_en_dbg(%x) ioremap fail\n",
-			__func__, apdma_idle_en);
+		pr_info("Read peri_remap_get_dma_idle_en_dbg fail\n");
 		return 0;
 	}
 	ret = readl(peri_remap_get_dma_idle_en_dbg);
-
-	if (peri_remap_get_dma_idle_en_dbg)
-		iounmap(peri_remap_get_dma_idle_en_dbg);
-
 	return ret;
 }
 
-static char *mtk_uart_apdma_get_bus_registers(void) {
-	void __iomem *debug_dma_bus1_mapped = NULL, *debug_dma_bus2_mapped = NULL,
-		*debug_dma_bus3_mapped = NULL, *debug_dma_bus4_mapped=NULL, *debug_dma_bus5_mapped = NULL, *debug_dma_bus6_mapped = NULL,  *debug_dma_bus7_mapped = NULL;
-	unsigned int value1 = 0, value2 = 0, value3 = 0, value4 = 0, value5 = 0, value6 = 0, value7 = 0;
-	memset(register_values_buffer, 0, sizeof(register_values_buffer));
-
-	if(debug_dma_bus1 == 0 || debug_dma_bus2 == 0 || debug_dma_bus3 == 0 || debug_dma_bus4 == 0
-		|| debug_dma_bus5 == 0 || debug_dma_bus6 == 0 || debug_dma_bus7 == 0) {
+static void mtk_uart_apdma_get_bus_registers_in_DMA_dbg_ioremap(void)
+{
+	if(debug_dma_bus1 == 0 || debug_dma_bus2 == 0 || debug_dma_bus3 == 0 ||
+		debug_dma_bus4 == 0|| debug_dma_bus5 == 0 || debug_dma_bus6 == 0 ||
+		debug_dma_bus7 == 0 || peri_0_axi_dbg == 0 || apdma_cg == 0 ||
+		apdma_idle_en == 0) {
 		pr_info("[%s] get DMA bus RG value fail\n", __func__);
-		return NULL;
+		return;
 	}
-	debug_dma_bus1_mapped = ioremap(debug_dma_bus1, sizeof(unsigned int));	// 0x1102_20a0
-	debug_dma_bus2_mapped = ioremap(debug_dma_bus2, sizeof(unsigned int));	// 0x1102_20dc
-	debug_dma_bus3_mapped = ioremap(debug_dma_bus3, sizeof(unsigned int));	// 0x1102_20e4
-	debug_dma_bus4_mapped = ioremap(debug_dma_bus4, sizeof(unsigned int));	// 0x1102_20f4
-	debug_dma_bus5_mapped = ioremap(debug_dma_bus5, sizeof(unsigned int));	// 0x1000_0100
-	debug_dma_bus6_mapped = ioremap(debug_dma_bus6, sizeof(unsigned int));	// 0x1103_5018
-	debug_dma_bus7_mapped = ioremap(debug_dma_bus7, sizeof(unsigned int));	// 0x1102_20d4
-	if (!debug_dma_bus1_mapped || !debug_dma_bus2_mapped ||
-		!debug_dma_bus3_mapped || !debug_dma_bus4_mapped ||
-		!debug_dma_bus5_mapped || !debug_dma_bus6_mapped || !debug_dma_bus7_mapped) {
+
+	peri_remap_0_axi_dbg = ioremap(peri_0_axi_dbg, 0x10);
+	peri_remap_get_dma_cg_dbg = ioremap(apdma_cg, 0x10);
+	peri_remap_get_dma_idle_en_dbg = ioremap(apdma_idle_en, 0x10);
+
+	debug_dma_bus1_mapped_dma = ioremap(debug_dma_bus1, sizeof(unsigned int));  // 0x1102_20a0
+	debug_dma_bus2_mapped_dma = ioremap(debug_dma_bus2, sizeof(unsigned int));  // 0x1102_20dc
+	debug_dma_bus3_mapped_dma = ioremap(debug_dma_bus3, sizeof(unsigned int));  // 0x1102_20e4
+	debug_dma_bus4_mapped_dma = ioremap(debug_dma_bus4, sizeof(unsigned int));  // 0x1102_20f4
+	debug_dma_bus5_mapped_dma = ioremap(debug_dma_bus5, sizeof(unsigned int));  // 0x1000_0100
+	debug_dma_bus6_mapped_dma = ioremap(debug_dma_bus6, sizeof(unsigned int));  // 0x1103_5018
+	debug_dma_bus7_mapped_dma = ioremap(debug_dma_bus7, sizeof(unsigned int));  // 0x1102_20d4
+
+	if (!debug_dma_bus1_mapped_dma || !debug_dma_bus2_mapped_dma ||
+		!debug_dma_bus3_mapped_dma || !debug_dma_bus4_mapped_dma ||
+		!debug_dma_bus5_mapped_dma || !debug_dma_bus6_mapped_dma ||
+		!debug_dma_bus7_mapped_dma || !peri_remap_0_axi_dbg ||
+		!peri_remap_get_dma_idle_en_dbg ||
+		!peri_remap_get_dma_cg_dbg) {
 		pr_info("[%s] debug_dma_bus ioremap fail\n", __func__);
+		return;
+	}
+}
+
+static char *mtk_uart_apdma_get_bus_registers(void)
+{
+	unsigned int value1 = 0, value2 = 0, value3 = 0, value4 = 0, value5 = 0, value6 = 0,
+		value7 = 0;
+
+	memset(register_values_buffer, 0, sizeof(register_values_buffer));
+// read RG
+	if (!debug_dma_bus1_mapped_dma || !debug_dma_bus2_mapped_dma ||
+		!debug_dma_bus3_mapped_dma || !debug_dma_bus4_mapped_dma ||
+		!debug_dma_bus5_mapped_dma || !debug_dma_bus6_mapped_dma ||
+		!debug_dma_bus7_mapped_dma) {
+		pr_info("[%s] debug_dma_bus ioremap fail Can't debug it\n", __func__);
 		return NULL;
 	}
 
-    // read RG
-	value1 = readl(debug_dma_bus1_mapped);
-	value2 = readl(debug_dma_bus2_mapped);
-	value3 = readl(debug_dma_bus3_mapped);
-	value4 = readl(debug_dma_bus4_mapped);
-	value5 = readl(debug_dma_bus5_mapped);
-	value6 = readl(debug_dma_bus6_mapped);
-	value7 = readl(debug_dma_bus7_mapped);
+	value1 = readl(debug_dma_bus1_mapped_dma);
+	value2 = readl(debug_dma_bus2_mapped_dma);
+	value3 = readl(debug_dma_bus3_mapped_dma);
+	value4 = readl(debug_dma_bus4_mapped_dma);
+	value5 = readl(debug_dma_bus5_mapped_dma);
+	value6 = readl(debug_dma_bus6_mapped_dma);
+	value7 = readl(debug_dma_bus7_mapped_dma);
 
 	snprintf(register_values_buffer, sizeof(register_values_buffer),
-		"Value of debug_dma_bus1(0x%x): 0x%x, Value of debug_dma_bus2(0x%x):\
-		0x%x, Value of debug_dma_bus3(0x%x): 0x%x, Value of debug_dma_bus4(0x%x): 0x%x, \
-		Value of debug_dma_bus5(0x%x): 0x%x, Value of debug_dma_bus6(0x%x): 0x%x, Value of debug_dma_bus7(0x%x): 0x%x\n",
-		debug_dma_bus1, value1, debug_dma_bus2, value2, debug_dma_bus3,
-		value3, debug_dma_bus4, value4, debug_dma_bus5, value5, debug_dma_bus6, value6, debug_dma_bus7, value7);
+		"Value of debug_dma_bus1(0x%x): 0x%x, Value of debug_dma_bus2(0x%x): \
+		0x%x, Value of debug_dma_bus3(0x%x): 0x%x, Value of debug_dma_bus4(0x%x): \
+		0x%x, Value of debug_dma_bus5(0x%x): 0x%x, Value of debug_dma_bus6(0x%x): 0x%x, \
+		Value of debug_dma_bus7(0x%x): 0x%x\n",
+		debug_dma_bus1, value1, debug_dma_bus2,
+		value2, debug_dma_bus3,value3, debug_dma_bus4, value4,
+		debug_dma_bus5, value5, debug_dma_bus6, value6,
+		debug_dma_bus7, value7);
 
-	if (debug_dma_bus1_mapped)
-		iounmap(debug_dma_bus1_mapped);
-	if (debug_dma_bus2_mapped)
-		iounmap(debug_dma_bus2_mapped);
-	if (debug_dma_bus3_mapped)
-		iounmap(debug_dma_bus3_mapped);
-	if (debug_dma_bus4_mapped)
-		iounmap(debug_dma_bus4_mapped);
-	if (debug_dma_bus5_mapped)
-		iounmap(debug_dma_bus5_mapped);
-	if (debug_dma_bus6_mapped)
-		iounmap(debug_dma_bus6_mapped);
-	if (debug_dma_bus7_mapped)
-		iounmap(debug_dma_bus7_mapped);
     return register_values_buffer;
 }
 
@@ -602,6 +714,83 @@ void mtk_uart_apdma_data_dump(struct dma_chan *chan)
 			c->rec_info[idx].vff_dbg_reg, c->rec_info[idx].copy_wpt_reg,
 			c->rec_info[idx].irq_cur_cpu, c->rec_info[idx].irq_cur_pid,
 			c->rec_info[idx].irq_cur_comm);
+		pr_info("[%s] [%s] Before Tx DMA Log(10 times): [time %5lu.%06lu] \
+				end_wpt=0x%x, end_rpt=0x%x, "
+				"end_int_flag=0x%x, end_int_en=0x%x, end_en=0x%x, \
+				end_int_buf_size=0x%x, "
+				"end_rst=0x%x, end_stop=0x%x, end_flush=0x%x, end_addr=0x%x, \
+				end_len=0x%x, end_thre=0x%x, end_rx_flowctl_thre=0x%x, "
+				"end_valid_size=0x%x, end_left_size=0x%x, \
+				end_debug_status=0x%x, end_4g_support=0x%x, \
+				end_tx_wpt_valid=0x%x, end_tx_wpt_valid2=0x%x, "
+				"end_tx_flush_act=0x%x, end_tx_hw_flush=0x%x, \
+				end_tx_wpt_real=0x%x, end_tx_sec_en=0x%x, "
+				"0x%x = 0x%x, 0x%x = 0x%x, 0x%x = 0x%x, \n",
+				__func__, "dma_tx",
+				(unsigned long)c->DMA_info_before_tx[idx].endtime,
+				c->DMA_info_before_tx[idx].ns2 / 1000,
+				c->DMA_info_before_tx[idx]._wpt,
+				c->DMA_info_before_tx[idx]._rpt,
+				c->DMA_info_before_tx[idx]._int_flag,
+				c->DMA_info_before_tx[idx]._int_en,
+				c->DMA_info_before_tx[idx]._en,
+				c->DMA_info_before_tx[idx]._int_buf_size,
+				c->DMA_info_before_tx[idx]._rst,
+				c->DMA_info_before_tx[idx]._stop,
+				c->DMA_info_before_tx[idx]._flush,
+				c->DMA_info_before_tx[idx]._addr,
+				c->DMA_info_before_tx[idx]._len,
+				c->DMA_info_before_tx[idx]._thre,
+				c->DMA_info_before_tx[idx]._rx_flowctl_thre,
+				c->DMA_info_before_tx[idx]._valid_size,
+				c->DMA_info_before_tx[idx]._left_size,
+				c->DMA_info_before_tx[idx]._debug_status,
+				c->DMA_info_before_tx[idx]._4g_support,
+				c->DMA_info_before_tx[idx]._tx_wpt_valid,
+				c->DMA_info_before_tx[idx]._tx_wpt_valid2,
+				c->DMA_info_before_tx[idx]._tx_flush_act,
+				c->DMA_info_before_tx[idx]._tx_hw_flush,
+				c->DMA_info_before_tx[idx]._tx_wpt_real,
+				c->DMA_info_before_tx[idx]._tx_sec_en,
+				peri_0_axi_dbg, c->DMA_info_before_tx[idx].peri_dbg,
+				apdma_cg, c->DMA_info_before_tx[idx].apdma_cg_dbg,
+				apdma_idle_en, c->DMA_info_before_tx[idx].apdma_idle_en_dbg);
+		pr_info("end_bus_register dump Before Tx[%d]: %s \n", idx,
+			c->DMA_info_before_tx[idx].end_bus_register);
+
+		pr_info("[%s] [%s] After Tx DMA Log(10 times): [time %5lu.%06lu] \
+				end_wpt=0x%x, end_rpt=0x%x, "
+				"end_int_flag=0x%x, end_int_en=0x%x, end_en=0x%x,\
+				end_int_buf_size=0x%x, "
+				"end_rst=0x%x, end_stop=0x%x, end_flush=0x%x, end_addr=0x%x, \
+				end_len=0x%x, end_thre=0x%x, end_rx_flowctl_thre=0x%x, "
+				"end_valid_size=0x%x, end_left_size=0x%x, \
+				end_debug_status=0x%x, end_4g_support=0x%x,\
+				end_tx_wpt_valid=0x%x, end_tx_wpt_valid2=0x%x, "
+				"end_tx_flush_act=0x%x, end_tx_hw_flush=0x%x,\
+				end_tx_wpt_real=0x%x, end_tx_sec_en=0x%x, "
+				"0x%x = 0x%x, 0x%x = 0x%x, 0x%x = 0x%x, \n",
+				__func__, "dma_tx",
+				(unsigned long)c->DMA_info[idx].endtime,
+				c->DMA_info[idx].ns2 / 1000, c->DMA_info[idx]._wpt,
+				c->DMA_info[idx]._rpt, c->DMA_info[idx]._int_flag,
+				c->DMA_info[idx]._int_en, c->DMA_info[idx]._en,
+				c->DMA_info[idx]._int_buf_size, c->DMA_info[idx]._rst,
+				c->DMA_info[idx]._stop, c->DMA_info[idx]._flush,
+				c->DMA_info[idx]._addr, c->DMA_info[idx]._len,
+				c->DMA_info[idx]._thre, c->DMA_info[idx]._rx_flowctl_thre,
+				c->DMA_info[idx]._valid_size, c->DMA_info[idx]._left_size,
+				c->DMA_info[idx]._debug_status, c->DMA_info[idx]._4g_support,
+				c->DMA_info[idx]._tx_wpt_valid,
+				c->DMA_info[idx]._tx_wpt_valid2,
+				c->DMA_info[idx]._tx_flush_act, c->DMA_info[idx]._tx_hw_flush,
+				c->DMA_info[idx]._tx_wpt_real, c->DMA_info[idx]._tx_sec_en,
+				peri_0_axi_dbg, c->DMA_info[idx].peri_dbg,
+				apdma_cg, c->DMA_info[idx].apdma_cg_dbg,
+				apdma_idle_en, c->DMA_info[idx].apdma_idle_en_dbg);
+		pr_info("end_bus_register dump After Tx[%d]: %s \n", idx,
+			c->DMA_info[idx].end_bus_register);
+
 #ifdef CONFIG_UART_DMA_DATA_RECORD
 		if (len <= UART_RECORD_MAXLEN) {
 			if (len > 256)
@@ -701,6 +890,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	unsigned int wpt, vff_sz, left_data, rst_status;
 	unsigned int idx = 0;
 	int poll_cnt = MAX_POLLING_CNT;
+	unsigned int flush_flag = 0, poll_flush_cnt = MAX_FLUSH_CNT;
 
 	if (c->is_hub_port) {
 		if (!res_status)
@@ -804,6 +994,18 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	mtk_uart_apdma_write(c, VFF_INT_EN, VFF_TX_INT_EN_B);
 	if (!mtk_uart_apdma_read(c, VFF_FLUSH))
 		mtk_uart_apdma_write(c, VFF_FLUSH, VFF_FLUSH_B);
+	flush_flag = mtk_uart_apdma_read(c, VFF_FLUSH);
+	if (c->is_hub_port) {
+		while ((flush_flag != 0) && (poll_flush_cnt > 0)) {
+			udelay(4);
+			flush_flag = mtk_uart_apdma_read(c, VFF_FLUSH);
+			poll_flush_cnt--;
+		}
+		if (flush_flag == 0) {
+			mb();
+			mtk_save_DMA_bus_reg(&c->vc.chan, c->DMA_info);
+		}
+	}
 }
 
 static void mtk_uart_apdma_start_rx(struct mtk_chan *c)
@@ -1193,8 +1395,11 @@ static void mtk_uart_apdma_issue_pending(struct dma_chan *chan)
 
 		if (c->dir == DMA_DEV_TO_MEM)
 			mtk_uart_apdma_start_rx(c);
-		else if (c->dir == DMA_MEM_TO_DEV)
+		else if (c->dir == DMA_MEM_TO_DEV) {
+			mb();
+			mtk_save_DMA_bus_reg_before_tx(chan, c->DMA_info_before_tx);
 			mtk_uart_apdma_start_tx(c);
+		}
 	}
 
 	spin_unlock_irqrestore(&c->vc.lock, flags);
@@ -1483,6 +1688,8 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 			"debug-dma-bus7", 0, &debug_dma_bus7))
 			pr_info("[%s] get debug-dma-bus7 fail\n", __func__);
 	}
+	mtk_uart_apdma_get_bus_registers_in_DMA_dbg_ioremap();
+
 	for (i = 0; i < mtkd->dma_requests; i++) {
 		c = devm_kzalloc(mtkd->ddev.dev, sizeof(*c), GFP_KERNEL);
 		if (!c) {
