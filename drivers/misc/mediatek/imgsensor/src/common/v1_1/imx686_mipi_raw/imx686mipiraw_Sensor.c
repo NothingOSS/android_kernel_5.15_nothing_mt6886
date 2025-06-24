@@ -43,7 +43,7 @@
 
 #include "imx686mipiraw_Sensor.h"
 #include "imx686_eeprom.h"
-
+#include "platform_common.h"
 #undef VENDOR_EDIT
 
 #define USE_BURST_MODE 1
@@ -58,6 +58,7 @@ static kal_uint16 imx686_table_write_cmos_sensor(
 		kal_uint16 *para, kal_uint32 len);
 #endif
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
+static unsigned int g_platform_id;
 
 #define imx686_flag 0
 
@@ -8744,6 +8745,11 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			break;
 		}
 		break;
+	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
+		if (IS_MT6835(g_platform_id))
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 1500000;
+		break;
 	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
 		switch (*feature_data) {
 		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
@@ -9421,13 +9427,20 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	return ERROR_NONE;
 } /* feature_control() */
 
+static void set_platform_info(unsigned int platform_id)
+{
+	g_platform_id = platform_id;
+	pr_info("%s id:%x\n", __func__, g_platform_id);
+}
+
 static struct SENSOR_FUNCTION_STRUCT sensor_func = {
 	open,
 	get_info,
 	get_resolution,
 	feature_control,
 	control,
-	close
+	close,
+	set_platform_info
 };
 
 UINT32 IMX686_MIPI_RAW_SensorInit(struct SENSOR_FUNCTION_STRUCT **pfFunc)
