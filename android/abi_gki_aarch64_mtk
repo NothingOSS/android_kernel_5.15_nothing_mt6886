@@ -142,6 +142,7 @@
   clk_hw_get_name
   clk_hw_get_num_parents
   clk_hw_get_parent
+  clk_hw_get_parent_index
   clk_hw_get_parent_by_index
   clk_hw_get_rate
   clk_hw_is_enabled
@@ -1203,6 +1204,7 @@
   mii_link_ok
   mii_nway_restart
   mipi_dsi_attach
+  mipi_dsi_dcs_nop
   mipi_dsi_dcs_read
   mipi_dsi_dcs_write
   mipi_dsi_dcs_write_buffer
