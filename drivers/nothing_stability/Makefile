@@ -5,3 +5,4 @@ obj-$(CONFIG_NOTHING_DISK_USAGE)        += nothing_readahead_trace.o
 obj-$(CONFIG_NOTHING_TASK_MEMINFO)      += nothing_task_meminfo.o
 obj-$(CONFIG_NOTHING_TASK_MEMINFO)      += nothing_value_check.o
 obj-$(CONFIG_NOTHING_TASK_INFO)         += nothing_task_info.o
+obj-$(CONFIG_NOTHING_CHECK_PARTS)       += nothing_check_parts.o

@@ -24,3 +24,11 @@ config NOTHING_TASK_INFO
 	default n
 	help
 		cat /proc/nt_taskinfo/show_all_tasks_id will show all task pid
+
+config NOTHING_CHECK_PARTS
+	tristate "Nothing check partitions status"
+	default n
+	help
+		enable: echo fec_decode_rsb 1 > proc/nt_check_partitions/enable
+		disable: echo fec_decode_rsb 0 > proc/nt_check_partitions/enable
+		status: cat proc/nt_check_partitions/result
