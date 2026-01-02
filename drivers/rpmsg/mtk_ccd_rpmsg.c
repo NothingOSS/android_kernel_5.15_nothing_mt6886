@@ -25,11 +25,13 @@ void __ept_release(struct kref *kref)
 	struct rpmsg_endpoint *ept = container_of(kref, struct rpmsg_endpoint,
 						  refcount);
 	struct mtk_ccd_rpmsg_endpoint *mept = to_mtk_rpmsg_endpoint(ept);
+	u32 ipi_id = mept->mchinfo.id;
 	struct mtk_rpmsg_rproc_subdev *mtk_subdev = mept->mtk_subdev;
 	struct rpmsg_device *rpdev = ept->rpdev;
 
-	dev_info(&mtk_subdev->pdev->dev, "free mtk rpmsg endpoint: %p\n",
-		 mept);
+	dev_info(&mtk_subdev->pdev->dev,
+			"free mtk rpmsg endpoint: mept:%p ipi_id: %u\n", mept, ipi_id);
+	set_bit(MEPT_PENDING, &mtk_subdev->mept_flags[ipi_id]);
 	kfree(to_mtk_rpmsg_endpoint(ept));
 
 	rpdev->ept = NULL;
@@ -51,7 +53,7 @@ void mtk_rpmsg_ipi_handler(void *data, unsigned int len, void *priv)
 static struct rpmsg_endpoint *
 __rpmsg_create_ept(struct mtk_rpmsg_rproc_subdev *mtk_subdev,
 		   struct rpmsg_device *rpdev, rpmsg_rx_cb_t cb, void *priv,
-		   u32 id)
+		   u32 ipi_id)
 {
 	struct mtk_ccd_rpmsg_endpoint *mept;
 	struct rpmsg_endpoint *ept;
@@ -71,11 +73,11 @@ __rpmsg_create_ept(struct mtk_rpmsg_rproc_subdev *mtk_subdev,
 	ept->cb = cb;
 	ept->priv = priv;
 	ept->ops = &mtk_rpmsg_endpoint_ops;
-	ept->addr = id;
+	ept->addr = ipi_id;
 
-	mept->mchinfo.chinfo.src = id;
+	mept->mchinfo.chinfo.src = ipi_id;
 	mept->mchinfo.chinfo.dst = RPMSG_ADDR_ANY;
-	mept->mchinfo.id = id;
+	mept->mchinfo.id = ipi_id;
 
 	INIT_LIST_HEAD(&mept->pending_sendq.queue);
 	spin_lock_init(&mept->pending_sendq.queue_lock);
@@ -83,7 +85,10 @@ __rpmsg_create_ept(struct mtk_rpmsg_rproc_subdev *mtk_subdev,
 	atomic_set(&mept->ccd_cmd_sent, 0);
 	atomic_set(&mept->ccd_mep_state, CCD_MENDPOINT_CREATED);
 
-	dev_dbg(&pdev->dev, "%s: %d\n", __func__, ept->addr);
+	if (ipi_id < MEPT_FLAG_SIZE)
+		clear_and_wake_up_bit(MEPT_PENDING, &mtk_subdev->mept_flags[ipi_id]);
+
+	dev_dbg(&pdev->dev, "%s: mept:%p ipi_id: %u\n", __func__, mept, ipi_id);
 	return ept;
 }
 
@@ -301,6 +306,8 @@ mtk_rpmsg_create_rpmsgdev(struct mtk_rpmsg_rproc_subdev *mtk_subdev,
 
 	rpdev = &mdev->rpdev;
 
+	mdev->ipi_id = info->src;
+
 	if (info->src == RPMSG_ADDR_ANY) {
 		id_min = MTK_CCD_MSGDEV_ADDR + 1;
 		id_max = 0;
@@ -480,6 +487,7 @@ mtk_rpmsg_create_rproc_subdev(struct platform_device *pdev,
 {
 	struct mtk_rpmsg_rproc_subdev *mtk_subdev;
 	struct rpmsg_channel_info rp_info;
+	u32 ipi_id = 0;
 	int ret = 0;
 
 	strncpy(rp_info.name, "mtk_ccd_msgdev", RPMSG_NAME_SIZE);
@@ -503,6 +511,8 @@ mtk_rpmsg_create_rproc_subdev(struct platform_device *pdev,
 	mutex_init(&mtk_subdev->master_listen_lock);
 	atomic_set(&mtk_subdev->listen_obj_rdy, CCD_LISTEN_OBJECT_PREPARING);
 	init_waitqueue_head(&mtk_subdev->master_listen_wq);
+	for (ipi_id = 0; ipi_id < MEPT_FLAG_SIZE; ++ipi_id)
+		set_bit(MEPT_PENDING, &mtk_subdev->mept_flags[ipi_id]);
 	init_waitqueue_head(&mtk_subdev->ccd_listen_wq);
 
 	ccd_msgdev_init();

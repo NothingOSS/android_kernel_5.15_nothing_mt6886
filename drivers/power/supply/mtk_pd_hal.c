@@ -308,9 +308,14 @@ bool pd_hal_is_chip_enable(struct chg_alg_device *alg, enum chg_idx chgidx)
 
 int pd_hal_enable_vbus_ovp(struct chg_alg_device *alg, bool enable)
 {
-	//wy fix me
-	mtk_chg_enable_vbus_ovp(enable);
+	/*mtk_chg_enable_vbus_ovp(enable);*/
+	struct mtk_pd *pd;
 
+	if (alg == NULL)
+		return -EINVAL;
+	pd = dev_get_drvdata(&alg->dev);
+	mtk_chg_set_vbus_ovp(enable, PDC_ID, pd->max_charger_voltage);
+	pd_dbg("%s swovp: %d\n", __func__,pd->max_charger_voltage);
 	return 0;
 }
 
@@ -677,4 +682,44 @@ int pd_hal_get_log_level(struct chg_alg_device *alg)
 	}
 
 	return ret;
+}
+int pd_hal_get_usb_type(void)
+{
+	struct mtk_charger *info = NULL;
+	struct power_supply *chg_psy = NULL;
+	int ret = 0;
+
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
+	if (chg_psy == NULL || IS_ERR(chg_psy)) {
+		pd_err("%s Couldn't get chg_psy\n", __func__);
+		ret = -EINVAL;
+	} else {
+		info = (struct mtk_charger *)power_supply_get_drvdata(chg_psy);
+		if (info == NULL)
+			ret = -EINVAL;
+		else
+			ret = info->usb_type;
+	}
+
+	pd_err("%s type:%d\n", __func__, ret);
+	return ret;
+}
+
+int pd_hal_check_input_current_limit(void)
+{
+	struct power_supply *chg_psy;
+	union power_supply_propval val;
+	int ret;
+
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
+	if (chg_psy == NULL || IS_ERR(chg_psy)) {
+		pd_err("%s Couldn't get chg_psy\n", __func__);
+		ret = -EINVAL;
+	} else {
+
+		ret = power_supply_get_property(chg_psy,
+					 POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT,
+					 &val);
+	}
+	return val.intval;
 }

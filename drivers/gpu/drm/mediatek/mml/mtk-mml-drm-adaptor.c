@@ -951,7 +951,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 			      &submit->buffer.src,
 			      "drm_mml_rdma");
 	if (result) {
-		mml_err("[drm]%s get dma buf fail", __func__);
+		mml_err("[drm]%s get src dma buf fail", __func__);
 		goto err_buf_exit;
 	}
 
@@ -960,7 +960,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 				      &submit->buffer.seg_map,
 				      "drm_mml_rdma_segmap");
 		if (result) {
-			mml_err("[drm]%s get dma buf fail", __func__);
+			mml_err("[drm]%s get seg map dma buf fail", __func__);
 			goto err_buf_exit;
 		}
 	}
@@ -971,7 +971,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 				      &submit->buffer.dest[i],
 				      "drm_mml_wrot");
 		if (result) {
-			mml_err("[drm]%s get dma buf fail", __func__);
+			mml_err("[drm]%s get dest %u dma buf fail", __func__, i);
 			goto err_buf_exit;
 		}
 	}

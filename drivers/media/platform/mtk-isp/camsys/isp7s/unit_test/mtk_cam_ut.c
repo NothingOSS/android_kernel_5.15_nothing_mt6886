@@ -1092,6 +1092,12 @@ static int mtk_cam_ut_master_bind(struct device *dev)
 	if (ut->num_raw) {
 		ut->raw = devm_kcalloc(dev, ut->num_raw, sizeof(*ut->raw),
 				       GFP_KERNEL);
+
+		if (!ut->raw) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    ut->raw = vmalloc(ut->num_raw*sizeof(*ut->raw));
+		}
+
 		if (!ut->raw)
 			return -ENOMEM;
 	}
@@ -1099,6 +1105,12 @@ static int mtk_cam_ut_master_bind(struct device *dev)
 	if (ut->num_yuv) {
 		ut->yuv = devm_kcalloc(dev, ut->num_yuv, sizeof(*ut->yuv),
 				       GFP_KERNEL);
+
+		if (!ut->yuv) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    ut->yuv = vmalloc(ut->num_yuv*sizeof(*ut->yuv));
+		}
+
 		if (!ut->yuv)
 			return -ENOMEM;
 	}
@@ -1112,6 +1124,12 @@ static int mtk_cam_ut_master_bind(struct device *dev)
 	if (ut->num_camsv) {
 		ut->camsv = devm_kcalloc(dev, ut->num_camsv, sizeof(*ut->camsv),
 				       GFP_KERNEL);
+
+		if (!ut->camsv) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    ut->camsv = vmalloc(ut->num_camsv*sizeof(*ut->camsv));
+		}
+
 		if (!ut->camsv)
 			return -ENOMEM;
 	}
@@ -1120,6 +1138,12 @@ static int mtk_cam_ut_master_bind(struct device *dev)
 	if (ut->num_larb) {
 		ut->larb = devm_kcalloc(dev, ut->num_larb, sizeof(*ut->larb),
 					GFP_KERNEL);
+
+		if (!ut->larb) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    ut->larb = vmalloc(ut->num_larb*sizeof(*ut->larb));
+		}
+
 		if (!ut->larb)
 			return -ENOMEM;
 	}

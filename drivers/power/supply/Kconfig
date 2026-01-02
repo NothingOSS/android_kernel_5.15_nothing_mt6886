@@ -84,6 +84,13 @@ config TEST_POWER
 	help
 	  This driver is used for testing. It's safe to say M here.
 
+config NT_USB_TS
+	tristate "USB Temperature"
+	depends on MTK_CHARGER
+	help
+	  Say Y here to enable support for check usb temperature,
+	  This driver is used for monitor usb temperature.
+
 config BATTERY_88PM860X
 	tristate "Marvell 88PM860x battery driver"
 	depends on MFD_88PM860X
@@ -987,6 +994,44 @@ config CHARGER_RT9759
 	  for Mediatek Pump Express 5.0.
 	  It depends on config MTK_CHARGER
 
+config CHARGER_AW32280
+	tristate "Charger Driver for  AW32280 Charger IC"
+	default n
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable AW32280 driver.
+	  It is mainly used as cap divider charger
+	  for Mediatek Pump Express 5.0.
+	  It depends on config MTK_CHARGER
+
+config CHARGER_SC8562
+	tristate "Charger Driver for Southchip SC8562 Charger IC"
+	default n
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable Southchip SC8562 driver.
+	  It is mainly used as cap divider charger
+	  for Mediatek Pump Express 5.0.
+	  It depends on config MTK_CHARGER
+
+config CHARGER_NT
+	tristate "Create NT-PRI file node"
+	default n
+	depends on MTK_CHARGER
+	help
+	  Say Yes to create file node.
+	  It depends on config MTK_CHARGER
+
+config MTK_PPS_SUPPORT
+	tristate "PPS 2:1"
+	depends on MTK_CHARGER
+	help
+	  Fast charging technology using divider charger
+	  to achive better charging ability. It has higher charging efficiency
+	  and has better thermal performance than PE+.
+	  Set Yes to enable PPS
+	  Set No to disable PPS
+	  
 config CHARGER_MT6985_ALPHA_SUPPORT
 	tristate "Specify Alpha Charger Platform is mt6985"
 	help

@@ -10,11 +10,12 @@
 
 
 #define V_CHARGER_MIN 4600000 /* 4.6 V */
-
+#define PD_V_CHARGER_MAX 12000000 /* 12 V */
 /* pd */
 #define PD_VBUS_UPPER_BOUND		10000000	/* uv */
 #define PD_VBUS_LOW_BOUND		5000000	/* uv */
-#define PD_FAIL_CURRENT			500000	/* 500mA */
+//#define PD_FAIL_CURRENT			500000	/* 500mA */
+#define PD_FAIL_CURRENT			100000	/* 100mA */
 
 #define PD_SC_INPUT_CURRENT		3000000	/* 3000mA */
 #define PD_SC_CHARGER_CURRENT	3000000	/* 3000mA */
@@ -121,6 +122,7 @@ struct mtk_pd {
 	int ibus_err;
 	int slave_mivr_diff;
 	int min_charger_voltage;
+	int max_charger_voltage;
 	int pd_stop_battery_soc;
 
 	/* single charger dtsi setting*/
@@ -203,4 +205,6 @@ extern int pd_hal_charger_enable_chip(struct chg_alg_device *alg,
 	enum chg_idx chgidx, bool enable);
 extern int pd_hal_get_uisoc(struct chg_alg_device *alg);
 extern int pd_hal_get_log_level(struct chg_alg_device *alg);
+extern int pd_hal_get_usb_type(void);
+extern int pd_hal_check_input_current_limit(void);
 #endif /* __MTK_PD_H */

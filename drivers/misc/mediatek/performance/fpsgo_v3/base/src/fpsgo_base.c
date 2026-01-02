@@ -39,6 +39,10 @@
 #include <trace/trace.h>
 #include "sched/sched.h"
 
+#if IS_ENABLED(CONFIG_NOTHING_NAMED_THREAD_AFFINITY)
+#include "../../../../../../nothing_performance/nothing_named_thread_affinity.h"
+#endif /* CONFIG_NOTHING_NAMED_THREAD_AFFINITY */
+
 #define TIME_1S  1000000000ULL
 #define TRAVERSE_PERIOD  300000000000ULL
 
@@ -80,6 +84,9 @@ long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 {
 	struct task_struct *p;
 	int retval;
+#if IS_ENABLED(CONFIG_NOTHING_PERFORMANCE_FEATURE)
+	struct cpumask cpus_allowed, new_mask;
+#endif /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
 
 	rcu_read_lock();
 
@@ -99,7 +106,27 @@ long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 	}
 	retval = -EPERM;
 
+#if IS_ENABLED(CONFIG_NOTHING_NAMED_THREAD_AFFINITY)
+	if (is_skip_process_setaffinity(p, in_mask)) {
+		goto out_put_task;
+	}
+#endif /* CONFIG_NOTHING_NAMED_THREAD_AFFINITY */
+
+#if IS_ENABLED(CONFIG_NOTHING_PERFORMANCE_FEATURE)
+	/* Fix cannot control top-app game cpu affinity by cpuset cpus */
+	cpuset_cpus_allowed(p, &cpus_allowed);
+	if (!cpumask_intersects(&cpus_allowed, in_mask)) {
+		goto out_put_task;
+	}
+	cpumask_and(&new_mask, in_mask, &cpus_allowed);
+#endif /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
+
+#if IS_ENABLED(CONFIG_NOTHING_PERFORMANCE_FEATURE)
+	retval = set_cpus_allowed_ptr(p, &new_mask);
+#else /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
 	retval = set_cpus_allowed_ptr(p, in_mask);
+#endif /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
+
 out_put_task:
 	put_task_struct(p);
 	return retval;

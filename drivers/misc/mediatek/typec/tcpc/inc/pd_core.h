@@ -22,7 +22,6 @@
 #undef CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 #undef CONFIG_USB_PD_DISCOVER_CABLE_REQUEST_VCONN
 #undef CONFIG_USB_PD_DISCOVER_CABLE_RETURN_VCONN
-#undef CONFIG_USB_PD_ALT_MODE_SVID
 #undef CONFIG_USB_PD_RESET_CABLE
 #endif	/* CONFIG_TCPC_SOURCE_VCONN */
 
@@ -313,21 +312,22 @@
 	 ((type) << 15) |				\
 	 ((custom) & 0x7FFF))
 
-#define VDO_S(svid, ver, cmd_type, cmd, obj)	\
-	VDO(svid, 1, VDO_SVDM_VERS(ver) | \
+#define VDO_S(svid, ver, ver_min, cmd_type, cmd, obj)	\
+	VDO(svid, 1, VDO_SVDM_VER(ver) | VDO_SVDM_VER_MIN(ver_min) | \
 		VDO_CMDT(cmd_type) | VDO_OPOS(obj) | cmd)
 
-#define VDO_REPLY(ver, cmd_type, request_vdo)	\
-	(VDO_SVDM_VERS(ver) | VDO_CMDT(cmd_type) \
-	| ((request_vdo) & (~0x60C0)))
+#define VDO_REPLY(ver, ver_min, cmd_type, request_vdo)	\
+	(VDO_SVDM_VER(ver) | VDO_SVDM_VER_MIN(ver_min) | VDO_CMDT(cmd_type) \
+	| ((request_vdo) & (~0x78E0)))
 
 #define SVDM_REV10	0
 #define SVDM_REV20	1
 
-#define VDO_SVDM_TYPE     (1 << 15)
-#define VDO_SVDM_VERS(x)  (x << 13)
-#define VDO_OPOS(x)       (x << 8)
-#define VDO_CMDT(x)       (x << 6)
+#define VDO_SVDM_TYPE		(1 << 15)
+#define VDO_SVDM_VER(x)		(x << 13)
+#define VDO_SVDM_VER_MIN(x)	(x << 11)
+#define VDO_OPOS(x)		(x << 8)
+#define VDO_CMDT(x)		(x << 6)
 
 #define CMDT_INIT     0
 #define CMDT_RSP_ACK  1
@@ -335,7 +335,7 @@
 #define CMDT_RSP_BUSY 3
 
 #define CMD_DISCOVER_IDENT  1
-#define CMD_DISCOVER_SVID   2
+#define CMD_DISCOVER_SVIDS   2
 #define CMD_DISCOVER_MODES  3
 #define CMD_ENTER_MODE      4
 #define CMD_EXIT_MODE       5
@@ -345,6 +345,7 @@
 
 #define PD_VDO_VID(vdo)  ((vdo) >> 16)
 #define PD_VDO_SVDM(vdo) (((vdo) >> 15) & 1)
+#define PD_VDO_VER_MIN(vdo) (((vdo) >> 11) & 0x3)
 #define PD_VDO_OPOS(vdo) (((vdo) >> 8) & 0x7)
 #define PD_VDO_CMD(vdo)  ((vdo) & 0x1f)
 #define PD_VDO_CMDT(vdo) (((vdo) >> 6) & 0x3)
@@ -359,17 +360,9 @@
  * [1] :: Identitiy header
  * [2] :: Cert Stat VDO
  * [3] :: Product VDO
- * [4] :: Cable / AMA VDO
+ * [4] :: Cable VDO
  *
  */
-
-#define VDO_INDEX_HDR     0
-#define VDO_INDEX_IDH     1
-#define VDO_INDEX_CSTAT   2
-#define VDO_INDEX_PRODUCT 3
-#define VDO_INDEX_CABLE   4
-#define VDO_INDEX_AMA     4
-#define VDO_I(name) VDO_INDEX_##name
 
 /*
  * SVDM Identity Header
@@ -454,12 +447,13 @@
 #define CABLE_CTYPE 2
 #define CABLE_PLUG       0
 #define CABLE_RECEPTACLE 1
-#define CABLE_CURR_1A5   0
 #define CABLE_CURR_3A    1
 #define CABLE_CURR_5A    2
-#define CABLE_USBSS_U2_ONLY  0
-#define CABLE_USBSS_U31_GEN1 1
-#define CABLE_USBSS_U31_GEN2 2
+#define CABLE_USBSS_U2_ONLY	0
+#define CABLE_USBSS_U32_GEN1	1
+#define CABLE_USBSS_U32_GEN2	2
+#define CABLE_USBSS_U4_GEN3	3
+#define CABLE_USBSS_U4_GEN4	4
 #define VDO_CABLE(hw, fw, cbl, gdr, lat, term, tx1d,\
 			tx2d, rx1d, rx2d, cur, vps, sopp, usbss) \
 	(((hw) & 0x7) << 28 | ((fw) & 0x7) << 24 | ((cbl) & 0x3) << 18	\
@@ -468,43 +462,8 @@
 	 | ((cur) & 0x3) << 5 | (vps) << 4 | (sopp) << 3		\
 	 | ((usbss) & 0x7))
 
-#define PD_VDO_CABLE_CURR(x)	(((x) >> 5) & 0x03)
-
-/*
- * AMA VDO
- * ---------
- * <31:28> :: Cable HW version
- * <27:24> :: Cable FW version
- * <23:12> :: SBZ
- * <11>    :: SSTX1 Directionality support (0b == fixed, 1b == cfgable)
- * <10>    :: SSTX2 Directionality support
- * <9>     :: SSRX1 Directionality support
- * <8>     :: SSRX2 Directionality support
- * <7:5>   :: Vconn power
- * <4>     :: Vconn power required
- * <3>     :: Vbus power required
- * <2:0>   :: USB SS Signaling support
- */
-#define VDO_AMA(hw, fw, tx1d, tx2d, rx1d, rx2d, vcpwr, vcr, vbr, usbss) \
-	(((hw) & 0x7) << 28 | ((fw) & 0x7) << 24			\
-	 | (tx1d) << 11 | (tx2d) << 10 | (rx1d) << 9 | (rx2d) << 8	\
-	 | ((vcpwr) & 0x3) << 5 | (vcr) << 4 | (vbr) << 3		\
-	 | ((usbss) & 0x7))
-
-#define PD_VDO_AMA_VCONN_REQ(vdo) (((vdo) >> 4) & 1)
-#define PD_VDO_AMA_VBUS_REQ(vdo)  (((vdo) >> 3) & 1)
-
-#define AMA_VCONN_PWR_1W   0
-#define AMA_VCONN_PWR_1W5  1
-#define AMA_VCONN_PWR_2W   2
-#define AMA_VCONN_PWR_3W   3
-#define AMA_VCONN_PWR_4W   4
-#define AMA_VCONN_PWR_5W   5
-#define AMA_VCONN_PWR_6W   6
-#define AMA_USBSS_U2_ONLY  0
-#define AMA_USBSS_U31_GEN1 1
-#define AMA_USBSS_U31_GEN2 2
-#define AMA_USBSS_BBONLY   3
+#define PD_VDO_CABLE_CURR(x)		(((x) >> 5) & 0x03)
+#define PD_VDO_CABLE_USB_SIGNAL(x)	((x) & 0x07)
 
 /*
  * SVDM Discover SVIDs request -> response
@@ -521,55 +480,49 @@
 /*
  * DisplayPort modes capabilities
  * -------------------------------
- * <31:24> : SBZ
+ * <31:30> : VDO Version
+ * <29:24> : SBZ
  * <23:16> : UFP_D pin assignment supported
  * <15:8>  : DFP_D pin assignment supported
  * <7>     : USB 2.0 signaling (0b=yes, 1b=no)
  * <6>     : Plug | Receptacle (0b == plug, 1b == receptacle)
  * <5:2>   : xxx1: Supports DPv1.3, xx1x Supports USB Gen 2 signaling
  *           Other bits are reserved.
- * <1:0>   : signal direction ( 00b=rsv, 01b=sink, 10b=src 11b=both )
+ * <1:0>   : Port Capability (00b=rsv, 01b=sink, 10b=src 11b=both)
  */
-#define VDO_MODE_DP(snkp, srcp, usb, gdr, sign, sdir)			\
-	(((snkp) & 0xff) << 16 | ((srcp) & 0xff) << 8			\
-	 | ((usb) & 1) << 7 | ((gdr) & 1) << 6 | ((sign) & 0xF) << 2	\
-	 | ((sdir) & 0x3))
-#define PD_DP_PIN_CAPS(x) ((((x) >> 6) & 0x1) ? (((x) >> 16) & 0x3f)	\
-			   : (((x) >> 8) & 0x3f))
+#define VDO_MODE_DP(snkp, srcp, usb2, gdr, sig, cap)			\
+	(((snkp) & 0xff) << 16 | ((srcp) & 0xff) << 8 | ((usb2) & 1) << 7 |\
+	 ((gdr) & 1) << 6 | ((sig) & 0xf) << 2 | ((cap) & 0x3))
 
-#define MODE_DP_PIN_A 0x01
-#define MODE_DP_PIN_B 0x02
-#define MODE_DP_PIN_C 0x04
-#define MODE_DP_PIN_D 0x08
-#define MODE_DP_PIN_E 0x10
-#define MODE_DP_PIN_F 0x20
+#define MODE_DP_PIN_C			0x04
+#define MODE_DP_PIN_D			0x08
+#define MODE_DP_PIN_E			0x10
 
-/* Pin configs B/D/F support multi-function */
-#define MODE_DP_PIN_MF_MASK 0x2a
-/* Pin configs A/B support BR2 signaling levels */
-#define MODE_DP_PIN_BR2_MASK 0x3
-/* Pin configs C/D/E/F support DP signaling levels */
-#define MODE_DP_PIN_DP_MASK 0x3c
+#define MODE_DP_SNK			0x1
+#define MODE_DP_SRC			0x2
+#define MODE_DP_BOTH			0x3
 
-#define MODE_DP_V13  0x1
-#define MODE_DP_GEN2 0x2
+#define MODE_DP_PORT_CAP(mode)		(mode & 0x03)
+#define MODE_DP_SIGNAL_SUPPORT(mode)	((mode >> 2) & 0x0f)
+#define MODE_DP_RECEPT(mode)		((mode >> 6) & 0x01)
 
-#define MODE_DP_SNK  0x1
-#define MODE_DP_SRC  0x2
-#define MODE_DP_BOTH 0x3
-
-#define MODE_DP_PORT_CAP(raw)		(raw & 0x03)
-#define MODE_DP_SIGNAL_SUPPORT(raw)	((raw>>2) & 0x0f)
-#define MODE_DP_RECEPT(mode)	((mode >> 6) & 0x01)
-
-#define MODE_DP_PIN_DFP(mode)	((mode >> 8) & 0xff)
-#define MODE_DP_PIN_UFP(mode)	((mode >> 16) & 0xff)
+#define MODE_DP_PIN_DFP(mode)		((mode >> 8) & 0xff)
+#define MODE_DP_PIN_UFP(mode)		((mode >> 16) & 0xff)
 
 #define PD_DP_DFP_D_PIN_CAPS(x)	(MODE_DP_RECEPT(x) ? \
 		MODE_DP_PIN_DFP(x) : MODE_DP_PIN_UFP(x))
 
 #define PD_DP_UFP_D_PIN_CAPS(x)	(MODE_DP_RECEPT(x) ? \
 		MODE_DP_PIN_UFP(x) : MODE_DP_PIN_DFP(x))
+
+#define MODE_DP_UHBR13_5(mode)		((mode >> 26) & 0x01)
+
+#define MODE_DP_ACTIVE_COMPONENT(mode)	((mode >> 28) & 0x03)
+
+#define MODE_DP_VDO_VERSION(mode)	((mode >> 30) & 0x03)
+
+#define MODE_DP_VDO_VERSION_SHFT	30
+#define MODE_DP_VDO_VERSION_MASK	(3 << MODE_DP_VDO_VERSION_SHFT)
 
 /*
  * DisplayPort Status VDO
@@ -591,8 +544,8 @@
 	 | ((usbc) & 1) << 5 | ((mf) & 1) << 4 | ((en) & 1) << 3	\
 	 | ((lp) & 1) << 2 | ((conn & 0x3) << 0))
 
-#define PD_VDO_DPSTS_HPD_IRQ(x) (((x) >> 8) & 1)
-#define PD_VDO_DPSTS_HPD_LVL(x) (((x) >> 7) & 1)
+#define PD_VDO_DPSTS_IRQ_HPD(x) (((x) >> 8) & 1)
+#define PD_VDO_DPSTS_HPD_STATE(x) (((x) >> 7) & 1)
 #define PD_VDO_DPSTS_MF_PREF(x) (((x) >> 4) & 1)
 
 #define PD_VDO_DPSTS_CONNECT(x)	(((x) >> 0) & 0x03)
@@ -607,7 +560,7 @@
 #define DPSTS_DP_ENABLED		(1<<3)
 #define DPSTS_DP_MF_PREF		(1<<4)
 #define DPSTS_DP_USB_CONFIG		(1<<5)
-#define DPSTS_DP_EXIT_ALT_MODE	(1<<6)
+#define DPSTS_DP_EXIT_ALT_MODE		(1<<6)
 
 /* UFP_D only */
 #define DPSTS_DP_HPD_STATUS		(1<<7)
@@ -630,31 +583,30 @@
  * <1:0>   : cfg : 00 == USB, 01 == DFP_D, 10 == UFP_D, 11 == reserved
  */
 
-#define DP_CONFIG_USB				0
-#define DP_CONFIG_DFP_D				1
-#define DP_CONFIG_UFP_D				2
+#define DP_CONFIG_USB			0
+#define DP_CONFIG_DFP_D			1
+#define DP_CONFIG_UFP_D			2
 
-#define VDO_DP_CFG(pin, sig, cfg) \
-	(((pin) & 0xff) << 8 | ((sig) & 0xf) << 2 | ((cfg) & 0x3))
+#define DP_CONFIG_AC_PASSIVE		0
+#define DP_CONFIG_AC_ACTIVE_RETIMER	1
+#define DP_CONFIG_AC_ACTIVE_REDRIVER	2
+#define DP_CONFIG_AC_OPTICAL		3
 
-#define VDO_DP_DFP_CFG(pin, sig) VDO_DP_CFG(pin, sig, DP_CONFIG_DFP_D)
-#define VDO_DP_UFP_CFG(pin, sig) VDO_DP_CFG(pin, sig, DP_CONFIG_UFP_D)
+#define VDO_DP_CFG(ac, uhbr13_5, pin, sig, cfg)	\
+	((ac) << 28 | (uhbr13_5) << 26 | ((pin) & 0xff) << 8 |\
+	 ((cfg) ? ((sig) & 0xf) << 2 : 0) | (cfg) & 0x3)
 
-#define PD_DP_CFG_ROLE(x)	(x & 0x3)
-#define PD_DP_CFG_USB(x)	((x & 0x3) == DP_CONFIG_USB)
-#define PD_DP_CFG_DFP_D(x) ((x & 0x3) == DP_CONFIG_DFP_D)
-#define PD_DP_CFG_UFP_D(x) ((x & 0x3) == DP_CONFIG_UFP_D)
-#define PD_DP_CFG_DPON(x) (PD_DP_CFG_DFP_D(x) | PD_DP_CFG_UFP_D(x))
+#define PD_DP_CFG_ROLE(x)		(x & 0x3)
+#define PD_DP_CFG_DFP_D(x)		(PD_DP_CFG_ROLE(x) == DP_CONFIG_DFP_D)
 
-#define DP_SIG_DPV13	(0x01)
-#define DP_SIG_GEN2	(0x02)
+#define DP_SIG_HBR3			(0x01)
+#define DP_SIG_UHBR10			(0x02)
+#define DP_SIG_UHBR20			(0x04)
+#define DP_CFG_SIGNAL(x)		(((x) >> 2) & 0xf)
 
-#define DP_PIN_ASSIGN_SUPPORT_A		(1 << 0)
-#define DP_PIN_ASSIGN_SUPPORT_B		(1 << 1)
 #define DP_PIN_ASSIGN_SUPPORT_C		(1 << 2)
 #define DP_PIN_ASSIGN_SUPPORT_D		(1 << 3)
 #define DP_PIN_ASSIGN_SUPPORT_E		(1 << 4)
-#define DP_PIN_ASSIGN_SUPPORT_F		(1 << 5)
 
 /*
  * Get the pin assignment mask
@@ -662,14 +614,19 @@
  * get the former sink pin assignment we used to be in <23:16>.
  */
 
-#define PD_DP_CFG_PIN(x) (((x) >> 8) & 0xff)
+#define DP_CFG_PIN(x)		(((x) >> 8) & 0xff ?\
+				((x) >> 8) & 0xff : ((x) >> 16) & 0xff)
+
+#define DP_CFG_VDO_VERSION_SHFT	30
 
 /* USB-IF SVIDs */
 #define USB_SID_PD		0xff00	/* power delivery */
 #define USB_SID_DISPLAYPORT	0xff01	/* display port */
+#define USB_SID_TBT		0x8087	/* Thunderbolt */
 #define USB_VID_RICHTEK		0x29cf  /* demo uvdm */
-#define USB_VID_DIRECTCHARGE	0x29cf  /* direct charge */
 #define USB_VID_MQP		0x1748
+
+#define DP_ALT_MODE_CABLE_SVIDS_CNT	2
 
 /* PD counter definitions */
 #define PD_MESSAGE_ID_COUNT	7
@@ -678,6 +635,7 @@
 #define PD_WAIT_RETRY_COUNT		1
 #define PD_DISCOVER_ID_COUNT	3	/* max : 20 */
 #define PD_DISCOVER_ID30_COUNT	2	/* max : 20 */
+#define PD_RESPONSE_ID30_COUNT	3
 
 enum {
 	PD_WAIT_VBUS_DISABLE = 0,
@@ -698,18 +656,19 @@ struct svdm_mode {
 };
 
 struct svdm_svid_ops;
+struct svdm_svid_list {
+	uint8_t cnt;
+	uint16_t svids[VDO_MAX_SVID_NR];
+};
+
 struct svdm_svid_data {
 	bool exist;
 	uint16_t svid;
+	struct svdm_svid_list cable_svids;
 	uint8_t active_mode;
 	struct svdm_mode local_mode;
 	struct svdm_mode remote_mode;
 	const struct svdm_svid_ops *ops;
-};
-
-struct svdm_svid_list {
-	uint8_t cnt;
-	uint16_t svids[VDO_MAX_SVID_NR];
 };
 
 struct pd_port;
@@ -724,6 +683,23 @@ struct dp_data {
 
 	uint32_t local_config;
 	uint32_t remote_config;
+
+	uint8_t usb_signal;
+	bool active_cable;
+	uint8_t cable_signal;
+	bool uhbr13_5;
+	uint8_t active_component;
+
+	uint16_t cable_svids[DP_ALT_MODE_CABLE_SVIDS_CNT];
+	uint8_t cable_svids_cnt;
+	uint8_t cable_svids_idx;
+};
+
+enum {
+	CABLE_DISCOVERED_NONE = 0,
+	CABLE_DISCOVERED_ID,
+	CABLE_DISCOVERED_SVIDS,
+	CABLE_DISCOVERED_MODES,
 };
 
 struct pe_data {		/* reset after detached */
@@ -735,7 +711,6 @@ struct pe_data {		/* reset after detached */
 
 	bool pe_ready;
 	bool reset_vdm_state;
-	bool power_cable_present;
 	bool during_swap;	/* pr or dr swap */
 
 #if CONFIG_USB_PD_REV30
@@ -787,6 +762,7 @@ struct pe_data {		/* reset after detached */
 	uint32_t partner_vdos[VDO_MAX_NR];
 #endif	/* CONFIG_USB_PD_KEEP_PARTNER_ID */
 
+	uint8_t cable_discovered_state;
 	uint32_t cable_vdos[VDO_MAX_NR];
 
 	struct pd_port_power_caps remote_src_cap;
@@ -811,15 +787,7 @@ struct pe_data {		/* reset after detached */
 #endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
 #endif	/* CONFIG_USB_PD_REV30 */
 
-#if CONFIG_USB_PD_ALT_MODE_RTDC
-#if CONFIG_USB_PD_REV30_PPS_SINK
-	bool dc_pps_mode;
-#endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
-#endif	/* CONFIG_USB_PD_ALT_MODE_RTDC */
-
-#if CONFIG_USB_PD_ALT_MODE
 	struct dp_data dp_data;
-#endif	/* CONFIG_USB_PD_ALT_MODE */
 
 #if CONFIG_USB_PD_REV30_STATUS_LOCAL
 	uint8_t pd_status_event;
@@ -829,6 +797,10 @@ struct pe_data {		/* reset after detached */
 	bool pd_unexpected_event_pending;
 	struct pd_event pd_unexpected_event;
 #endif	/* CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG */
+
+	bool request_rejected;
+
+	uint8_t pd_response_id30_cnt;
 };
 
 #if CONFIG_USB_PD_REV30_BAT_INFO
@@ -847,9 +819,20 @@ struct pd_country_authority {
 };
 #endif /* CONFIG_USB_PD_REV30_COUNTRY_AUTHORITY */
 
+struct dpm_pdo_info_t {
+	uint8_t type;
+	uint8_t apdo_type;
+	uint8_t pwr_limit;
+	int vmin;
+	int vmax;
+	int uw;
+	int ma;
+};
+
 struct pd_port {
 	struct tcpc_device *tcpc;
 	struct mutex pd_lock;
+	struct mutex rxbuf_lock;
 
 	/* PD */
 	uint8_t state_machine;
@@ -871,20 +854,17 @@ struct pd_port {
 	uint8_t error_recovery_once;
 #endif	/* CONFIG_USB_PD_ERROR_RECOVERY_ONCE */
 
-#if CONFIG_USB_PD_REV30
-	struct wakeup_source *pps_request_wake_lock;
-	wait_queue_head_t pps_request_wait_que;
-	atomic_t pps_request;
-	struct task_struct *pps_request_task;
 #if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
 	uint8_t pd_revision[2];
 #endif	/* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
-#endif	/* CONFIG_USB_PD_REV30 */
+
+	uint8_t svdm_ver_min[2];
 
 #if CONFIG_USB_PD_IGNORE_PS_RDY_AFTER_PR_SWAP
 	uint8_t msg_id_pr_swap_last;
 #endif	/* CONFIG_USB_PD_IGNORE_PS_RDY_AFTER_PR_SWAP */
 
+	struct dpm_pdo_info_t last_sink_pdo_info;
 	uint32_t last_rdo;
 
 	uint8_t id_vdo_nr;
@@ -907,7 +887,6 @@ struct pd_port {
 	int request_v_apdo;
 	int request_i_apdo;
 	bool request_apdo;
-	bool request_apdo_new;
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 
 	struct pd_port_power_caps local_src_cap;
@@ -921,17 +900,17 @@ struct pd_port {
 
 	uint16_t mode_svid;
 	uint8_t mode_obj_pos;
+	uint16_t cable_mode_svid;
+	uint8_t cable_mode_obj_pos;
+	uint16_t cable_svid_to_discover;
 
 	uint32_t dpm_caps;
 
 	uint8_t dpm_charging_policy;
 	uint8_t dpm_charging_policy_default;
 
-/* ALT Mode */
-#if CONFIG_USB_PD_ALT_MODE
 	uint8_t dp_first_connected;
 	uint8_t dp_second_connected;
-#endif	/* CONFIG_USB_PD_ALT_MODE */
 
 #if CONFIG_USB_PD_CUSTOM_VDM
 	bool uvdm_wait_resp;
@@ -940,18 +919,9 @@ struct pd_port {
 	uint32_t uvdm_data[PD_DATA_OBJ_SIZE];
 #endif	/* CONFIG_USB_PD_CUSTOM_VDM */
 
-#if CONFIG_USB_PD_ALT_MODE_RTDC
-	uint8_t dc_dfp_state;
-	uint32_t dc_pass_code;
-#endif	/* CONFIG_USB_PD_ALT_MODE_RTDC */
-
 #if CONFIG_USB_PD_CUSTOM_DBGACC
 	bool custom_dbgacc;
 #endif	/* CONFIG_USB_PD_CUSTOM_DBGACC */
-
-#if CONFIG_USB_PD_RICHTEK_UVDM
-	bool richtek_init_done;
-#endif	/* CONFIG_USB_PD_RICHTEK_UVDM */
 
 	struct tcp_dpm_event tcp_event;
 	uint8_t tcp_event_id_1st;
@@ -995,6 +965,7 @@ struct pd_port {
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	struct pd_source_cap_ext src_cap_ext;
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+	struct pd_sink_cap_ext snk_cap_ext;
 
 #if CONFIG_USB_PD_REV30_MFRS_INFO_LOCAL
 	struct pd_manufacturer_info mfrs_info;
@@ -1028,19 +999,12 @@ struct pd_port {
 	struct work_struct fg_bat_work;
 	struct notifier_block fg_bat_nb;
 #endif /* CONFIG_RECV_BAT_ABSENT_NOTIFY */
-
-	uint8_t cap_miss_match; /* For src_cap miss match */
-#if IS_ENABLED(CONFIG_WAIT_TX_RETRY_DONE)
-	struct completion tx_done;
-#endif /* CONFIG_WAIT_TX_RETRY_DONE */
 };
 
-#if CONFIG_USB_PD_ALT_MODE
 static inline struct dp_data *pd_get_dp_data(struct pd_port *pd_port)
 {
 	return &pd_port->pe_data.dp_data;
 }
-#endif	/* CONFIG_USB_PD_ALT_MODE */
 
 extern void pe_data_init(struct pe_data *pe_data);
 extern int pd_core_init(struct tcpc_device *tcpc);
@@ -1205,7 +1169,6 @@ uint32_t pd_reset_pdo_power(struct tcpc_device *tcpc,
 void pd_extract_rdo_power(
 	uint32_t rdo, uint32_t pdo, uint32_t *op_curr, uint32_t *max_curr);
 
-uint32_t pd_get_cable_curr_lvl(struct pd_port *pd_port);
 uint32_t pd_get_cable_current_limit(struct pd_port *pd_port);
 
 
@@ -1232,10 +1195,9 @@ extern void pd_notify_pe_send_hard_reset(struct pd_port *pd_port);
 extern void pd_notify_pe_idle(struct pd_port *pd_port);
 extern void pd_notify_pe_wait_vbus_once(struct pd_port *pd_port, int wait_evt);
 extern void pd_notify_pe_error_recovery(struct pd_port *pd_port);
-extern void pd_notify_pe_execute_pr_swap(
-			struct pd_port *pd_port, bool start_swap);
-extern void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port);
+extern void pd_notify_pe_execute_pr_swap(struct pd_port *pd_port);
 extern void pd_notify_pe_reset_protocol(struct pd_port *pd_port);
+extern void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port);
 extern void pd_noitfy_pe_bist_mode(struct pd_port *pd_port, uint8_t mode);
 extern void pd_notify_pe_pr_changed(struct pd_port *pd_port);
 extern void pd_notify_pe_snk_explicit_contract(struct pd_port *pd_port);
@@ -1405,10 +1367,10 @@ static inline bool vdm_put_pe_event(
 	return pd_put_vdm_event(tcpc, &evt, false);
 }
 
-static inline bool vdm_put_dpm_discover_cable_event(struct pd_port *pd_port)
+static inline bool vdm_put_dpm_discover_cable_id_event(struct pd_port *pd_port)
 {
 	/* waiting for dpm_ack event */
-	return pd_put_tcp_vdm_event(pd_port, TCP_DPM_EVT_DISCOVER_CABLE);
+	return pd_put_tcp_vdm_event(pd_port, TCP_DPM_EVT_DISCOVER_CABLE_ID);
 }
 
 static inline bool pd_put_hw_event(
@@ -1507,6 +1469,9 @@ int pd_disable_bist_mode2(struct pd_port *pd_port);
 
 /* ---- Send / Reply SVDM Command ----*/
 
+uint8_t pd_get_svdm_ver_min(
+	struct pd_port *pd_port, enum tcpm_transmit_type sop_type);
+
 /* Auto enable timer if success */
 int pd_send_svdm_request(struct pd_port *pd_port,
 	uint8_t sop_type, uint16_t svid, uint8_t vdm_cmd,
@@ -1529,7 +1494,7 @@ static inline int pd_send_vdm_discover_svids(
 	struct pd_port *pd_port, uint8_t sop_type)
 {
 	return pd_send_svdm_request(pd_port, sop_type, USB_SID_PD,
-		CMD_DISCOVER_SVID, 0, 0, NULL, PD_TIMER_VDM_RESPONSE);
+		CMD_DISCOVER_SVIDS, 0, 0, NULL, PD_TIMER_VDM_RESPONSE);
 }
 
 static inline int pd_send_vdm_discover_modes(
@@ -1611,6 +1576,8 @@ enum {	/* pd_traffic_control */
 void pd_set_sink_tx(struct pd_port *pd_port, uint8_t cc);
 void pd_sync_sop_spec_revision(struct pd_port *pd_port);
 void pd_sync_sop_prime_spec_revision(struct pd_port *pd_port, uint8_t rev);
+void pd_sync_svdm_ver_min(
+	struct pd_port *pd_port, enum tcpm_transmit_type sop_type, uint8_t ver);
 bool pd_is_multi_chunk_msg(struct pd_port *pd_port);
 
 static inline uint8_t pd_get_fix_battery_nr(struct pd_port *pd_port)

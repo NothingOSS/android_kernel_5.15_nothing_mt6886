@@ -874,6 +874,12 @@ static int mtk_ut_camsv_of_probe(struct platform_device *pdev,
 	if (camsv->num_clks) {
 		camsv->clks = devm_kcalloc(dev, camsv->num_clks,
 						sizeof(*camsv->clks), GFP_KERNEL);
+
+		if (!camsv->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    camsv->clks = vmalloc(camsv->num_clks*sizeof(*camsv->clks));
+		}
+
 		if (!camsv->clks)
 			return -ENOMEM;
 	}

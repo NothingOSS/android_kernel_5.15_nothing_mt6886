@@ -64,8 +64,10 @@ static struct notifier_block mddp_netdev_notifier __read_mostly = {
 
 void mddp_netdev_notifier_init(void)
 {
-	if (register_netdevice_notifier(&mddp_netdev_notifier) == 0)
+	if (!mddp_netdev_notifier_is_init &&
+			(register_netdevice_notifier(&mddp_netdev_notifier) == 0)) {
 		mddp_netdev_notifier_is_init = 1;
+	}
 }
 
 void mddp_netdev_notifier_exit(void)
@@ -127,31 +129,6 @@ int32_t mddp_on_enable(enum mddp_app_type_e in_type)
 	return 0;
 }
 
-int32_t mddp_on_disable(enum mddp_app_type_e in_type)
-{
-	struct mddp_app_t      *app;
-	uint32_t                type;
-	uint8_t                 idx;
-
-	if (in_type != MDDP_APP_TYPE_ALL)
-		return -EINVAL;
-
-	/*
-	 * MDDP DISABLE command.
-	 */
-	for (idx = 0; idx < MDDP_MOD_CNT; idx++) {
-		type = mddp_sm_module_list_s[idx];
-		app = mddp_get_app_inst(type);
-		if (!(app->feature & MDDP_FEATURE_MDDP_WH))
-			continue;
-		mddp_sm_wait_pre(app);
-		mddp_sm_on_event(app, MDDP_EVT_FUNC_DISABLE);
-		mddp_sm_wait(app, MDDP_EVT_FUNC_DISABLE);
-	}
-
-	return 0;
-}
-
 int32_t mddp_on_activate(enum mddp_app_type_e type,
 		uint8_t *ul_dev_name, uint8_t *dl_dev_name)
 {
@@ -163,7 +140,7 @@ int32_t mddp_on_activate(enum mddp_app_type_e type,
 
 	// NG. app is not configured!
 	app = mddp_get_app_inst(type);
-	if (!app->is_config)
+	if ((!app->is_config) || (app->state == MDDP_STATE_DISABLED))
 		return -EINVAL;
 
 	if (!(app->feature & MDDP_FEATURE_MDDP_WH))
@@ -220,6 +197,40 @@ int32_t mddp_on_deactivate(enum mddp_app_type_e type)
 	mddp_sm_wait_pre(app);
 	mddp_sm_on_event(app, MDDP_EVT_FUNC_DEACT);
 	mddp_sm_wait(app, MDDP_EVT_FUNC_DEACT);
+
+	return 0;
+}
+
+int32_t mddp_on_disable(enum mddp_app_type_e in_type)
+{
+	struct mddp_app_t      *app;
+	uint32_t                type;
+	uint8_t                 idx;
+
+	if (in_type != MDDP_APP_TYPE_ALL)
+		return -EINVAL;
+
+	/* If MDDP is not deactivated,
+	 * Deactivate first to avoid state machine corruption
+	 */
+	if (mddp_f_dev_is_wan_lan_dev()) {
+		int32_t ret = 0;
+
+		ret = mddp_on_deactivate(MDDP_APP_TYPE_WH);
+	}
+
+	/*
+	 * MDDP DISABLE command.
+	 */
+	for (idx = 0; idx < MDDP_MOD_CNT; idx++) {
+		type = mddp_sm_module_list_s[idx];
+		app = mddp_get_app_inst(type);
+		if (!(app->feature & MDDP_FEATURE_MDDP_WH))
+			continue;
+		mddp_sm_wait_pre(app);
+		mddp_sm_on_event(app, MDDP_EVT_FUNC_DISABLE);
+		mddp_sm_wait(app, MDDP_EVT_FUNC_DISABLE);
+	}
 
 	return 0;
 }

@@ -255,11 +255,14 @@ static int lm3643_enable_ctrl(struct lm3643_flash *flash,
 	pr_info_ratelimited("%s led:%d enable:%d", __func__, led_no, on);
 
 	flashlight_kicker_pbm(on);
+
+	#ifdef CONFIG_MTK_FLASHLIGHT_PT
 	if (flashlight_pt_is_low()) {
 		pr_info_ratelimited("pt is low\n");
 		return 0;
 	}
-
+	#endif
+	
 	if (led_no == LM3643_LED0) {
 		if (on)
 			rval = regmap_update_bits(flash->regmap,

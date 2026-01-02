@@ -287,3 +287,25 @@ void mddp_f_dev_del_wan_dev(char *dev_name)
 			__func__, dev_name, i,
 			mddp_f_wan_dev_cnt_g);
 }
+
+bool mddp_f_dev_is_wan_lan_dev(void)
+{
+	bool exist = false;
+	int i;
+
+	for (i = 0; i < MDDP_MAX_WAN_DEV_NUM; i++) {
+		if (mddp_f_wan_dev[i].is_valid == true) {
+			exist = true;
+			return exist;
+		}
+	}
+
+	for (i = 0; i < MDDP_MAX_LAN_DEV_NUM; i++) {
+		if (mddp_f_lan_dev[i].is_valid == true) {
+			exist = true;
+			return exist;
+		}
+	}
+
+	return exist;
+}

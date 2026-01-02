@@ -212,7 +212,14 @@ void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
 			if (ret < 0)
 				value = 0;
 		}
+#ifdef NOTH_FACTORY_BUILD
+		if (i == 14)
+			tmp_opt[i].val = 0;
+		else
+			tmp_opt[i].val = value;
+#else
 		tmp_opt[i].val = value;
+#endif
 		DDPINFO("%s %d\n", tmp_opt[i].desc, tmp_opt[i].val);
 	}
 

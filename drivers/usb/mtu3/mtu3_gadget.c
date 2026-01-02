@@ -8,11 +8,19 @@
  */
 
 #include <linux/usb/composite.h>
+#include <linux/power_supply.h>
 
 #include "mtu3.h"
 #include "mtu3_trace.h"
 
 #include "u_fs.h"
+
+int g_fake_usb_checking = 0;
+int get_fake_usb_checking(void)
+{
+	return g_fake_usb_checking;
+}
+EXPORT_SYMBOL(get_fake_usb_checking);
 
 /* workaround for f_fs use after free issue */
 struct ffs_ep {
@@ -782,10 +790,107 @@ static int mtu3_gadget_stop(struct usb_gadget *g)
 
 	if (mtu->ssusb->dr_mode == USB_DR_MODE_PERIPHERAL)
 		mtu3_stop(mtu);
+	cancel_delayed_work(&mtu->fake_usb_work);
+	mtu->is_fake_usb = 0;
+	g_fake_usb_checking = 0;
 
 	spin_unlock_irqrestore(&mtu->lock, flags);
 
 	synchronize_irq(mtu->irq);
+	return 0;
+}
+
+#define	FAKE_USB_DETECT_DELAY_MS	15000
+static int mtu3_usb_is_online(struct mtu3 *mtu)
+{
+	int ret;
+	union power_supply_propval pval;
+	union power_supply_propval tval;
+	struct power_supply *psy;
+
+	psy = power_supply_get_by_name("primary_chg");
+	if (psy == NULL)
+		return 0;
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_ONLINE, &pval);
+	if (ret < 0)
+		return 0;
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_USB_TYPE, &tval);
+	if (ret < 0)
+		return 0;
+
+	dev_dbg(mtu->dev, "online=%d, type=%d\n", pval.intval, tval.intval);
+	if (pval.intval && (tval.intval == POWER_SUPPLY_USB_TYPE_SDP ||
+			tval.intval == POWER_SUPPLY_USB_TYPE_CDP))
+		return 1;
+	else
+		return 0;
+}
+
+static void mtu3_fake_usb_work(struct work_struct *work)
+{
+	struct mtu3 *mtu = container_of(work, struct mtu3, fake_usb_work.work);
+
+	if (mtu && mtu3_usb_is_online(mtu)) {
+		if (mtu->g.state >= USB_STATE_ADDRESS) {
+			mtu->is_fake_usb = 0;
+			/*
+			 * For real usb, udc driver will call draw_work, did not call here.
+			 */
+		} else {
+			mtu->is_fake_usb = 1;
+			/* fake usb need call draw_work to open powerpath */
+			queue_work(system_power_efficient_wq, &mtu->draw_work);
+		}
+		g_fake_usb_checking = 0;
+	}
+}
+
+static void mtu3_vbus_draw_work(struct work_struct *data)
+{
+	struct mtu3 *mtu = container_of(data, struct mtu3, draw_work);
+	static struct power_supply *chg_psy;
+	union power_supply_propval val;
+	struct power_supply *usb_psy = NULL;
+
+	dev_info(mtu->dev, "%s %d mA\n", __func__, mtu->vbus_draw);
+
+	if (chg_psy == NULL)
+		chg_psy = power_supply_get_by_name("mtk-master-charger");
+	if (chg_psy == NULL || IS_ERR(chg_psy)) {
+		dev_info(mtu->dev, "%s Couldn't get chg_psy\n", __func__);
+		return;
+	}
+	if (mtu3_usb_is_online(mtu)) {
+			if (mtu->is_fake_usb == 1)
+				val.intval = 0;
+			else
+				val.intval = !(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW);
+			if (usb_psy == NULL)
+				usb_psy = power_supply_get_by_name("usb");
+			if (usb_psy == NULL) {
+				dev_info(mtu->dev, "%s Couldn't get usb_psy\n", __func__);
+				return;
+			}
+			power_supply_set_property(usb_psy, POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+			if((val.intval == 1) && (mtu->is_fake_usb == 0)) {
+				cancel_delayed_work(&mtu->fake_usb_work);
+				schedule_delayed_work(&mtu->fake_usb_work, msecs_to_jiffies(FAKE_USB_DETECT_DELAY_MS));
+				g_fake_usb_checking = 1;
+			}
+		}
+	dev_info(mtu->dev, "%s is_fake_usb(%d,%d), s=%d, %d mA\n", __func__,
+				mtu->is_fake_usb, g_fake_usb_checking, mtu->g.state, mtu->vbus_draw);
+
+
+}
+
+static mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned mA)
+{
+	struct mtu3 *mtu = gadget_to_mtu3(g);
+
+	mtu->vbus_draw = mA;
+	schedule_work(&mtu->draw_work);
+
 	return 0;
 }
 
@@ -821,6 +926,7 @@ static const struct usb_gadget_ops mtu3_gadget_ops = {
 	.udc_stop = mtu3_gadget_stop,
 	.udc_set_speed = mtu3_gadget_set_speed,
 	.udc_async_callbacks = mtu3_gadget_async_callbacks,
+	.vbus_draw = mtu3_gadget_vbus_draw,
 };
 
 static void mtu3_state_reset(struct mtu3 *mtu)
@@ -908,6 +1014,10 @@ int mtu3_gadget_setup(struct mtu3 *mtu)
 	timer_setup(&mtu->lpm_timer, mtu3_u2_lpm_timer_func, 0);
 	spin_lock_init(&mtu->lpm_lock);
 	mtu3_gadget_init_eps(mtu);
+	INIT_DELAYED_WORK(&mtu->fake_usb_work, mtu3_fake_usb_work);
+	mtu->is_fake_usb = 0;
+
+	INIT_WORK(&mtu->draw_work, mtu3_vbus_draw_work);
 
 	return usb_add_gadget_udc(mtu->dev, &mtu->g);
 }

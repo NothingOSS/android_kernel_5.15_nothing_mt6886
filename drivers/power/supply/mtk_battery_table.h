@@ -96,7 +96,8 @@
 #define VBAT2_DET_TIME		5
 #define VBAT2_DET_COUNTER	6
 #define VBAT2_DET_VOLTAGE1	34500
-#define VBAT2_DET_VOLTAGE2	32000
+/*#define VBAT2_DET_VOLTAGE2	32000*/
+#define VBAT2_DET_VOLTAGE2	33500
 #define VBAT2_DET_VOLTAGE3	35000
 
 /* PCB setting */
@@ -199,8 +200,9 @@
 #define UI_FAST_TRACKING_GAP			300
 #define KEEP_100_PERCENT_MINSOC			9000
 
-
 #define SHUTDOWN_CONDITION_LOW_BAT_VOLT
+#define SHUTDOWN_CONDITION_SOC_ZERO_PERCENT
+//#define SHUTDOWN_CONDITION_UISOC_ONE_PERCENT
 #define LOW_TEMP_DISABLE_LOW_BAT_SHUTDOWN	1
 #define LOW_TEMP_THRESHOLD					5
 
@@ -329,11 +331,11 @@
 /* Qmax for battery  */
 int g_Q_MAX[MAX_TABLE][TOTAL_BATTERY_NUMBER] = {
 	/*bat1,   bat2,   bat3,    bat4*/
-	{ 2946, 2712, 2490, 1965},/*T0*/
-	{ 2796, 2851, 2468, 1984},/*T1*/
-	{ 2718, 2432, 2310, 1946},/*T2*/
-	{ 2535, 1991, 1858, 1873},/*T3*/
-	{ 2523, 1960, 1843, 1851},/*T4*/
+	{ 4998, 2712, 2490, 1965},/*T0*/
+	{ 5060, 2851, 2468, 1984},/*T1*/
+	{ 5046, 2432, 2310, 1946},/*T2*/
+	{ 5080, 1991, 1858, 1873},/*T3*/
+	{ 4335, 1960, 1843, 1851},/*T4*/
 	{ 2211, 1652, 1533, 1541},/*T5*/
 	{ 2201, 1642, 1523, 1531},/*T6*/
 	{ 2191, 1632, 1513, 1521},/*T7*/
@@ -343,11 +345,11 @@ int g_Q_MAX[MAX_TABLE][TOTAL_BATTERY_NUMBER] = {
 
 int g_Q_MAX_H_CURRENT[MAX_TABLE][TOTAL_BATTERY_NUMBER] = {
 	/*bat1,   bat2,   bat3,    bat4*/
-	{ 2646, 2412, 2190, 1665},/*T0*/
-	{ 2496, 2551, 2168, 1684},/*T1*/
-	{ 2418, 2132, 2010, 1646},/*T2*/
-	{ 2235, 1691, 1558, 1573},/*T3*/
-	{ 2223, 1660, 1543, 1551},/*T4*/
+	{ 4984, 2412, 2190, 1665},/*T0*/
+	{ 5048, 2551, 2168, 1684},/*T1*/
+	{ 4996, 2132, 2010, 1646},/*T2*/
+	{ 4850, 1691, 1558, 1573},/*T3*/
+	{ 4305, 1660, 1543, 1551},/*T4*/
 	{ 2210, 1650, 1533, 1541},/*T5*/
 	{ 2200, 1640, 1523, 1531},/*T6*/
 	{ 2190, 1630, 1513, 1521},/*T7*/
@@ -485,9 +487,9 @@ int g_temperature[MAX_TABLE] = {
 #define RBAT_PULL_UP_VOLT          1840
 
 #define BIF_NTC_R 16000
-
+#define FG_TEMP_T_MAX	(24)
 #if (BAT_NTC_10 == 1)
-struct fg_temp fg_temp_table[21] = {
+/*struct fg_temp fg_temp_table[21] = {
 		{-40, 195652},
 		{-35, 148171},
 		{-30, 113347},
@@ -509,6 +511,32 @@ struct fg_temp fg_temp_table[21] = {
 		{50, 4161},
 		{55, 3535},
 		{60, 3014}
+};*/
+struct fg_temp fg_temp_table[FG_TEMP_T_MAX] = {
+		{-40, 195652},
+		{-35, 148171},
+		{-30, 113347},
+		{-25, 87559},
+		{-20, 68237},
+		{-15, 53650},
+		{-10, 42506},
+		{-5, 33892},
+		{0, 27219},
+		{5, 22021},
+		{10, 17926},
+		{15, 14674},
+		{20, 12081},
+		{25, 10000},
+		{30, 8315},
+		{35, 6948},
+		{40, 5834},
+		{45, 4917},
+		{50, 4161},
+		{55, 3535},
+		{60, 3014},
+		{65, 2586},
+		{70, 2227},
+		{75, 1924}
 };
 #endif
 

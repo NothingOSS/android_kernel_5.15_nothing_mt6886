@@ -12,7 +12,11 @@
 #include <linux/rpmsg.h>
 #include <linux/idr.h>
 
+#include <uapi/linux/mtk_ccd_controls.h>
+
 #define NAME_MAX_LEN			(32)
+#define MEPT_PENDING			(0)
+#define MEPT_FLAG_SIZE			(CCD_IPI_MRAW_CMD + 1)
 
 struct mtk_ccd_rpmsg_endpoint;
 struct ccd_master_listen_item;
@@ -39,11 +43,13 @@ struct mtk_rpmsg_rproc_subdev {
 	wait_queue_head_t master_listen_wq;
 	wait_queue_head_t ccd_listen_wq;
 	atomic_t listen_obj_rdy;
+	unsigned long mept_flags[MEPT_FLAG_SIZE];
 };
 
 struct mtk_rpmsg_device {
 	struct rpmsg_device rpdev;
 	struct mtk_rpmsg_rproc_subdev *mtk_subdev;
+	u32 ipi_id;
 };
 
 struct mtk_ccd_channel_info {

@@ -420,6 +420,7 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_OUTPUT_SCENARIO,
 	CRTC_PROP_CAPS_BLOB_ID,
 	CRTC_PROP_AOSP_CCORR_LINEAR,
+	CRTC_PROP_NT_HDR_BRIGHTNESS,
 	CRTC_PROP_MAX,
 };
 
@@ -972,6 +973,8 @@ struct mtk_drm_crtc {
 
 	bool skip_frame;
 	bool is_dsc_output_swap;
+
+	struct work_struct delay_set_brightness_work;
 };
 
 struct mtk_crtc_state {

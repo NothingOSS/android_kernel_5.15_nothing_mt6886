@@ -2379,7 +2379,7 @@ int mtk_imgsys_pipe_v4l2_register(struct mtk_imgsys_pipe *pipe,
 			       struct v4l2_device *v4l2_dev)
 {
 	int i, ret;
-
+	static int mem_set = 0;
 	ret = mtk_imgsys_pipe_v4l2_ctrl_init(pipe);
 	if (ret) {
 		dev_info(pipe->imgsys_dev->dev,
@@ -2396,6 +2396,13 @@ int mtk_imgsys_pipe_v4l2_register(struct mtk_imgsys_pipe *pipe,
 					 pipe->desc->total_queues,
 					 sizeof(*pipe->subdev_pads),
 					 GFP_KERNEL);
+
+	if (!pipe->subdev_pads) {
+		dev_info(pipe->imgsys_dev->dev, "kcalloc memory faill %d", __LINE__);
+		pipe->subdev_pads = vmalloc(pipe->desc->total_queues*sizeof(*pipe->subdev_pads));
+		mem_set = 1;
+	}
+
 	if (!pipe->subdev_pads) {
 		dev_info(pipe->imgsys_dev->dev,
 			"failed to alloc pipe->subdev_pads (%d)\n", ret);
@@ -2459,7 +2466,10 @@ err_media_entity_cleanup:
 	media_entity_cleanup(&pipe->subdev.entity);
 
 err_free_subdev_pads:
-	devm_kfree(pipe->imgsys_dev->dev, pipe->subdev_pads);
+	if(mem_set == 1)
+	    vfree(pipe->subdev_pads);
+	else
+	    devm_kfree(pipe->imgsys_dev->dev, pipe->subdev_pads);
 
 err_release_ctrl:
 	mtk_imgsys_pipe_v4l2_ctrl_release(pipe);

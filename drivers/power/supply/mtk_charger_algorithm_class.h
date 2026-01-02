@@ -24,7 +24,7 @@
 #define PE5_ID   (1 << 4)
 #define HVBP_ID  (1 << 5)
 #define PE5P_ID  (1 << 6)
-
+#define PPS_ID   (1 << 7)
 struct chg_alg_properties {
 	const char *alias_name;
 };

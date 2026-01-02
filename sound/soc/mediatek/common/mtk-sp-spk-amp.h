@@ -43,6 +43,10 @@ enum mtk_spk_type {
 	MTK_SPK_MEDIATEK_MT6660,
 	MTK_SPK_GOODIX_TFA98XX,
 	MTK_SPK_MEDIATEK_RT5512,
+	/* add to new_feature
+	 * add new spk type of aw882xx
+	 */
+	MTK_SPK_AWINIC_AW882XX,
 	MTK_SPK_TYPE_NUM
 };
 

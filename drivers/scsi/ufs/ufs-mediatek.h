@@ -102,6 +102,41 @@ static const u8 *ufs_uic_dl_err_str[] = {
 #define VS_SAVEPOWERCONTROL         0xD0A6
 #define VS_UNIPROPOWERDOWNCONTROL   0xD0A8
 
+/* manual gc */
+struct ufs_manual_gc {
+	int state;
+	bool hagc_support;
+	struct hrtimer hrtimer;
+	unsigned long delay_ms;
+	struct work_struct hibern8_work;
+	struct workqueue_struct *mgc_workq;
+};
+
+#define UFSHCD_MANUAL_GC_HOLD_HIBERN8           10000    /* 10 seconds */
+#define UFSHCD_MANUAL_GC_HOLD_HIBERN8_MAX       10000
+#define UFSHCD_MANUAL_GC_HOLD_HIBERN8_MIN       2000
+
+#define QUERY_ATTR_IDN_MANUAL_GC_CONT           0x12
+#define QUERY_ATTR_IDN_MANUAL_GC_STATUS         0x13
+
+enum {
+	MANUAL_GC_OFF = 0,
+	MANUAL_GC_ON,
+	MANUAL_GC_DISABLE,
+	MANUAL_GC_ENABLE,
+	MANUAL_GC_MAX,
+};
+
+enum {
+	MANUAL_GC_STATUS_CLEAN = 0,
+	MANUAL_GC_STATUS_PAUSE,
+	MANUAL_GC_STATUS_DIRTY,
+	MANUAL_GC_STATUS_MAX,
+};
+
+extern void init_manual_gc(struct ufs_hba *hba);
+
+
 /*
  * Vendor specific link state
  */
@@ -228,6 +263,11 @@ struct ufs_mtk_host {
 	bool skip_blocktag;
 
 	struct completion luns_added;
+	struct delayed_work delay_eh_work;
+	struct workqueue_struct *delay_eh_workq;
+
+	/* manual_gc */
+	struct ufs_manual_gc manual_gc;
 
 	struct semaphore rpmb_sem;
 	struct device *phy_dev;

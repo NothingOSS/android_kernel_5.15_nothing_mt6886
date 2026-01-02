@@ -19,13 +19,18 @@
 #include <uapi/linux/sched/types.h>
 #include <linux/sched_clock.h>
 #include <linux/log2.h>
-
+#include <linux/delay.h>
 #include "hf_manager.h"
 
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+#include "../../../../hardware_info/hardware_info.h"
+#endif
 
 static int major;
 static struct class *hf_manager_class;
 static struct task_struct *task;
+extern int mtk_dsi_get_vendor_id(void);
+static int32_t ps_fac[3] = {0};
 
 struct coordinate {
 	int8_t sign[3];
@@ -50,7 +55,8 @@ static struct hf_core hfcore;
 #define print_s64(l) (((l) == S64_MAX) ? -1 : (l))
 static int hf_manager_find_client(struct hf_core *core,
 		struct hf_manager_event *event);
-
+extern int  wl2868c_disable_ldo(int value);
+extern int  wl2868c_enable_ldo(int value);
 static void init_hf_core(struct hf_core *core)
 {
 	int i = 0;
@@ -339,6 +345,42 @@ int hf_manager_create(struct hf_device *device)
 			err = -EBUSY;
 			goto out_err;
 		}
+
+#if IS_ENABLED(CONFIG_PRIZE_HARDWARE_INFO)
+		if(sensor_type == SENSOR_TYPE_ACCELEROMETER)
+		{
+			strcpy(current_gsensor_info.chip, device->support_list[i].name);
+			strcpy(current_gsensor_info.vendor, device->support_list[i].vendor);
+			strcpy(current_gsensor_info.more, "gsensor");
+		}
+		else if(sensor_type == SENSOR_TYPE_LIGHT)
+		{
+			strcpy(current_alsps_info.chip, device->support_list[i].name);
+			strcpy(current_alsps_info.vendor, device->support_list[i].vendor);
+			strcpy(current_alsps_info.more, "alsps");
+		}
+		else if(sensor_type == SENSOR_TYPE_MAGNETIC_FIELD)
+		{
+			strcpy(current_msensor_info.chip, device->support_list[i].name);
+			strcpy(current_msensor_info.vendor, device->support_list[i].vendor);
+			strcpy(current_msensor_info.more, "msensor");
+		}
+		else if(sensor_type == SENSOR_TYPE_GYROSCOPE)
+		{
+			strcpy(current_gyroscope_info.chip, device->support_list[i].name);
+			strcpy(current_gyroscope_info.vendor, device->support_list[i].vendor);
+			strcpy(current_gyroscope_info.more, "gyroscope");
+		}
+		else if(sensor_type == SENSOR_TYPE_PRESSURE)
+		{
+			strcpy(current_barosensor_info.chip, device->support_list[i].name);
+			strcpy(current_barosensor_info.vendor, device->support_list[i].vendor);
+			strcpy(current_barosensor_info.more, "barometer");
+		}
+		else{
+			printk("other sensor\n");
+		}
+#endif
 	}
 
 	INIT_LIST_HEAD(&manager->list);
@@ -913,9 +955,32 @@ static int hf_manager_device_calibration(struct hf_device *device,
 	return 0;
 }
 
+void hf_manager_proc_lcm_vendor_id(void *data)
+{
+	int32_t *tmpData = (int32_t *)data;
+	uint32_t lcmVendorId = 0;
+
+	lcmVendorId = mtk_dsi_get_vendor_id();
+	if (lcmVendorId > 0)
+	{
+		tmpData[2] = 255;
+		tmpData[3]= lcmVendorId;
+	}
+	return;
+}
+
 static int hf_manager_device_config_cali(struct hf_device *device,
 		uint8_t sensor_type, void *data, uint8_t length)
 {
+	if (sensor_type == SENSOR_TYPE_LIGHT)
+	{
+		hf_manager_proc_lcm_vendor_id(data);
+	}
+	if(sensor_type == SENSOR_TYPE_PROXIMITY)
+	{
+		memcpy(ps_fac, data, length);
+		printk("func:%s ps_fac:%d %d %d \n", __func__, ps_fac[0], ps_fac[1], ps_fac[2]);
+	}
 	if (device->config_cali)
 		return device->config_cali(device, sensor_type, data, length);
 	return 0;
@@ -1450,6 +1515,13 @@ static long hf_manager_ioctl(struct file *filp,
 		if (copy_to_user(ubuf, &packet, sizeof(packet)))
 			return -EFAULT;
 		break;
+	case HF_MANAGER_REQUEST_OISPOWER_ENABLE:
+		if (packet.status) {
+			wl2868c_enable_ldo(4);
+		} else {
+			wl2868c_disable_ldo(4);
+		}
+		break;
 	default:
 		pr_err("Unknown command %u\n", cmd);
 		return -EINVAL;
@@ -1584,6 +1656,166 @@ static const struct proc_ops hf_manager_proc_fops = {
 	.proc_lseek         = seq_lseek,
 };
 
+enum {
+	NORMAL_COTROL,
+	RAW_COTROL,
+};
+static ssize_t control_sensor(struct hf_client *client, int sensor_type, bool enabledisable, uint8_t action)
+{
+	int ret = 0;
+	struct hf_manager_cmd cmd;
+	struct hf_manager_batch *batch = NULL;
+
+	if (enabledisable == HF_MANAGER_SENSOR_ENABLE) {
+		ret = hf_client_find_sensor(client, sensor_type);
+		if (ret < 0) {
+			pr_err("hf_client_find_sensor %u fail\n",
+				sensor_type);
+			return -1;
+		}
+		switch (action){
+			case NORMAL_COTROL:
+				memset(&cmd, 0, sizeof(cmd));
+				cmd.sensor_type = sensor_type;
+				cmd.action = HF_MANAGER_SENSOR_ENABLE;
+				batch = (struct hf_manager_batch *)cmd.data;
+				batch->delay = 1;
+				batch->latency = 0;
+				break;
+			case RAW_COTROL:
+				memset(&cmd, 0, sizeof(cmd));
+				cmd.action = HF_MANAGER_SENSOR_RAWDATA;
+				cmd.sensor_type = sensor_type;
+				cmd.length = sizeof(cmd.data[0]);
+				cmd.data[0] = 1;
+		}
+		ret = hf_client_control_sensor(client, &cmd);
+		if (ret < 0) {
+			pr_err("hf_client_control_sensor %u fail\n",
+				sensor_type);
+			return -1;
+		}
+	} else if (enabledisable == HF_MANAGER_SENSOR_DISABLE) {
+		switch (action){
+			case NORMAL_COTROL:
+				memset(&cmd, 0, sizeof(cmd));
+				cmd.action = HF_MANAGER_SENSOR_DISABLE;
+				cmd.down_sample = 0;
+				cmd.sensor_type = sensor_type;
+				cmd.length = sizeof(*batch);
+				batch = (struct hf_manager_batch *)cmd.data;
+				batch->delay = 100;
+				batch->latency = 0;
+				break;
+			case RAW_COTROL:
+				memset(&cmd, 0, sizeof(cmd));
+				cmd.action = HF_MANAGER_SENSOR_RAWDATA;
+				cmd.sensor_type = sensor_type;
+				cmd.length = sizeof(cmd.data[0]);
+				cmd.data[0] = 0;
+		}
+		ret = hf_client_control_sensor(client, &cmd);
+		if (ret < 0) {
+			pr_err("hf_client_control_sensor %u fail\n",
+				sensor_type);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int get_ps_rawdata(int32_t* buff)
+{
+	struct hf_client *client = hf_client_create();
+	struct hf_manager_event data[4];
+	int ret;
+	int size = 0, i = 0, j = 0;
+	int count = 5;
+	if (!client)
+		return -EINVAL;
+	ret = hf_client_find_sensor(client, SENSOR_TYPE_PROXIMITY);
+	if (ret < 0) {
+		pr_err("hf_client_find_sensor %u fail\n",
+			SENSOR_TYPE_PROXIMITY);
+	}
+	ret  = control_sensor(client, SENSOR_TYPE_PROXIMITY, 1, NORMAL_COTROL);
+	if(ret < 0){
+		pr_err("control_sensor fail\n");
+	}
+	ret  = control_sensor(client, SENSOR_TYPE_PROXIMITY, 1, RAW_COTROL);
+	if(ret < 0){
+		pr_err("control_sensor fail22\n");
+	}
+	while (count > 0) {
+		count--;
+		memset(data, 0, sizeof(data));
+		size = hf_client_poll_sensor_timeout(client, data,
+			ARRAY_SIZE(data), msecs_to_jiffies(500));
+		if (size < 0){
+			pr_err("no_data \n");
+			mdelay(100);
+			continue;
+		}
+		for (i = 0; i < size; ++i) {
+			printk("count:[%d] [%d,%d,%lld,%d,%d,%d]\n",
+				count,
+				data[i].sensor_type,
+				data[i].action,
+				data[i].timestamp,
+				data[i].word[0],
+				data[i].word[1],
+				data[i].word[2]);
+			if(SENSOR_TYPE_PROXIMITY == data[i].sensor_type && 6 == data[i].action){
+				buff[j] = data[i].word[0];
+				j++;
+			}
+		}
+	}
+	ret  = control_sensor(client, SENSOR_TYPE_PROXIMITY, 0, RAW_COTROL);
+	if(ret < 0){
+		pr_err("control_sensor fail\n");
+	}
+	ret  = control_sensor(client, SENSOR_TYPE_PROXIMITY, 0, NORMAL_COTROL);
+	if(ret < 0){
+		pr_err("control_sensor fail\n");
+	}
+	hf_client_destroy(client);
+	return j;
+}
+
+static int hf_ps_proc_show(struct seq_file *m, void *v)
+{
+	int32_t buff[64] = {0};
+	char len = 0;
+	unsigned char i = 0;
+	len = get_ps_rawdata(buff);
+	if(len<=0)
+	{
+		pr_err("get_ps_rawdata fail\n");
+		return -1;
+	}
+	seq_printf(m, "ps_fac=%d\n", ps_fac[2]);
+	seq_puts(m,"ps_raw=");
+	while(len>0){
+		seq_printf(m,"%d ", buff[i]);
+		len--;
+		i++;
+	}
+	seq_puts(m,"\n");
+	return 0;
+}
+
+static int hf_ps_proc_open(struct inode *inode, struct file *filp)
+{
+	return single_open(filp, hf_ps_proc_show, PDE_DATA(inode));
+}
+static const struct proc_ops hf_ps_proc_fops = {
+	.proc_open           = hf_ps_proc_open,
+	.proc_release        = single_release,
+	.proc_read           = seq_read,
+	.proc_lseek         = seq_lseek,
+};
+
 static int __init hf_manager_init(void)
 {
 	int ret;
@@ -1617,6 +1849,10 @@ static int __init hf_manager_init(void)
 	if (!proc_create_data("hf_manager", 0440, NULL,
 			&hf_manager_proc_fops, &hfcore))
 		pr_err("Failed to create proc\n");
+
+	if (!proc_create_data("hf_ps", 0444, NULL,
+			&hf_ps_proc_fops, &hfcore))
+		pr_err("Failed to create proc hf_ps\n");
 
 	task = kthread_run(kthread_worker_fn,
 			&hfcore.kworker, "hf_manager");

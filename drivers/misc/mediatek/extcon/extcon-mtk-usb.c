@@ -26,6 +26,10 @@
 #include "tcpm.h"
 #endif
 
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+struct mtk_extcon_info *g_extcon;
+#endif
+
 static const unsigned int usb_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
@@ -41,7 +45,7 @@ static void mtk_usb_extcon_update_role(struct work_struct *work)
 
 	cur_dr = extcon->c_role;
 	new_dr = role->d_role;
-
+	extcon->c_role = new_dr;
 	dev_info(extcon->dev, "cur_dr(%d) new_dr(%d)\n", cur_dr, new_dr);
 
 	/* none -> device */
@@ -76,7 +80,7 @@ static void mtk_usb_extcon_update_role(struct work_struct *work)
 	if (extcon->role_sw)
 		usb_role_switch_set_role(extcon->role_sw, new_dr);
 
-	extcon->c_role = new_dr;
+	//extcon->c_role = new_dr;
 	kfree(role);
 }
 
@@ -113,17 +117,24 @@ static bool usb_is_online(struct mtk_extcon_info *extcon)
 		return false;
 	}
 
+	//ret = power_supply_get_property(extcon->usb_psy,
+	//			POWER_SUPPLY_PROP_TYPE, &tval);
+	//if (ret < 0) {
+	//	dev_info(extcon->dev, "failed to get usb type\n");
+	//	return false;
+	//}
 	ret = power_supply_get_property(extcon->usb_psy,
-				POWER_SUPPLY_PROP_TYPE, &tval);
+				POWER_SUPPLY_PROP_USB_TYPE, &tval);
 	if (ret < 0) {
 		dev_info(extcon->dev, "failed to get usb type\n");
 		return false;
 	}
 
 	dev_info(extcon->dev, "online=%d, type=%d\n", pval.intval, tval.intval);
-
-	if (pval.intval && (tval.intval == POWER_SUPPLY_TYPE_USB ||
-			tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
+	//if (pval.intval && (tval.intval == POWER_SUPPLY_TYPE_USB ||
+	//		tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
+	if (pval.intval && (tval.intval == POWER_SUPPLY_USB_TYPE_SDP ||
+			tval.intval == POWER_SUPPLY_USB_TYPE_CDP))
 		return true;
 	else
 		return false;
@@ -327,14 +338,15 @@ static int mtk_extcon_tcpc_notifier(struct notifier_block *nb,
 		if (noti->swap_state.new_role == PD_ROLE_UFP &&
 				extcon->c_role != USB_ROLE_DEVICE) {
 			dev_info(dev, "switch role to device\n");
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
+			//mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
 		} else if (noti->swap_state.new_role == PD_ROLE_DFP &&
 				extcon->c_role != USB_ROLE_HOST) {
 			dev_info(dev, "switch role to host\n");
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
+			//mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_HOST);
-		}
+		} else
+			dev_info(dev, "wrong condition\n");
 		break;
 	}
 
@@ -444,6 +456,31 @@ static int mtk_usb_extcon_id_pin_init(struct mtk_extcon_info *extcon)
 
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+int  extcon_usb_mode_switch(bool mode)
+{
+	struct regulator *vbus = g_extcon->vbus;
+	if(!g_extcon){
+		pr_err("g_extcon is NULL,return...\n");
+		return -1;
+	}
+
+	if (mode){
+		if ((vbus != NULL) && g_extcon->vbus_on) {
+			mtk_usb_extcon_set_vbus(g_extcon, false);
+			mtk_usb_extcon_set_role(g_extcon, USB_ROLE_DEVICE);
+			dev_info(g_extcon->dev, "disable otg...\n");
+		} else {
+			mtk_usb_extcon_set_role(g_extcon,USB_ROLE_NONE);
+			dev_info(g_extcon->dev, "Switch usb out mode...\n");
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(extcon_usb_mode_switch);
+#endif
 
 #if IS_ENABLED(CONFIG_TCPC_CLASS)
 #define PROC_FILE_SMT "mtk_typec"
@@ -600,6 +637,10 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 	ret = mtk_usb_extcon_tcpc_init(extcon);
 	if (ret < 0)
 		dev_err(dev, "failed to init tcpc\n");
+#endif
+
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+	g_extcon = extcon;
 #endif
 
 	platform_set_drvdata(pdev, extcon);

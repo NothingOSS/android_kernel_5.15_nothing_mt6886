@@ -188,7 +188,7 @@ int ccd_worker_read(struct mtk_ccd *ccd,
 	int ret;
 	struct mtk_ccd_params *ccd_params;
 	struct mtk_rpmsg_device *srcmdev;
-	struct mtk_ccd_rpmsg_endpoint *mept;
+	struct mtk_ccd_rpmsg_endpoint *mept = NULL;
 	struct mtk_rpmsg_rproc_subdev *mtk_subdev =
 		to_mtk_subdev(ccd->rpmsg_subdev);
 
@@ -213,6 +213,17 @@ int ccd_worker_read(struct mtk_ccd *ccd,
 	}
 	kref_get(&srcmdev->rpdev.ept->refcount);
 	mutex_unlock(&mtk_subdev->endpoints_lock);
+
+	ret = wait_on_bit_timeout(
+		&mtk_subdev->mept_flags[srcmdev->ipi_id],
+		MEPT_PENDING,
+		TASK_UNINTERRUPTIBLE,
+		msecs_to_jiffies(200));
+	/* performance issue if timeout, try to check the system loading */
+	if (ret != 0)
+		dev_info_ratelimited(ccd->dev,
+				"%s: ipi_id %u timeout, access mempt directly...\n",
+			 __func__, srcmdev->ipi_id);
 
 	mept = to_mtk_rpmsg_endpoint(srcmdev->rpdev.ept);
 

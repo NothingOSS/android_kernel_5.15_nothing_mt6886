@@ -19,6 +19,7 @@ bool mddp_f_dev_add_lan_dev(char *dev_name, int netif_id);
 bool mddp_f_dev_add_wan_dev(char *dev_name);
 void mddp_f_dev_del_lan_dev(char *dev_name);
 void mddp_f_dev_del_wan_dev(char *dev_name);
+bool mddp_f_dev_is_wan_lan_dev(void);
 struct net_device *mddp_f_is_support_lan_dev(int ifindex);
 struct net_device *mddp_f_is_support_wan_dev(int ifindex);
 

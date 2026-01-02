@@ -16,6 +16,10 @@
 #include <linux/of_platform.h>
 #include <linux/regmap.h>
 #include <linux/atomic.h>
+#include <linux/cpumask.h>
+#include <linux/irqdesc.h>
+#include <linux/irqnr.h>
+#include <linux/sched.h>
 
 #define MT6375_SLAVEID_TCPC	0x4E
 #define MT6375_SLAVEID_PMU	0x34
@@ -284,6 +288,9 @@ static int mt6375_add_irq_chip(struct mt6375_data *ddata)
 {
 	int ret;
 	struct i2c_client *client = to_i2c_client(ddata->dev);
+	struct irq_desc *desc;
+	struct task_struct *irq_thread;
+	struct cpumask new_cpumask;
 
 	memset(ddata->mask_buf, 0xff, MT6375_IRQ_REGS);
 	ret = regmap_bulk_write(ddata->rmap, MT6375_REG_CHG_MSK0,
@@ -325,6 +332,17 @@ static int mt6375_add_irq_chip(struct mt6375_data *ddata)
 		irq_domain_remove(ddata->domain);
 		return ret;
 	}
+
+	desc = irq_to_desc(client->irq);
+	irq_thread = desc->action->thread;
+//	cpumask_copy(&new_cpumask, &irq_thread->cpus_mask);
+//	cpumask_clear_cpu(0, &new_cpumask);
+	cpumask_clear(&new_cpumask);
+	cpumask_set_cpu(4, &new_cpumask);
+	cpumask_set_cpu(5, &new_cpumask);
+	cpumask_set_cpu(6, &new_cpumask);
+	cpumask_set_cpu(7, &new_cpumask);
+	set_cpus_allowed_ptr(irq_thread, &new_cpumask);
 
 	return 0;
 }

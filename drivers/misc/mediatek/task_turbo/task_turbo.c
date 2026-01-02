@@ -31,6 +31,10 @@
 
 #include <task_turbo.h>
 
+#if IS_ENABLED(CONFIG_NOTHING_PERFORMANCE_FEATURE)
+#include "../../../nothing_performance/nt_performance_common.h"
+#endif /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
+
 #define CREATE_TRACE_POINTS
 #include <trace_task_turbo.h>
 
@@ -1198,6 +1202,10 @@ static void probe_android_vh_syscall_prctl_finished(void *ignore, int option, st
 {
 	if (option == PR_SET_NAME)
 		sys_set_turbo_task(p);
+
+#if IS_ENABLED(CONFIG_NOTHING_PERFORMANCE_FEATURE)
+	nt_probe_android_vh_syscall_prctl_finished(ignore, option, p);
+#endif /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
 }
 
 static inline void fillin_cluster(struct cluster_info *cinfo,
@@ -1474,6 +1482,9 @@ static int __init init_task_turbo(void)
 		ret_erri_line = __LINE__;
 		goto failed;
 	}
+#if IS_ENABLED(CONFIG_NOTHING_PERFORMANCE_FEATURE)
+	set_hook_trace_android_vh_syscall_prctl_finished(true);
+#endif /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
 
 	init_hmp_domains();
 	init_top_app_css();

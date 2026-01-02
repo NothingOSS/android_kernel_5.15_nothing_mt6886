@@ -135,6 +135,17 @@ static void transceiver_super_notify_func(struct sensor_comm_notify *n,
 	spin_unlock(&transceiver_fifo_lock);
 }
 
+static bool transceiver_noth_wakeup_check(uint8_t action, uint8_t sensor_type)
+{
+	if (action == DATA_ACTION && (sensor_type == SENSOR_TYPE_FINGERPRINT_DISPLAY ||
+			sensor_type == SENSOR_TYPE_AMBIENT_LIGHT ||
+			sensor_type == SENSOR_TYPE_SCREEN_UPWARD ||
+			sensor_type == SENSOR_TYPE_POCKET_MODE))
+		return true;
+
+	return false;
+}
+
 static bool transceiver_wakeup_check(uint8_t action, uint8_t sensor_type)
 {
 	/*
@@ -239,7 +250,7 @@ static void transceiver_report(struct transceiver_device *dev,
 	action = event->action;
 	sensor_type = event->sensor_type;
 	state = &dev->state[sensor_type];
-	need_wakeup = transceiver_wakeup_check(action, sensor_type);
+	need_wakeup = transceiver_wakeup_check(action, sensor_type) || transceiver_noth_wakeup_check(action, sensor_type);
 
 	if (action == BIAS_ACTION || action == CALI_ACTION ||
 			action == TEMP_ACTION)
@@ -267,6 +278,31 @@ static void transceiver_report(struct transceiver_device *dev,
 		if (ret < 0)
 			usleep_range(2000, 4000);
 	} while (ret < 0);
+}
+
+static void transceiver_print_event(struct hf_manager_event *event, int64_t src_timestamp, int64_t remap_timestamp)
+{
+	switch (event->sensor_type) {
+		case SENSOR_TYPE_PROXIMITY:
+			pr_info("[SCP/AP] prox_event: scp_ts 0x%llX hal_ts 0x%llX raw_adc %lu(%lu:<%lu,%lu>) factory_val %lu near_far %d\n",
+				src_timestamp, remap_timestamp,
+				event->word[1], event->word[2], event->word[3], event->word[4], event->word[5], event->word[0]);
+			break;
+		case SENSOR_TYPE_FINGERPRINT_DISPLAY:
+			pr_info("[SCP/AP] fingerprint_display_detect_event scp_ts 0x%llX hal_ts 0x%llX data %d\n",
+				src_timestamp, remap_timestamp, event->word[0]);
+			break;
+		case SENSOR_TYPE_AMBIENT_LIGHT:
+			pr_info("[SCP/AP] ambient_light_scene_event scp_ts 0x%llX hal_ts 0x%llX data %d %d\n",
+				src_timestamp, remap_timestamp, event->word[0], event->word[1]);
+			break;
+		case SENSOR_TYPE_SCREEN_UPWARD:
+			pr_info("[SCP/AP] screen_upward_event scp_ts 0x%llX hal_ts 0x%llX data %d\n",
+				src_timestamp, remap_timestamp, event->word[0]);
+			break;
+		default:
+			break;
+	}
 }
 
 static int transceiver_translate(struct transceiver_device *dev,
@@ -326,9 +362,21 @@ static int transceiver_translate(struct transceiver_device *dev,
 			dst->word[1] = src->value[1];
 			dst->word[2] = src->value[2];
 			break;
+		case SENSOR_TYPE_PROXIMITY:
+			dst->word[0] = src->value[0];
+			dst->word[1] = src->value[1];
+			dst->word[2] = src->value[2];
+			dst->word[3] = src->value[3];
+			dst->word[4] = src->value[4];
+			dst->word[5] = src->value[5];
+		break;
+		case SENSOR_TYPE_AMBIENT_LIGHT:
+			dst->word[0] = src->value[0];
+			dst->word[1] = src->value[1];
+		break;
+
 		case SENSOR_TYPE_LIGHT:
 		case SENSOR_TYPE_PRESSURE:
-		case SENSOR_TYPE_PROXIMITY:
 		case SENSOR_TYPE_STEP_COUNTER:
 			dst->word[0] = src->value[0];
 			break;
@@ -337,6 +385,7 @@ static int transceiver_translate(struct transceiver_device *dev,
 				min(sizeof(dst->word), sizeof(src->value)));
 			break;
 		}
+		transceiver_print_event(dst, src->timestamp, remap_timestamp);
 	} else if (src->action == FLUSH_ACTION) {
 		dst->timestamp = remap_timestamp;
 		dst->sensor_type = src->sensor_type;

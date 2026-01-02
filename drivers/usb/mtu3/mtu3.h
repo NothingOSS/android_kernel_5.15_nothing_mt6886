@@ -457,6 +457,11 @@ struct mtu3 {
 	int ep_slot_mode;
 
 	unsigned u3_lpm:1;
+	struct delayed_work fake_usb_work;
+	unsigned int is_fake_usb;
+
+	struct work_struct draw_work;
+	unsigned vbus_draw;
 	unsigned int u2_lpm_quirks;
 	bool lpm_timer_active;
 	spinlock_t lpm_lock;

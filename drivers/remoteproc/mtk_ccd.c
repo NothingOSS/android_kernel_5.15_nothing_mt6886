@@ -234,6 +234,12 @@ static long ccd_unlocked_ioctl(struct file *filp, unsigned int cmd,
 	memset(&listen_obj, 0, sizeof(listen_obj));
 	memset(&master_obj, 0, sizeof(master_obj));
 
+	if(IS_ERR(ccd)) {
+		pr_info("Invalid ccd, %ld", PTR_ERR(ccd));
+		WARN_ON(1);
+		return -EFAULT;
+	}
+
 	switch (cmd) {
 	case IOCTL_CCD_MASTER_INIT:
 		dev_dbg(ccd->dev, "enter IOCTL_CCD_MASTER_INIT\n");

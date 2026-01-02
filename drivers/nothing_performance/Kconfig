@@ -1,0 +1,13 @@
+config NOTHING_PERFORMANCE_FEATURE
+	tristate "Enable nothing performance feature"
+	default n
+	help
+	  Register vendor hook for nothing performance feature
+
+config NOTHING_NAMED_THREAD_AFFINITY
+	bool "Given target cpu affinity to threads with sepcific name"
+	depends on NOTHING_PERFORMANCE_FEATURE
+	help
+	  With this feature, users can set CPU affinity for threads
+	  based on a specific PID and thread name. The CPU affinity
+	  will not be changed by the process itself.

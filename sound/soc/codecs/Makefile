@@ -684,3 +684,7 @@ obj-$(CONFIG_SND_SOC_LPASS_TX_MACRO)	+= snd-soc-lpass-tx-macro.o
 
 # Mux
 obj-$(CONFIG_SND_SOC_SIMPLE_MUX)	+= snd-soc-simple-mux.o
+
+# add to new_feature
+# awinic aw882xx smartPA driver support
+obj-$(CONFIG_SND_SOC_AW882XX)	+= aw882xx/

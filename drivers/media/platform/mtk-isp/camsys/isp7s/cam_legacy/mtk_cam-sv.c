@@ -2922,6 +2922,12 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 	if (sv->num_clks) {
 		sv->clks = devm_kcalloc(dev, sv->num_clks, sizeof(*sv->clks),
 					 GFP_KERNEL);
+
+		if (!sv->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    sv->clks = vmalloc(sv->num_clks*sizeof(*sv->clks));
+		}
+
 		if (!sv->clks)
 			return -ENOMEM;
 	}
@@ -3015,6 +3021,10 @@ static int mtk_camsv_probe(struct platform_device *pdev)
 	int ret;
 
 	camsv_dev = devm_kzalloc(dev, sizeof(*camsv_dev), GFP_KERNEL);
+	if (!camsv_dev) {
+		dev_info(dev, "kzalloc memory faill %d", __LINE__);
+		camsv_dev = vmalloc(sizeof(*camsv_dev));
+	}
 	if (!camsv_dev)
 		return -ENOMEM;
 
@@ -3029,6 +3039,10 @@ static int mtk_camsv_probe(struct platform_device *pdev)
 		roundup_pow_of_two(8 * sizeof(struct mtk_camsys_irq_info));
 	camsv_dev->msg_buffer = devm_kzalloc(dev, camsv_dev->fifo_size,
 					     GFP_KERNEL);
+	if (!camsv_dev->msg_buffer) {
+		dev_info(dev, "kzalloc memory faill %d", __LINE__);
+		camsv_dev->msg_buffer = vmalloc(camsv_dev->fifo_size);
+	}
 	if (!camsv_dev->msg_buffer)
 		return -ENOMEM;
 

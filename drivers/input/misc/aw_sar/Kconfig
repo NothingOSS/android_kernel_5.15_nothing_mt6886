@@ -1,0 +1,13 @@
+#
+# Mediatek AWINIC_SAR
+#
+
+config AWINIC_SAR
+	tristate "Awinic AWINIC_SAR driver"
+	depends on I2C
+	help
+	  Say Y here if you have Awinic AWINIC_SAR controller
+	  chip in your system.
+	  If unsure, say N.
+	  To compile this driver as a module, choose M here: the
+	  module will be called  AWINIC_SAR key.

@@ -1,0 +1,7 @@
+config PRIZE_BOARD_ID
+	tristate "prize board id config"
+	help
+	  Say Y here if you have a board id config and want to enable
+	  support for the built-in board id.
+
+	  If unsure, say N.

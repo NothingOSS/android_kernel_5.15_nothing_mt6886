@@ -27,7 +27,7 @@
 #include "clk-mt6886-fmeter.h"
 
 #define BUG_ON_CHK_ENABLE		0
-#define CHECK_VCORE_FREQ		1
+#define CHECK_VCORE_FREQ		0//for debug
 #define CG_CHK_PWRON_ENABLE		0
 
 #define HWV_DOMAIN_KEY			0x055C

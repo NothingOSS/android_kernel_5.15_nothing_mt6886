@@ -58,8 +58,9 @@ int mtk_imgsys_pipe_init(struct mtk_imgsys_dev *imgsys_dev,
 	nodes_num = pipe->desc->total_queues;
 	nodes_size = sizeof(*pipe->nodes) * nodes_num;
 	pipe->nodes = devm_kzalloc(imgsys_dev->dev, nodes_size, GFP_KERNEL);
-	if (!pipe->nodes)
-		return -ENOMEM;
+	if (!pipe->nodes) {
+		pipe->nodes = vmalloc(nodes_size);
+	}
 
 	for (i = 0; i < nodes_num; i++) {
 		pipe->nodes[i].desc = &pipe->desc->queue_descs[i];

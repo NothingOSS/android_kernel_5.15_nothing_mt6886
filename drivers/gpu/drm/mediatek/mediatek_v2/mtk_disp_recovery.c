@@ -37,7 +37,10 @@
 
 #define ESD_TRY_CNT 5
 #define ESD_CHECK_PERIOD 2000 /* ms */
+#define ESD_CHECK_PERIOD_BOE 500 /* ms */
 #define esd_timer_to_mtk_crtc(x) container_of(x, struct mtk_drm_crtc, esd_timer)
+extern int mtk_dsi_get_vendor_id(void);
+extern struct drm_crtc *g_crtc;
 
 static DEFINE_MUTEX(pinctrl_lock);
 
@@ -189,8 +192,13 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 		return -EINVAL;
 	}
 
-	if (mtk_drm_is_idle(crtc) && mtk_dsi_is_cmd_mode(output_comp))
-		return 0;
+	if (mtk_drm_is_idle(crtc) && mtk_dsi_is_cmd_mode(output_comp)) {
+		if ((mtk_dsi_get_vendor_id() == 2) || (mtk_dsi_get_vendor_id() == 3)) {
+			mtk_drm_idlemgr_kick(__func__, crtc, 0);
+		} else {
+			return 0;
+		}
+	}
 
 	mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_PANEL_EXT, &panel_ext);
 	if (unlikely(!(panel_ext && panel_ext->params))) {
@@ -639,7 +647,11 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 		return -EINVAL;
 	}
 	while (1) {
-		msleep(ESD_CHECK_PERIOD);
+		if ((mtk_dsi_get_vendor_id() == 2) || (mtk_dsi_get_vendor_id() == 3)) {
+			msleep(ESD_CHECK_PERIOD_BOE);
+		} else {
+			msleep(ESD_CHECK_PERIOD);
+		}
 		if (esd_ctx->chk_en == 0)
 			continue;
 
@@ -734,7 +746,7 @@ static void mtk_disp_esd_chk_init(struct drm_crtc *crtc)
 		DDPPR_ERR("%s invalid crtc\n", __func__);
 		return;
 	}
-
+	g_crtc = crtc;
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	panel_ext = mtk_crtc->panel_ext;
 	if (!(panel_ext && panel_ext->params)) {

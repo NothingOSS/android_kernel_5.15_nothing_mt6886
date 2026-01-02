@@ -123,10 +123,10 @@ int ccci_dl_pool_init(u32 q_num)
 	s_q_num = q_num;
 
 	len = sizeof(struct fifo_t) * q_num;
-	s_dl_pools = kzalloc(len, GFP_KERNEL);
+	s_dl_pools = kvzalloc(len, GFP_KERNEL);
 	if (!s_dl_pools) {
 		CCCI_ERROR_LOG(-1, TAG,
-			"[%s] error: kzalloc fifo_t fail. q_num: %u\n",
+			"[%s] error: kvzalloc fifo_t fail. q_num: %u\n",
 			__func__, q_num);
 
 		s_q_num = 0;

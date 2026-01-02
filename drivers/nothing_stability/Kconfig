@@ -1,0 +1,26 @@
+config NOTHING_WRITRBACK_KMSG
+	tristate "Nothing kernel writeback driver"
+	default n
+	help
+		The driver logs power-on to system_stage kmsg log.
+		So it doesn't log any customer info.
+		When the device is stuck. It can help us debug.
+		Check the /sys/devices/virtual/NT/NT_reserve_kernel_log/boot_stage_systemserver is exist.
+
+config NOTHING_TASK_MEMINFO
+	tristate "Nothing show all task memory info driver"
+	default n
+	help
+		cat /proc/nt_meminfo/show_all_tasks will show all task meminfo
+
+config NOTHING_DISK_USAGE
+	tristate "Nothing show all file size module"
+	default n
+	help
+		Detect malicious files and prevent them from encroaching on disk space
+
+config NOTHING_TASK_INFO
+	tristate "Nothing show all task info driver"
+	default n
+	help
+		cat /proc/nt_taskinfo/show_all_tasks_id will show all task pid

@@ -402,6 +402,12 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 	} while ((mml_pq_debug_mode & MML_PQ_SET_TEST) && result->is_set_test);
 
+	if (!result->ds_reg_cnt) {
+		mml_pq_err("%s: not get correct reg count", __func__);
+		ret = -EBUSY;
+		goto exit;
+	}
+
 	regs = result->ds_regs;
 
 	/* TODO: use different regs */

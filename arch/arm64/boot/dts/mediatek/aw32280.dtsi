@@ -1,0 +1,100 @@
+&i2c7 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	aw32280-charger@67{
+		compatible = "aw,aw32280-standalone";
+		status = "okay";
+		reg = <0x67>;
+
+		chg_name = "primary_dvchg";
+		aw,aw32280,irq-gpio = <&pio 13 0x0>;
+		aw,aw32280,rst-gpio = <&pio 12 0x0>;
+		aw,aw32280,sc-en-gpio = <&pio 92 0x0>;
+		aw,aw32280,usb-en-gpio = <&pio 91 0x0>;
+		aw,aw32280,aw-lpm-gpio = <&pio 161 0x0>;
+		/* 0: HOST, 1: SLAVE */
+		aw,aw32280,host-slave-sel = <1>;
+		/* 0: standalone mode, 1: parallel mode */
+		aw,aw32280,parallel-mode = <0>;
+		/* 0: FBPS, 1: F21SC, 2: F41SC, 3: RBPS, 4: R12SC, 5: R14SC */
+		aw,aw32280,work-mode = <2>;
+		/* 0:7.5v, 1:11v, 2:14v, 3:15v, 4:18v, 5:22v, 6:23v, 7:24v */
+		/* F41SC_USB, F21SC_USB, FBPS_USB, R14SC_USB, R12SC_USB, RBPS_USB */
+		aw,aw32280,usb-ovp-cfgs = <6 2 0 6 2 0>;
+		/* F41SC_PSW, F21SC_PSW, FBPS_PSW, R14SC_PSW, R12SC_PSW, RBPS_PSW */
+		aw,aw32280,psw-ovp-cfgs = <6 2 0 6 2 0>;
+		aw,aw32280,psw-en = <0>;/* enable/disable psw function */
+
+		aw,aw32280,vout-ovp-int = <1>;
+		aw,aw32280,glb-mask = <0>;
+		aw,aw32280,usb-ovp-mask = <0>;
+		aw,aw32280,psw-ovp-mask = <0>;
+		aw,aw32280,sc-glb-mask = <0>;
+		aw,aw32280,sc-glb-others-mask = <0>;
+		aw,aw32280,vusb-ovp-alm-mask = <0>;
+		aw,aw32280,vusb-ovp-mask = <0>;
+		aw,aw32280,vusb-uvlo-mask = <0>;
+		aw,aw32280,vpsw-ovp-alm-mask = <0>;
+		aw,aw32280,vpsw-ovp-mask = <0>;
+		aw,aw32280,vpsw-uvlo-mask = <0>;
+		aw,aw32280,fvbus-uvlo-mask = <0>;
+		aw,aw32280,vbus-ovp-mask = <0>;
+		aw,aw32280,vout-ovp-mask = <0>;
+		aw,aw32280,tbat1-otp-mask = <0>;
+		aw,aw32280,tbat2-otp-mask = <0>;
+		aw,aw32280,fibat1-ocp-mask = <0>;
+		aw,aw32280,fibat2-ocp-mask = <1>;
+		aw,aw32280,ocp4-peak-mask = <0>;
+		aw,aw32280,vdrop-min-mask = <0>;
+		aw,aw32280,vdrop-ovp-mask = <0>;
+		aw,aw32280,ocp3-mask = <0>;
+		aw,aw32280,ibus-ucp-mask = <0>;
+		aw,aw32280,ibus-rcp-mask = <0>;
+		aw,aw32280,fvbus-uvp-mask = <0>;
+		aw,aw32280,fvbat1-ovp-mask = <0>;
+		aw,aw32280,fvbat2-ovp-mask = <0>;
+		aw,aw32280,rvs-vout-uvlo-mask = <0>;
+		aw,aw32280,tdie-otp-alm-mask = <0>;
+		aw,aw32280,tdie-otp-mask = <0>;
+		aw,aw32280,wd-cnt-ovf-mask = <0>;
+		aw,aw32280,hkadc-seq-loop-en = <0>;
+		/* 0: 2times, 1: 4times, 2: 8times, 3: 16times */
+		aw,aw32280,hkadc-avg-times = <0>;
+		/* 0: 25us, 1: 28us */
+		aw,aw32280,hkadc-cul-time = <0>;
+		aw,aw32280,tbat1-adc-loop = <1>;
+		aw,aw32280,tdie-adc-loop = <1>;
+		aw,aw32280,ibus-adc-loop = <1>;
+		aw,aw32280,ibus-ref-adc-loop = <1>;
+		aw,aw32280,ibat2-adc-loop = <0>;
+		aw,aw32280,ibat1-adc-loop = <1>;
+		aw,aw32280,vbat2-adc-loop = <0>;
+		aw,aw32280,vbat1-adc-loop = <1>;
+		aw,aw32280,vout2-adc-loop = <0>;
+		aw,aw32280,vout1-adc-loop = <1>;
+		aw,aw32280,vbus-adc-loop = <1>;
+		aw,aw32280,vpsw-adc-loop = <0>;
+		aw,aw32280,vusb-adc-loop = <0>;
+
+		aw,aw32280,da-ibat-res-sel = <1>;			/* 0: 1mohm, 1: 2mohm */
+		aw,aw32280,da-ibat1-res-place-sel = <0>;	/* 0: high side, 1: low side */
+		aw,aw32280,da-ibat2-res-place-sel = <0>;	/* 0: high side, 1: low side */
+
+		aw,aw32280,da-adc-det-sel = <1>;
+		aw,aw32280,sc-ibus-ucp-int = <1>;
+		aw,aw32280,fwd-ibat-ocp-int = <0>;
+		aw,aw32280,sc-vbus-ovp-int = <1>;
+		aw,aw32280,rvs-vout-uvlo-int = <1>;
+		aw,aw32280,fwd-vbus-uvp-int = <1>;
+		aw,aw32280,fwd-vbus-uvlo-int = <1>;
+		aw,aw32280,fwd-vbat2-ovp-int = <1>;
+		aw,aw32280,fwd-vbat1-ovp-int = <1>;
+		aw,aw32280,usb-vdrop-ovp-int = <0>;
+		aw,aw32280,usb-ovp-pro-int = <1>;
+
+		aw,aw32280,vdrop-vol-sel = <3>;
+		aw,aw32280,ibat1-vol-sel = <15>;
+		aw,aw32280,ibat2-vol-sel = <15>;
+		aw,aw32280,psw_uvlo_en = <0>;
+	};
+};
