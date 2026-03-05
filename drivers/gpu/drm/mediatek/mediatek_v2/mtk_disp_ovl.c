@@ -390,6 +390,7 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define DISP_REG_OVL_SMI_2ND_CFG	(0x8F0)
 
 #define MML_SRAM_SHIFT (512*1024)
+#define DISP_REG_CONFIG_MMSYS_MISC 0x0F0
 
 enum GS_OVL_FLD {
 	GS_OVL_RDMA_ULTRA_TH = 0,
@@ -1135,11 +1136,35 @@ static void mtk_ovl_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 static void mtk_ovl_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_drm_private *priv = NULL;
+
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_RST, BIT(0) | BIT(28), ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_RST, 0, ~0);
+	if (comp && comp->mtk_crtc && comp->mtk_crtc->base.dev->dev_private) {
+		priv = comp->mtk_crtc->base.dev->dev_private;
+		if (priv->data->mmsys_id == MMSYS_MT6985 && comp->mtk_crtc->is_mml) {
+			if (comp->id == DDP_COMPONENT_OVL0_2L) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+						comp->mtk_crtc->ovlsys0_regs_pa +
+						DISP_REG_CONFIG_MMSYS_MISC, BIT(31), BIT(31));
+				cmdq_pkt_write(handle, comp->cmdq_base,
+						comp->mtk_crtc->ovlsys0_regs_pa +
+						DISP_REG_CONFIG_MMSYS_MISC, 0, BIT(31));
+				DDPDBG("%s ovlsys0 remove_reset_flow\n", __func__);
+			} else if (comp->id == DDP_COMPONENT_OVL4_2L) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+						comp->mtk_crtc->ovlsys1_regs_pa +
+						DISP_REG_CONFIG_MMSYS_MISC, BIT(31), BIT(31));
+				cmdq_pkt_write(handle, comp->cmdq_base,
+						comp->mtk_crtc->ovlsys1_regs_pa +
+						DISP_REG_CONFIG_MMSYS_MISC, 0, BIT(31));
+				DDPDBG("%s ovlsys1 remove_reset_flow\n", __func__);
+			}
+		}
+	}
 	DDPDBG("%s-\n", __func__);
 }
 

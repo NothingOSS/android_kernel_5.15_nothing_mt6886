@@ -225,6 +225,7 @@ struct mtk_msi_set {
  * @suspend_mode: pcie enter low poer mode when the system enter suspend
  * @dvfs_req_en: pcie wait request to reply ack when pcie exit from P2 state
  * @peri_reset_en: clear peri pcie reset to open pcie phy & mac
+ * @dump_cfg: dump info when access config space
  * @irq: PCIe controller interrupt number
  * @saved_irq_state: IRQ enable state saved at suspend time
  * @irq_lock: lock protecting IRQ register access
@@ -256,6 +257,7 @@ struct mtk_pcie_port {
 	u32 suspend_mode;
 	bool dvfs_req_en;
 	bool peri_reset_en;
+	bool dump_cfg;
 	int irq;
 	u32 saved_irq_state;
 	raw_spinlock_t irq_lock;
@@ -305,6 +307,14 @@ static void __iomem *mtk_pcie_map_bus(struct pci_bus *bus, unsigned int devfn,
 static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 				int where, int size, u32 *val)
 {
+	struct mtk_pcie_port *port = bus->sysdata;
+
+	if (port->dump_cfg && bus->number) {
+		dev_info(port->dev, "Dump config access, bus:%#x, devfn:%#x, where:%#x, size:%#x\n",
+			 bus->number, devfn, where, size);
+		dump_stack();
+	}
+
 	mtk_pcie_config_tlp_header(bus, devfn, where, size);
 
 	return pci_generic_config_read32(bus, devfn, where, size, val);
@@ -313,6 +323,14 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 				 int where, int size, u32 val)
 {
+	struct mtk_pcie_port *port = bus->sysdata;
+
+	if (port->dump_cfg && bus->number) {
+		dev_info(port->dev, "Dump config access, bus:%#x, devfn:%#x, where:%#x, size:%#x, val:%#x\n",
+			 bus->number, devfn, where, size, val);
+		dump_stack();
+	}
+
 	mtk_pcie_config_tlp_header(bus, devfn, where, size);
 
 	if (size <= 2)
@@ -1707,6 +1725,58 @@ int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 	return err;
 }
 EXPORT_SYMBOL(mtk_pcie_hw_control_vote);
+
+int mtk_pcie_enable_cfg_dump(int port)
+{
+	struct device_node *pcie_node;
+	struct platform_device *pdev;
+	struct mtk_pcie_port *pcie_port;
+
+	pcie_node = mtk_pcie_find_node_by_port(port);
+	if (!pcie_node)
+		return -ENODEV;
+
+	pdev = of_find_device_by_node(pcie_node);
+	if (!pdev) {
+		pr_info("pcie platform device not found!\n");
+		return -ENODEV;
+	}
+
+	pcie_port = platform_get_drvdata(pdev);
+	if (!pcie_port)
+		return -ENODEV;
+
+	pcie_port->dump_cfg = true;
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_pcie_enable_cfg_dump);
+
+int mtk_pcie_disable_cfg_dump(int port)
+{
+	struct device_node *pcie_node;
+	struct platform_device *pdev;
+	struct mtk_pcie_port *pcie_port;
+
+	pcie_node = mtk_pcie_find_node_by_port(port);
+	if (!pcie_node)
+		return -ENODEV;
+
+	pdev = of_find_device_by_node(pcie_node);
+	if (!pdev) {
+		pr_info("pcie platform device not found!\n");
+		return -ENODEV;
+	}
+
+	pcie_port = platform_get_drvdata(pdev);
+	if (!pcie_port)
+		return -ENODEV;
+
+	pcie_port->dump_cfg = false;
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_pcie_disable_cfg_dump);
 
 static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 {

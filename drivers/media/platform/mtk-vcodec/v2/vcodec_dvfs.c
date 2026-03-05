@@ -364,7 +364,7 @@ u32 match_avail_freq(struct mtk_vcodec_dev *dev, int codec_type, u64 freq)
 u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 {
 	struct vcodec_perf *perf;
-	u32 dflt_op_rate;
+	u32 dflt_op_rate, fps;
 	u64 freq = 0;
 
 	perf = find_perf(inst, dev);
@@ -444,6 +444,19 @@ u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 				inst->b_frame == 0 ? perf->cy_per_mb_1 : perf->cy_per_mb_2);
 		} else
 			freq = 100000000;
+
+		// H264/H265 1080p180 encode/decode performance test boost
+		fps = inst->ctx->enc_params.framerate_denom == 0 ? 0 :
+			(inst->ctx->enc_params.framerate_num / inst->ctx->enc_params.framerate_denom);
+		if ((inst->codec_fmt == 875967048 || inst->codec_fmt == 1129727304
+			|| inst->codec_fmt == 892744264) && inst->width == 1920 && inst->height == 1080
+			&& fps == 30 && inst->op_rate >= 60 && inst->op_rate <= 115
+			&& dev->enc_cnt == 1 && inst->ctx->enc_params.scenario == 0/*default*/) {
+			freq = (u64)dev->venc_dvfs_params.normal_max_freq;
+			mtk_v4l2_debug(0, "[VDVFS] VENC %ux%u, fps:%d, oprate:%d, scn:%d, e_cnt:%d, set freq=%llu",
+				inst->width, inst->height, fps, inst->op_rate,
+				inst->ctx->enc_params.scenario, dev->enc_cnt, freq);
+		}
 
 		if (inst->op_rate <= 0) {
 			freq = (u64)dev->venc_dvfs_params.normal_max_freq;

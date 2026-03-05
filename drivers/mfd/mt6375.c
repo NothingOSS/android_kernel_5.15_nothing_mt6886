@@ -159,6 +159,8 @@ static int mt6375_regmap_read(void *context, const void *reg_buf,
 static const struct regmap_bus mt6375_regmap_bus = {
 	.write = mt6375_regmap_write,
 	.read = mt6375_regmap_read,
+	.max_raw_read = 16,
+	.max_raw_write = 15,
 };
 
 static bool mt6375_is_accessible_reg(struct device *dev, unsigned int reg)
@@ -194,7 +196,7 @@ static void mt6375_irq_sync_unlock(struct irq_data *data)
 	ret = regmap_write(ddata->rmap, MT6375_REG_CHG_MSK0 + idx,
 			   ddata->mask_buf[idx]);
 	if (ret)
-		dev_err(ddata->dev, "failed to mask/unmask irq %d\n",
+		dev_err(ddata->dev, "failed to mask/unmask irq %lu\n",
 			    data->hwirq);
 	mutex_unlock(&ddata->irq_lock);
 }
@@ -250,8 +252,9 @@ static irqreturn_t mt6375_irq_thread(int irq, void *data)
 {
 	struct mt6375_data *ddata = data;
 	u8 evt[MT6375_IRQ_REGS];
-	bool handled = false;
-	int i, j, ret;
+	unsigned long evt_bitmap = 0;
+	int i, j, ret, start, end;
+	size_t evt_count;
 
 	ret = regmap_bulk_read(ddata->rmap, MT6375_REG_CHG_IRQ0, evt,
 			       MT6375_IRQ_REGS);
@@ -261,15 +264,29 @@ static irqreturn_t mt6375_irq_thread(int irq, void *data)
 	}
 
 	/* ignore masked irq and ack */
-	for (i = 0; i < MT6375_IRQ_REGS; i++)
+	for (i = 0; i < MT6375_IRQ_REGS; i++) {
 		evt[i] &= ~ddata->mask_buf[i];
-	ret = regmap_bulk_write(ddata->rmap, MT6375_REG_CHG_IRQ0, evt,
-				MT6375_IRQ_REGS);
+		if (evt[i])
+			set_bit(i, &evt_bitmap);
+	}
+	if (!evt_bitmap)
+		return IRQ_HANDLED;
+	start = ffs(evt_bitmap) - 1;
+	end = fls(evt_bitmap) - 1;
+	evt_count = end - start + 1;
+	if (start + evt_count > MT6375_IRQ_REGS)
+		evt_count = MT6375_IRQ_REGS - start;
+	ret = regmap_bulk_write(ddata->rmap, MT6375_REG_CHG_IRQ0 + start, evt + start,
+				evt_count);
 	if (ret < 0)
 		dev_err(ddata->dev, "failed to ack irq status\n");
-
-	/* handle irq */
-	for (i = 0; i < MT6375_IRQ_REGS; i++) {
+	/* for Coverity defects */
+	if (end >= MT6375_IRQ_REGS)
+		end = MT6375_IRQ_REGS - 1;
+	if (start < 0)
+		start = 0;
+	/* handle irq, PD_EVT first */
+	for (i = end; i >= start; i--) {
 		if (!evt[i] || i == (MT6375_GM30_EVT / 8))
 			continue;
 		for (j = 0; j < 8; j++) {
@@ -277,11 +294,10 @@ static irqreturn_t mt6375_irq_thread(int irq, void *data)
 				continue;
 			handle_nested_irq(irq_find_mapping(ddata->domain,
 							   i * 8 + j));
-			handled = true;
 		}
 	}
 
-	return handled ? IRQ_HANDLED : IRQ_NONE;
+	return IRQ_HANDLED;
 }
 
 static int mt6375_add_irq_chip(struct mt6375_data *ddata)

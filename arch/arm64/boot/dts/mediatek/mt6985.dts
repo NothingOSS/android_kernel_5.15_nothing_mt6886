@@ -12811,6 +12811,7 @@
 			"mmdvfs_clk";
 		operating-points-v2 = <&opp_table_venc>;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		venc-core-count = <3>;
 		port-arg-num = <3>;
 		port-def = <0 M4U_PORT_L7_VENC_RCPU 0>,
 			<0 M4U_PORT_L7_VENC_REC 0>,
@@ -13461,8 +13462,7 @@
 
 	rt-pd-manager {
 		compatible = "mediatek,rt-pd-manager";
-		/* wd0_enable : use it for enable wd0 function */
-		//wd0_enable;
+		nr-port = <1>;
 	};
 
 	pd_adapter: pd_adapter {
@@ -15658,36 +15658,35 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 			/* tcpc_device's name */
 			tcpc,name = "type_c_port0";
 			/* 0: Unknown, 1: SNK, 2: SRC, 3: DRP, 4: Try.SRC, 5: Try.SNK */
-			tcpc,role_def = <5>;
+			tcpc,role-def = <5>;
 			/* 0: Default, 1: 1.5, 2: 3.0 */
-			tcpc,rp_level = <1>;
+			tcpc,rp-level = <1>;
 			/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
-			tcpc,vconn_supply = <1>;
+			tcpc,vconn-supply = <1>;
 			io-channels = <&mt6375_adc MT6375_ADC_SBU1>,
 				      <&mt6375_adc MT6375_ADC_SBU2>;
 			charger = <&mt6375_chg>;
-			tcpc,en_wd;
-			tcpc,en_wd_sbu_polling;
-			tcpc,en_wd_polling_only;
-			tcpc,en_ctd;
-			tcpc,en_fod;
-			tcpc,en_typec_otp;
-			//tcpc,en_floatgnd;
-			wd,sbu_calib_init = <1200>;	/* mV */
-			wd,sbu_pl_bound = <200>;	/* mV */
-			wd,sbu_pl_lbound_c2c = <1100>;	/* mV */
-			wd,sbu_pl_ubound_c2c = <2600>;	/* mV */
-			wd,sbu_ph_auddev = <100>;	/* mV */
-			wd,sbu_ph_lbound = <888>;	/* mV */
-			wd,sbu_ph_lbound1_c2c = <2850>;	/* mV */
-			wd,sbu_ph_ubound1_c2c = <3150>;	/* mV */
-			wd,sbu_ph_ubound2_c2c = <3800>;	/* mV */
-			wd,sbu_aud_ubound = <1600>;	/* mV */
+			tcpc,en-wd;
+			// tcpc,en-wd-dual-port;
+			tcpc,en-ctd;
+			// tcpc,en-fod;
+			tcpc,en-typec-otp;
+			// tcpc,en-floatgnd;
+			wd,sbu-calib-init = <1200>;	/* mV */
+			wd,sbu-pl-bound = <200>;	/* mV */
+			wd,sbu-pl-lbound-c2c = <1100>;	/* mV */
+			wd,sbu-pl-ubound-c2c = <2600>;	/* mV */
+			wd,sbu-ph-auddev = <100>;	/* mV */
+			wd,sbu-ph-lbound = <888>;	/* mV */
+			wd,sbu-ph-lbound1-c2c = <2850>;	/* mV */
+			wd,sbu-ph-ubound1-c2c = <3150>;	/* mV */
+			wd,sbu-ph-ubound2-c2c = <3800>;	/* mV */
+			wd,sbu-aud-ubound = <1600>;	/* mV */
 			/* 0:16x, 1:128x, 2:512x, 3:1024x */
-			wd,wd0_tsleep = <1>;
+			wd,wd0-tsleep = <1>;
 			/* 0:400us, 1:1ms, 2:2ms, 3:4ms, 4:10ms, 5:40ms, 6:100ms, 7:400ms */
-			wd,wd0_tdet = <3>;
-			/* example wd0_tsleep = 512x, wd0_tdet = 4ms, wd0 polling time = 512*4ms */
+			wd,wd0-tdet = <3>;
+			/* example wd0-tsleep = 512x, wd0-tdet = 4ms, wd0 polling time = 512*4ms */
 			pd-data {
 				pd,vid = <0x29cf>;
 				pd,pid = <0x6375>;
@@ -15698,6 +15697,12 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 							      0x00 0x00 0x00 0x00
 							      0x00 0x00 0x01 0x07
 							      0x00>;
+				pd,sink-cap-ext = /bits/ 8 <0xcf 0x29 0x75 0x63
+							    0x00 0x00 0x00 0x00
+							    0x00 0x00 0x01 0x00
+							    0x00 0x00 0x00 0x00
+							    0x01 0x0b 0x01 0x0a
+							    0x0a 0x00 0x00 0x00>;
 				pd,mfrs = "RichtekTCPC";
 
 				/*
@@ -15705,7 +15710,7 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 				 *	MAX_POWER_LV = 0x21, MAX_POWER_LVIC = 0x31
 				 *	MAX_POWER_HV = 0x41, MAX_POWER_HVIC = 0x51
 				 */
-				pd,charging_policy = <0x31>;
+				pd,charging-policy = <0x31>;
 
 				pd,source-pdo-size = <1>;
 				pd,source-pdo-data = <0x00019096>; /* 5V, 1500 mA */
@@ -15713,18 +15718,18 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 				pd,sink-pdo-data = <0x000190c8>;
 
 				/*
-				 * No DP, host + device
+				 * No DP Sink capability
 				 *	pd,id-vdo-size = <6>;
 				 *	pd,id-vdo-data = <0xd14029cf 0x0 0x63750000
 							  0x61000000 0x0 0x41000000>;
-				 * With DP
+				 * With DP Sink capability
 				 *	pd,id-vdo-size = <6>;
 				 *	pd,id-vdo-data = <0xd54029cf 0x0 0x63750000
 							  0x61000000 0x0 0x41000000>;
 				 */
 
 				pd,id-vdo-size = <6>;
-				pd,id-vdo-data = <0xd54029cf 0x0 0x63750000
+				pd,id-vdo-data = <0xd14029cf 0x0 0x63750000
 						  0x61000000 0x0 0x41000000>;
 
 				bat,nr = <1>;
@@ -15732,59 +15737,52 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 					bat,vid = <0x29cf>;
 					bat,pid = <0x6375>;
 					bat,mfrs = "bat1";
-					bat,design_cap = <3000>;
+					bat,design-cap = <3000>;
 				};
 			};
-			dpm_caps {
-				local_dr_power;
-				local_dr_data;
-				// local_ext_power;
-				local_usb_comm;
-				// local_usb_suspend;
-				// local_high_cap;
-				// local_give_back;
-				local_no_suspend;
-				local_vconn_supply;
+			dpm-caps {
+				local-dr-power;
+				local-dr-data;
+				// local-ext-power;
+				local-usb-comm;
+				// local-usb-suspend;
+				// local-high-cap;
+				// local-give-back;
+				local-no-suspend;
 
-				// attempt_discover_cable_dfp;
-				attempt_enter_dp_mode;
-				attempt_discover_cable;
-				attempt_discover_id;
+				/* With DP Source capability */
+				attempt-enter-dp-mode;
+				// attempt-discover-cable;
+				// attempt-discover-id;
+				// attempt-discover-svids;
 
-				/* 0: disable, 1: prefer_snk, 2: prefer_src */
-				pr_check = <0>;
-				// pr_reject_as_source;
-				// pr_reject_as_sink;
-				// pr_check_gp_source;
-				// pr_check_gp_sink;
+				/* 0: disable, 1: prefer-snk, 2: prefer-src */
+				pr-check = <0>;
+				// pr-reject-as-source;
+				// pr-reject-as-sink;
+				// pr-check-gp-source;
+				// pr-check-gp-sink;
 
-				/* 0: disable, 1: prefer_ufp, 2: prefer_dfp */
-				dr_check = <0>;
-				// dr_reject_as_dfp;
-				// dr_reject_as_ufp;
+				/* 0: disable, 1: prefer-ufp, 2: prefer-dfp */
+				dr-check = <0>;
+				// dr-reject-as-dfp;
+				// dr-reject-as-ufp;
 			};
 			displayport {
-				/* connection type = "both", "ufp_d", "dfp_d" */
-				1st_connection = "dfp_d";
-				2nd_connection = "dfp_d";
-				signal,dp_v13;
-				//signal,dp_gen2;
-				//usbr20_not_used;
+				/* connection type = "both", "ufp-d", "dfp-d" */
+				1st-connection = "dfp-d";
+				2nd-connection = "dfp-d";
+				// usbr20-not-used;
 				typec,receptacle;
-				ufp_d {
-					//pin_assignment,mode_a;
-					//pin_assignment,mode_b;
-					//pin_assignment,mode_c;
-					//pin_assignment,mode_d;
-					//pin_assignment,mode_e;
+				ufp-d {
+					// pin-assignment,mode-c;
+					// pin-assignment,mode-d;
+					// pin-assignment,mode-e;
 				};
-				dfp_d {
-					//pin_assignment,mode_a;
-					//pin_assignment,mode_b;
-					pin_assignment,mode_c;
-					pin_assignment,mode_d;
-					pin_assignment,mode_e;
-					//pin_assignment,mode_f;
+				dfp-d {
+					pin-assignment,mode-c;
+					pin-assignment,mode-d;
+					pin-assignment,mode-e;
 				};
 			};
 		};

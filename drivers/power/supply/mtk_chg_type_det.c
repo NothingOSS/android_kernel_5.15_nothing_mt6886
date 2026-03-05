@@ -154,7 +154,7 @@ static void handle_pd_rdy_attach(struct mtk_ctd_info *mci, struct tcp_notify *no
 		mci->pd_rdy = true;
 		mutex_unlock(&mci->attach_lock);
 
-		usb_comm = tcpm_is_comm_capable(mci->tcpc_dev);
+		usb_comm = tcpm_inquire_usb_comm(mci->tcpc_dev);
 		tcpm_get_remote_power_cap(mci->tcpc_dev, &cap);
 		watt = cap.max_mv[0] * cap.ma[0];
 		dev_info(mci->dev, "%s: mv:%d, ma:%d, watt: %d\n",

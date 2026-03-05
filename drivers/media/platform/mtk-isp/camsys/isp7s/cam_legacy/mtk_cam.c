@@ -6619,6 +6619,9 @@ static int isp_composer_handler(struct rpmsg_device *rpdev, void *data,
 	     ipi_msg->ack_data.ack_cmd_id != CAM_CMD_DESTROY_SESSION))
 		return -EINVAL;
 
+	if (ipi_msg->cookie.session_id >= cam->max_stream_num)
+		return -EINVAL;
+
 	if (ipi_msg->ack_data.ack_cmd_id == CAM_CMD_FRAME) {
 		int ret;
 

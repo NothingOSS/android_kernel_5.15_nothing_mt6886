@@ -131,17 +131,23 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 			swap(destw, desth);
 
-		if (crop_srcw / destw > 20 || crop_srch / desth > 255 ||
-			destw / crop_srcw > 32 || desth / crop_srch > 32) {
+		if (crop_srcw > destw * 20 || crop_srch > desth * 24 ||
+		    destw > crop_srcw * 32 || desth > crop_srch * 32) {
 			mml_err("[drm]exceed HW limitation src %ux%u dest %ux%u",
 				crop_srcw, crop_srch, destw, desth);
 			goto not_support;
 		}
 
-		if ((crop_srcw * desth) / (destw * crop_srch) > 16 ||
-			(destw * crop_srch) / (crop_srcw * desth) > 16) {
-			mml_err("[drm]exceed tile ratio limitation src %ux%u dest %ux%u",
+		if (crop_srcw * desth > destw * crop_srch * 16 ||
+		    destw * crop_srch > crop_srcw * desth * 16) {
+			mml_err("[drm]exceed ratio limitation src %ux%u dest %ux%u",
 				crop_srcw, crop_srch, destw, desth);
+			goto not_support;
+		}
+
+		if ((destw > crop_srcw && desth < crop_srch) ||
+		    (destw < crop_srcw && desth > crop_srch)) {
+			mml_err("[drm]not support shrink and expand h/v ratio at the same time");
 			goto not_support;
 		}
 

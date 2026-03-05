@@ -227,6 +227,8 @@ struct mtk_chan {
 	struct uart_info rec_info[UART_RECORD_COUNT];
 	struct DMA_info DMA_info[UART_RECORD_COUNT];
 	struct DMA_info DMA_info_before_tx[UART_RECORD_COUNT];
+	atomic_t term_err;
+	unsigned int term_dbg;
 };
 
 static unsigned long long num;
@@ -1415,21 +1417,59 @@ static int mtk_uart_apdma_slave_config(struct dma_chan *chan,
 	return 0;
 }
 
+static void mtk_uart_apdma_synchronize(struct dma_chan *chan)
+{
+	unsigned long flags;
+	struct mtk_chan *c = NULL;
+	LIST_HEAD(head);
+
+	if (!chan)
+		return;
+
+	c = to_mtk_uart_apdma_chan(chan);
+	if (!c)
+		return;
+
+	synchronize_irq(c->irq);
+
+	spin_lock_irqsave(&c->vc.lock, flags);
+	vchan_get_all_descriptors(&c->vc, &head);
+	spin_unlock_irqrestore(&c->vc.lock, flags);
+
+	vchan_dma_desc_free_list(&c->vc, &head);
+	if (atomic_read(&c->term_err)) {
+		pr_info("[%s]: Terminate error detected! err[%d] irq[%d] dbg[0x%x]\
+				c->chan_cnt[%d]\n", __func__, atomic_read(&c->term_err),
+				c->irq, c->term_dbg, c->chan_desc_count);
+		atomic_set(&c->term_err, 0);
+		c->term_dbg = 0;
+	}
+}
+
 static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 {
-	struct mtk_chan *c = to_mtk_uart_apdma_chan(chan);
-	unsigned long flags;
+	struct mtk_chan *c = NULL;
 	unsigned int status;
-	LIST_HEAD(head);
 	int ret;
 	bool state;
 
+	if (!chan)
+		return -EINVAL;
+
+	c = to_mtk_uart_apdma_chan(chan);
+	if (!c)
+		return -EINVAL;
+
+	c->term_dbg = 0;
+	atomic_set(&c->term_err, 0);
+
 	if (mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE)) {
 		mtk_uart_apdma_write(c, VFF_FLUSH, VFF_FLUSH_B);
-		ret = readx_poll_timeout(readl, c->base + VFF_FLUSH,
+		ret = readx_poll_timeout_atomic(readl, c->base + VFF_FLUSH,
 				  status, status != VFF_FLUSH_B, 10, 100);
-		dev_info(c->vc.chan.device->dev, "flush begin %s[%d]: %d\n",
-			c->dir == DMA_DEV_TO_MEM ? "RX":"TX", c->irq, ret);
+		if (ret)
+			atomic_or(1 << 1, &c->term_err);
+
 		/*
 		 * DMA hardware will generate a interrupt immediately
 		 * once flush done, so we need to wait the interrupt to be
@@ -1444,8 +1484,6 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 			irq_get_irqchip_state(c->irq,
 				IRQCHIP_STATE_ACTIVE, &state);
 
-		dev_info(c->vc.chan.device->dev, "flush end %s\n",
-			c->dir == DMA_DEV_TO_MEM ? "RX":"TX");
 	}
 
 	/*
@@ -1455,11 +1493,12 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 	 * 3. set stop as 0
 	 */
 	mtk_uart_apdma_write(c, VFF_STOP, VFF_STOP_B);
-	ret = readx_poll_timeout(readl, c->base + VFF_EN,
+	ret = readx_poll_timeout_atomic(readl, c->base + VFF_EN,
 			  status, !status, 10, 100);
-	if (ret)
-		dev_err(c->vc.chan.device->dev, "stop: fail, status=0x%x\n",
-			mtk_uart_apdma_read(c, VFF_DEBUG_STATUS));
+	if (ret) {
+		atomic_or(1 << 2, &c->term_err);
+		c->term_dbg = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
+	}
 
 	mtk_uart_apdma_write(c, VFF_STOP, VFF_STOP_CLR_B);
 	mtk_uart_apdma_write(c, VFF_INT_EN, VFF_INT_EN_CLR_B);
@@ -1469,16 +1508,8 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 	else if (c->dir == DMA_MEM_TO_DEV)
 		mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_TX_INT_CLR_B);
 
-	synchronize_irq(c->irq);
-
-	spin_lock_irqsave(&c->vc.lock, flags);
-	vchan_get_all_descriptors(&c->vc, &head);
-	spin_unlock_irqrestore(&c->vc.lock, flags);
-
 	if (c->chan_desc_count > 0)
-		pr_info("[WARN] %s, c->chan_desc_count[%d]\n", __func__, c->chan_desc_count);
-
-	vchan_dma_desc_free_list(&c->vc, &head);
+		atomic_or(1 << 3, &c->term_err);
 
 	return 0;
 }
@@ -1494,7 +1525,6 @@ static int mtk_uart_apdma_device_pause(struct dma_chan *chan)
 	mtk_uart_apdma_write(c, VFF_INT_EN, VFF_INT_EN_CLR_B);
 
 	spin_unlock_irqrestore(&c->vc.lock, flags);
-	synchronize_irq(c->irq);
 
 	return 0;
 }
@@ -1624,6 +1654,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 	mtkd->ddev.device_config = mtk_uart_apdma_slave_config;
 	mtkd->ddev.device_pause = mtk_uart_apdma_device_pause;
 	mtkd->ddev.device_terminate_all = mtk_uart_apdma_terminate_all;
+	mtkd->ddev.device_synchronize = mtk_uart_apdma_synchronize;
 	mtkd->ddev.src_addr_widths = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE);
 	mtkd->ddev.dst_addr_widths = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE);
 	mtkd->ddev.directions = BIT(DMA_DEV_TO_MEM) | BIT(DMA_MEM_TO_DEV);
@@ -1713,9 +1744,12 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		}
 		c->irq = rc;
 		c->rec_idx = 0;
+		c->term_dbg = 0;
 
 		c->is_hub_port = mtkd->support_hub & (1 << i);
 		pr_info("c->is_hub_port is %d\n", c->is_hub_port);
+
+		atomic_set(&c->term_err, 0);
 	}
 
 	pm_runtime_enable(&pdev->dev);

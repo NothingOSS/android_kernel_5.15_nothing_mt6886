@@ -513,11 +513,11 @@ static netdev_tx_t ccmni_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	if (ccmni_forward_rx(ccmni, skb) == NETDEV_TX_OK)
 		return NETDEV_TX_OK;
 
-	/* dev->mtu is changed  if dev->mtu is changed by upper layer */
-	if (unlikely(skb->len > dev->mtu)) {
+	/* If larger unexpected packets are sent to MD, MD will hang, ccmni driver intercepts  */
+	if (unlikely(skb->len > dev->max_mtu)) {
 		netdev_err(dev,
 			   "CCMNI%d write fail: len(0x%x)>MTU(0x%x, 0x%x)\n",
-			   ccmni->index, skb->len, CCMNI_MTU, dev->mtu);
+			   ccmni->index, skb->len, dev->max_mtu, dev->mtu);
 		dev_kfree_skb(skb);
 		dev->stats.tx_dropped++;
 		return NETDEV_TX_OK;
