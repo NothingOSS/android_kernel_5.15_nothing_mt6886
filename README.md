@@ -4,6 +4,10 @@
   - Kernel modules path
      - vendor/mediatek/kernel_modules/
 
+2. OS 4.0 (Pacman-B4.0-260225-1817)
+  - Improve stability
+  - GKI: upgrade for android13-5.15-2025-09_r1
+
 
 # How do I submit patches to Android Common Kernels
 
