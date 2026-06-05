@@ -8,6 +8,9 @@
   - Improve stability
   - GKI: upgrade for android13-5.15-2025-09_r1
 
+3. OS 4.1 (Pacman-B4.1-260414-2141)
+  - No update
+
 
 # How do I submit patches to Android Common Kernels
 
