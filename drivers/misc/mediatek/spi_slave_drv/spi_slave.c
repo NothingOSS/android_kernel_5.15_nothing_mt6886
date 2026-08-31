@@ -57,7 +57,7 @@
 /*
  * default never pass more than 32 bytes
  */
-#define MTK_SPI_BUFSIZ	min(32, SMP_CACHE_BYTES)
+#define MTK_SPI_BUFSIZ	32
 #define SPI_READ_STA_ERR_RET	(1)
 /*
  * spi slave config

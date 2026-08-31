@@ -531,6 +531,12 @@ int conap_scp_is_drv_ready(enum conap_scp_drv_type type)
 }
 EXPORT_SYMBOL(conap_scp_is_drv_ready);
 
+int conap_scp_is_ready(void)
+{
+	return conap_scp_ipi_is_scp_ready();
+}
+EXPORT_SYMBOL(conap_scp_is_ready);
+
 int conap_scp_register_drv(enum conap_scp_drv_type type, struct conap_scp_drv_cb *cb)
 {
 	if (g_core_ctx.enable == 0)

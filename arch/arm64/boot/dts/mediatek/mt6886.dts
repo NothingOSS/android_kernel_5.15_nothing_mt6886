@@ -5542,6 +5542,10 @@
 		oc_cpu_limit = <900000 900000 1300000>;
 	};
 
+	gpu_power_throttling: gpu-power-throttling {
+		compatible = "mediatek,gpu-power-throttling";
+	};
+
 	md_power_throttling: md_power_throttling {
 		compatible = "mediatek,md-power-throttling";
 		lbat_md_reduce_tx = <6>;

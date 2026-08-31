@@ -151,7 +151,7 @@ static ssize_t conn_dbg_read_log(struct file *filp, char __user *buffer,
 		if (dump_len > count)
 			dump_len = count;
 
-		pr_info("%s f_pos=%d, dump_len=%d, %s", __func__, *f_pos, dump_len, &temp[*f_pos]);
+		pr_info("%s f_pos=%d, dump_len=%d, buf=%p, %s", __func__, *f_pos, dump_len, buffer, &temp[*f_pos]);
 		ret = copy_to_user(buffer, &temp[*f_pos], dump_len);
 		if (ret) {
 			pr_info("%s copy_to_user failed, ret = %d", __func__, ret);
@@ -177,6 +177,9 @@ ssize_t conn_dbg_dev_read(struct file *filp, char __user *buffer,
 				size_t count, loff_t *f_pos)
 {
 	ssize_t ret, ret2;
+
+	if (buffer == NULL)
+		return -EINVAL;
 
 	ret = conn_dbg_read_log(filp, buffer, count, f_pos);
 	if (ret > 0) {
@@ -290,7 +293,6 @@ void wmt_export_platform_bridge_register(struct wmt_platform_bridge *cb)
 	bridge.conninfra_reg_readable_cb = cb->conninfra_reg_readable_cb;
 	bridge.conninfra_reg_is_bus_hang_cb = cb->conninfra_reg_is_bus_hang_cb;
 
-	conn_dbg_dev_init();
 	conn_dbg_log_init();
 	CONNADP_INFO_FUNC("\n");
 }
@@ -310,6 +312,7 @@ void wmt_export_platform_dbg_bridge_register(const struct wmt_platform_dbg_bridg
 	if (cb->write_cb != NULL && cb->read_cb != NULL) {
 		g_dbg_bridge.write_cb = cb->write_cb;
 		g_dbg_bridge.read_cb = cb->read_cb;
+		conn_dbg_dev_init();
 	}
 }
 EXPORT_SYMBOL(wmt_export_platform_dbg_bridge_register);

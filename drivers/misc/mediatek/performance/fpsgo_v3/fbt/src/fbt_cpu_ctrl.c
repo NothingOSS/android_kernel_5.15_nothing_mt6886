@@ -21,10 +21,6 @@
 
 /*--------------------------------------------*/
 
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
-
 struct FBT_CPU_CTRL_NOTIFIER_PUSH_TAG {
 	int policy_id;
 	unsigned int freq;

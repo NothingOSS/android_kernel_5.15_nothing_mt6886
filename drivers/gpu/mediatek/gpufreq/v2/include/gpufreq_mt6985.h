@@ -180,16 +180,6 @@ struct gpufreq_core_mask_info g_core_mask_table[] = {
 #define VOLT_NORMALIZATION(volt)        ((volt % 625) ? (volt - (volt % 625) + 625) : volt)
 
 /**************************************************
- * Power Throttling Setting
- **************************************************/
-#define GPUFREQ_BATT_OC_ENABLE          (0)
-#define GPUFREQ_BATT_PERCENT_ENABLE     (0)
-#define GPUFREQ_LOW_BATT_ENABLE         (0)
-#define GPUFREQ_BATT_OC_FREQ            (484000)
-#define GPUFREQ_BATT_PERCENT_IDX        (0)
-#define GPUFREQ_LOW_BATT_FREQ           (484000)
-
-/**************************************************
  * Aging Sensor Setting
  **************************************************/
 #define GPUFREQ_AGING_KEEP_FGPU         (945000)

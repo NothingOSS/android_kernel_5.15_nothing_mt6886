@@ -6894,6 +6894,7 @@ int __mem_cgroup_charge(struct page *page, struct mm_struct *mm,
 	int ret;
 
 	memcg = get_mem_cgroup_from_mm(mm);
+	trace_android_vh_mem_cgroup_charge(page, &memcg);
 	ret = charge_memcg(page, memcg, gfp_mask);
 	css_put(&memcg->css);
 

@@ -36,6 +36,12 @@ struct conap_scp_drv_cb {
 };
 
 /*
+ * 1: ready
+ * 0: not ready
+ */
+int conap_scp_is_ready(void);
+
+/*
  * >= 0: success
  * <0 : fail
  */

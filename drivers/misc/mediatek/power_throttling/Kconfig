@@ -85,3 +85,13 @@ config MTK_CPU_POWER_THROTTLING
 	  Select "y" if you want to enable MTK CPU power throttling
 	  feature
 	  Select "n" if unsure.
+
+config MTK_GPU_POWER_THROTTLING
+	tristate "MTK GPU power throttling"
+	help
+	  For MediaTek GPU power throttling.
+	  Throttle MTK GPU power when MTK power throttling triggers
+	  Select "y" if you want to enable MTK GPU power throttling
+	  feature
+	  Select "n" if unsure.
+

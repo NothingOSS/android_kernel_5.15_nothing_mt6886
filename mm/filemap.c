@@ -897,6 +897,7 @@ noinline int __add_to_page_cache_locked(struct page *page,
 	page->mapping = mapping;
 	page->index = offset;
 
+	trace_android_vh_filemap_add_to_page_cache(mapping, page, offset);
 	if (!huge) {
 		error = mem_cgroup_charge(page, NULL, gfp);
 		if (error)
@@ -3492,7 +3493,7 @@ int generic_file_mmap(struct file *file, struct vm_area_struct *vma)
  */
 int generic_file_readonly_mmap(struct file *file, struct vm_area_struct *vma)
 {
-	if ((vma->vm_flags & VM_SHARED) && (vma->vm_flags & VM_MAYWRITE))
+	if (vma_is_shared_maywrite(vma))
 		return -EINVAL;
 	return generic_file_mmap(file, vma);
 }

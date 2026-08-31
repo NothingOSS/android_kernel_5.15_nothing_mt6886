@@ -137,10 +137,11 @@ int msg_evt_put_op_to_active(struct msg_thread_ctx *ctx, struct msg_op *op)
 	struct msg_op_signal *signal = NULL;
 	int wait_ret = -1;
 	int ret = 0, cnt = 0;
+	unsigned int curr_timeoutValue = 0;
 
 	do {
-		if (!op) {
-			pr_err("msg_thread_ctx op(0x%p)\n", op);
+		if (!ctx || !op) {
+			pr_notice("msg_thread_ctx(0x%p), op(0x%p)\n", ctx, op);
 			break;
 		}
 
@@ -172,10 +173,11 @@ int msg_evt_put_op_to_active(struct msg_thread_ctx *ctx, struct msg_op *op)
 			break;
 		}
 
+		curr_timeoutValue = signal->timeoutValue;
 		/* wake up thread */
 		wake_up_interruptible(&ctx->waitQueue);
 
-		if (signal->timeoutValue == 0)
+		if (curr_timeoutValue == 0)
 			break;
 
 		/* check result */
@@ -203,7 +205,7 @@ int msg_evt_put_op_to_active(struct msg_thread_ctx *ctx, struct msg_op *op)
 
 	} while (0);
 
-	if (op != NULL && signal != NULL &&
+	if (op != NULL && signal != NULL && curr_timeoutValue &&
 		atomic_dec_and_test(&op->ref_count)) {
 		/* put Op back to freeQ */
 		msg_evt_put_op_to_free_queue(ctx, op);

@@ -277,7 +277,7 @@ static int dlpt_check_power_off(void)
 }
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-static void dlpt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level)
+static void dlpt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 {
 	dlpt.lbat_level = level;
 }
@@ -468,6 +468,7 @@ static int dlpt_notify_handler(void *unused)
 		pre_ui_soc = cur_ui_soc;
 
 		if (cur_ui_soc == 1) {
+			/* Check low battery volt < level 3 throttle volt */
 			if (dlpt_check_power_off()) {
 				/* notify battery driver to power off by SOC=0 */
 				dlpt_set_shutdown_condition();
@@ -513,7 +514,7 @@ static void dlpt_notify_init(void)
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 	ret = register_low_battery_notify(&dlpt_low_battery_cb,
-				    LOW_BATTERY_PRIO_DLPT);
+				    LOW_BATTERY_PRIO_DLPT, NULL);
 	if (ret == 3)
 		isThreeLevel = 1;
 #endif
@@ -603,10 +604,12 @@ static void dlpt_parse_dt(struct platform_device *pdev)
 			dlpt.tag = (struct tag_bootmode *)of_get_property(np, "atag,boot", NULL);
 			if (!dlpt.tag)
 				dev_notice(&pdev->dev, "failed to get atag,boot\n");
+			else
+				dev_notice(&pdev->dev, "bootmode:0x%x\n", dlpt.tag->bootmode);
 		}
 	}
-	dev_notice(&pdev->dev, "power_path_support:%d isense_support:%d bootmode:0x%x\n"
-		   , dlpt.is_power_path_supported, dlpt.is_isense_supported, dlpt.tag->bootmode);
+	dev_notice(&pdev->dev, "power_path_support:%d isense_support:%d\n"
+		   , dlpt.is_power_path_supported, dlpt.is_isense_supported);
 }
 
 static int dlpt_probe(struct platform_device *pdev)

@@ -100,6 +100,7 @@ int conn_pwr_get_low_battery_level(struct conn_pwr_update_info *info)
 			ret = CONN_PWR_THR_LV_4;
 			break;
 		default:
+			ret = CONN_PWR_THR_LV_1;
 			break;
 		}
 	}

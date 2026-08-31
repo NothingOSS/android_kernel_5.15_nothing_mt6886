@@ -13,8 +13,6 @@
 #include <linux/miscdevice.h>
 #include "mtk_blocktag.h"
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
 #define EARA_IOCTL_MAX_SIZE 27
 struct _EARA_IOCTL_PACKAGE {
 	union {

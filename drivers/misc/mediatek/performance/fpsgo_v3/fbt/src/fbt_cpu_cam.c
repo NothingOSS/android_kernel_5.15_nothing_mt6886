@@ -53,7 +53,6 @@
 #define IDLE_DBNC 10
 #define MAX_PID_DIGIT 7
 #define MAIN_LOG_SIZE 256
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 static atomic_t fbt_cam_uclamp_boost_enable;
 static atomic_t fbt_cam_gcc_enable;

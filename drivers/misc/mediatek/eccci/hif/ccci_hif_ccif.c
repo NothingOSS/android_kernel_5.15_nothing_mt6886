@@ -748,6 +748,22 @@ static int ccif_rx_collect(struct md_ccif_queue *queue, int budget,
 				ccci_port_get_dev_name(ccci_h->channel));
 			if (ccci_h->channel == CCCI_FS_RX)
 				ccci_h->data[0] |= CCCI_FS_AP_CCCI_WAKEUP;
+			else if (ccci_h->channel >= CCCI_MIPC0_CHANNEL_RX &&
+				ccci_h->channel <= CCCI_MIPC9_CHANNEL_RX) {
+				/*
+				 * MIPC message data struct:
+				 * typedef struct {
+				 * u32 magic; u16 padding[2]; u8 msg_sim_ps_id;
+				 * u8 msg_flag;
+				 * u16 msg_id;  //log to show,offset is 10bytes
+				 * u16 msg_txid; u16 msg_len;} mipc_msg_hdr_t;
+				 */
+				CCCI_NOTICE_LOG(0, TAG,
+					"%s:CCCI_MIPC ch%d wakeup,msg_id=0x%x\n",
+					__func__, ccci_h->channel,
+					*(unsigned short *)((unsigned char *)skb->data +
+						sizeof(struct ccci_header) + 10));
+			}
 		}
 		if (ccci_h->channel == CCCI_C2K_LB_DL)
 			atomic_set(&lb_dl_q, queue->index);

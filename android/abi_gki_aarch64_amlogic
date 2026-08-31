@@ -205,6 +205,8 @@
   component_master_del
   component_match_add_release
   component_unbind_all
+  config_group_find_item
+  config_item_init_type_name
   console_printk
   __const_udelay
   consume_skb
@@ -514,8 +516,10 @@
   discard_new_inode
   disk_end_io_acct
   disk_start_io_acct
+  divider_determine_rate
   divider_get_val
   divider_recalc_rate
+  divider_ro_determine_rate
   divider_ro_round_rate_parent
   divider_round_rate_parent
   dma_alloc_attrs
@@ -1304,6 +1308,7 @@
   kstrtobool_from_user
   kstrtoint
   kstrtoll
+  kstrtos16
   kstrtos8
   kstrtou16
   kstrtou16_from_user
@@ -1551,7 +1556,9 @@
   of_clk_add_provider
   of_clk_get
   of_clk_get_by_name
+  of_clk_get_from_provider
   of_clk_hw_onecell_get
+  of_clk_hw_simple_get
   of_clk_set_defaults
   of_clk_src_onecell_get
   of_count_phandle_with_args
@@ -1975,6 +1982,7 @@
   regmap_multi_reg_write
   regmap_raw_write
   regmap_read
+  regmap_test_bits
   regmap_update_bits_base
   regmap_write
   regulator_bulk_disable
@@ -2038,6 +2046,7 @@
   rps_needed
   rps_sock_flow_table
   rtc_add_group
+  rtc_read_alarm
   rtc_time64_to_tm
   rtc_tm_to_time64
   rtc_update_irq
@@ -2224,7 +2233,9 @@
   snd_pcm_set_ops
   snd_pcm_stop
   snd_pcm_stop_xrun
+  snd_pcm_stream_lock
   _snd_pcm_stream_lock_irqsave
+  snd_pcm_stream_unlock
   snd_pcm_stream_unlock_irqrestore
   snd_soc_add_card_controls
   snd_soc_add_component_controls
@@ -2415,6 +2426,7 @@
   thermal_cooling_device_unregister
   thermal_of_cooling_device_register
   thermal_zone_bind_cooling_device
+  thermal_zone_device_critical
   thermal_zone_device_disable
   thermal_zone_device_enable
   thermal_zone_device_register
@@ -2429,6 +2441,7 @@
   _totalram_pages
   touch_softlockup_watchdog
   trace_clock_local
+  trace_dump_stack
   trace_event_buffer_commit
   trace_event_buffer_reserve
   trace_event_ignore_this_pid
@@ -2471,6 +2484,8 @@
   __traceiter_android_vh_rmqueue
   __traceiter_android_vh_sched_show_task
   __traceiter_android_vh_set_module_permit_after_init
+  __traceiter_android_vh_watchdog_timer_softlockup
+  __traceiter_android_vh_wq_lockup_pool
   __traceiter_android_vh_xhci_urb_suitable_bypass
   __traceiter_gpu_mem_total
   __traceiter_irq_handler_entry
@@ -2480,6 +2495,7 @@
   __traceiter_mmap_lock_start_locking
   __traceiter_mm_page_alloc
   __traceiter_mm_page_free
+  __traceiter_rcu_stall_warning
   __traceiter_rwmmio_post_read
   __traceiter_rwmmio_post_write
   __traceiter_rwmmio_read
@@ -2522,6 +2538,8 @@
   __tracepoint_android_vh_rmqueue
   __tracepoint_android_vh_sched_show_task
   __tracepoint_android_vh_set_module_permit_after_init
+  __tracepoint_android_vh_watchdog_timer_softlockup
+  __tracepoint_android_vh_wq_lockup_pool
   __tracepoint_android_vh_xhci_urb_suitable_bypass
   __tracepoint_gpu_mem_total
   __tracepoint_irq_handler_entry
@@ -2533,6 +2551,7 @@
   __tracepoint_mm_page_free
   tracepoint_probe_register
   tracepoint_probe_unregister
+  __tracepoint_rcu_stall_warning
   __tracepoint_rwmmio_post_read
   __tracepoint_rwmmio_post_write
   __tracepoint_rwmmio_read
@@ -2662,6 +2681,9 @@
   usb_find_interface
   usb_free_coherent
   usb_free_urb
+  usb_function_activate
+  usb_function_deactivate
+  usb_gadget_frame_number
   usb_gadget_giveback_request
   usb_gadget_map_request_by_dev
   usb_gadget_probe_driver
@@ -2699,6 +2721,7 @@
   usb_lock_device_for_reset
   usb_match_id
   usb_match_one_id
+  usbnet_generic_cdc_bind
   usb_phy_set_charger_current
   usb_poison_urb
   usb_put_dev
@@ -2755,6 +2778,7 @@
   v4l2_fh_exit
   v4l2_fh_init
   v4l2_fh_open
+  v4l2_fill_pixfmt
   __v4l2_find_nearest_size
   v4l2_i2c_subdev_init
   v4l2_m2m_buf_queue
@@ -2777,6 +2801,7 @@
   v4l2_m2m_qbuf
   v4l2_m2m_release
   v4l2_m2m_try_schedule
+  v4l2_simplify_fraction
   v4l2_src_change_event_subscribe
   v4l2_subdev_link_validate
   v4l_bound_align_image
@@ -2814,6 +2839,7 @@
   __video_register_device
   video_unregister_device
   vmalloc
+  vmalloc_array
   vmalloc_nr_pages
   vmalloc_to_page
   vmalloc_to_pfn

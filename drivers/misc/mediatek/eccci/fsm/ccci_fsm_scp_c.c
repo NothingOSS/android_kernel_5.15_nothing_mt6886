@@ -61,6 +61,7 @@ static wait_queue_head_t scp_ipi_rx_wq;
 static struct ccci_skb_queue scp_ipi_rx_skb_list;
 static unsigned int init_work_done;
 static unsigned int scp_clk_last_state;
+static atomic_t scp_md_sync_flg;
 
 static inline void ccci_scp_ipi_msg_add_magic(struct ccci_ipi_msg_out *ipi_msg)
 {
@@ -200,12 +201,9 @@ static void ccci_scp_md_state_sync_work(struct work_struct *work)
 	switch (ctl->md_state) {
 	case READY:
 		while (count < SCP_BOOT_TIMEOUT/EVENT_POLL_INTEVAL) {
-			if (atomic_read(&scp_state) ==
-				SCP_CCCI_STATE_BOOTING
-				|| atomic_read(&scp_state)
-				== SCP_CCCI_STATE_RBREADY
-				|| atomic_read(&scp_state)
-				== SCP_CCCI_STATE_STOP)
+			if (atomic_read(&scp_state) == SCP_CCCI_STATE_BOOTING
+				|| atomic_read(&scp_state) == SCP_CCCI_STATE_RBREADY
+				|| atomic_read(&scp_state) == SCP_CCCI_STATE_STOP)
 				break;
 			count++;
 			msleep(EVENT_POLL_INTEVAL);
@@ -220,14 +218,15 @@ static void ccci_scp_md_state_sync_work(struct work_struct *work)
 					"fail to set scp clk, ret = %d\n", ret);
 				break;
 			}
-
-			ccci_notify_atf_set_scpmem();
-			ret = ccci_port_send_msg_to_md(CCCI_SYSTEM_TX,
-			CCISM_SHM_INIT, 0, 1);
-			if (ret < 0)
-				CCCI_ERROR_LOG(0, FSM,
-					"fail to send CCISM_SHM_INIT %d\n",
-					ret);
+			if (atomic_read(&scp_md_sync_flg) == 0) {
+				ccci_notify_atf_set_scpmem();
+				ret = ccci_port_send_msg_to_md(CCCI_SYSTEM_TX,
+					CCISM_SHM_INIT, 0, 1);
+				if (ret < 0)
+					CCCI_ERROR_LOG(0, FSM, "fail to send CCISM_SHM_INIT %d\n",
+						ret);
+				atomic_set(&scp_md_sync_flg,1);
+			}
 		}
 		break;
 	case INVALID:
@@ -293,6 +292,7 @@ static void ccci_scp_ipi_rx_work(struct work_struct *work)
 					CCCI_NORMAL_LOG(0, FSM,
 						"MD INVALID,scp send ack to ap\n");
 					ret = scp_set_clk_cg(0);
+					atomic_set(&scp_md_sync_flg, 0);
 					if (ret)
 						CCCI_ERROR_LOG(0, FSM,
 							"fail to set scp clk, ret = %d\n", ret);
@@ -439,6 +439,9 @@ static int apsync_event(struct notifier_block *this,
 	switch (event) {
 	case SCP_EVENT_READY:
 		fsm_scp_init0();
+		break;
+	case SCP_EVENT_STOP:
+		atomic_set(&scp_md_sync_flg, 0);
 		break;
 	}
 

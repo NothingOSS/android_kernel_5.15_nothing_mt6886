@@ -366,11 +366,6 @@ static bool is_uainfo_valid(struct usb_audio_stream_info *uainfo)
 		return false;
 	}
 
-	if (uainfo->number_of_ch > 2) {
-		USB_OFFLOAD_ERR("uainfo->number_of_ch invalid (%d)\n", uainfo->number_of_ch);
-		return false;
-	}
-
 	if (uainfo->direction > 1) {
 		USB_OFFLOAD_ERR("uainfo->direction invalid (%d)\n", uainfo->direction);
 		return false;

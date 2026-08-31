@@ -15,6 +15,7 @@
 #define TARGET_TPCB_OFFSET          (0x88)
 #define SPORTS_MODE_ENABLE          (0x90)
 #define VTSKIN                      (0x94)
+#define CG_POLICY_MODE_OFFSET       (0x9C)
 #define TTJ_OFFSET                 (0x100)
 #define POWER_BUDGET_OFFSET        (0x110)
 #define CPU_MIN_OPP_HINT_OFFSET    (0x120)

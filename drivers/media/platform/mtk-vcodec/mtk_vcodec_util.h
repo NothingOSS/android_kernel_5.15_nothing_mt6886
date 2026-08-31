@@ -31,7 +31,6 @@
 #define LOG_PARAM_INFO_SIZE 64
 #define LOG_PROPERTY_SIZE 1024
 #define ROUND_N(X, N)   (((X) + ((N)-1)) & (~((N)-1)))    //only for N is exponential of 2
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define isENCODE_PERFORMANCE_USAGE(w, h, fr, opr) \
 		((((w) >= 3840 && (h) >= 2160 && (fr) >= 30) || \
 		((h) >= 3840 && (w) >= 2160 && (fr) >= 30) || \

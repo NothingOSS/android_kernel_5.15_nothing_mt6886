@@ -128,14 +128,6 @@ struct gpufreq_core_mask_info g_core_mask_table[] = {
 #define VCORE_LEVEL_3                   (72500)
 
 /**************************************************
- * Power Throttling Setting
- **************************************************/
-#define GPUFREQ_BATT_OC_ENABLE          (1)
-#define GPUFREQ_LOW_BATT_ENABLE         (1)
-#define GPUFREQ_BATT_OC_FREQ            (467000)
-#define GPUFREQ_LOW_BATT_FREQ           (467000)
-
-/**************************************************
  * Aging Sensor Setting
  **************************************************/
 #define GPUFREQ_AGING_KEEP_FGPU         (660000)

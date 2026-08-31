@@ -80,7 +80,6 @@ static void gbe_boost_cpu(void)
 	}
 
 	gbe_boost(KIR_GBE2, boost);
-
 }
 
 static void update_runtime(struct gbe_boost_unit *iter)
@@ -175,16 +174,34 @@ static int check_dep_run_and_update(struct gbe_boost_unit *iter)
 
 static void gbe_do_timer2(struct work_struct *work)
 {
-	struct gbe_boost_unit *iter;
+	struct gbe_boost_unit *iter, *tmp_iter;
+	struct hlist_node *h;
 	unsigned long long cur_ts_ms = ktime_to_ms(ktime_get());
 
 	iter = container_of(work, struct gbe_boost_unit, work2);
 
 	mutex_lock(&gbe_lock);
 
-	if (iter->state == FREE) {
+	if (iter == NULL)
+		goto out;
+
+	hlist_for_each_entry_safe(tmp_iter, h, &gbe_boost_units, hlist) {
+		if (tmp_iter == iter)
+			break;
+	}
+
+	if (tmp_iter == NULL)
+		goto out;
+
+	if (!hlist_unhashed(&iter->hlist) && iter->state == FREE) {
+		hrtimer_cancel(&iter->timer1);
+		hrtimer_cancel(&iter->timer2);
 		hlist_del(&iter->hlist);
+		mutex_unlock(&gbe_lock);
+		cancel_work_sync(&iter->work1);
+		cancel_work_sync(&iter->work2);
 		kfree(iter);
+		return;
 	} else if (iter->boost_cnt <= MAX_BOOST_CNT && check_dep_run_and_update(iter)) {
 		if (cur_ts_ms - iter->q_ts_ms > TIMER1_MS) {
 			iter->boost_cnt++;
@@ -218,7 +235,7 @@ static void gbe_do_timer2(struct work_struct *work)
 			ms_to_ktime(TIMER2_MS), HRTIMER_MODE_REL);
 	}
 
-
+out:
 	mutex_unlock(&gbe_lock);
 }
 
@@ -227,6 +244,10 @@ static enum hrtimer_restart gbe_timer2_tfn(struct hrtimer *timer)
 	struct gbe_boost_unit *iter;
 
 	iter = container_of(timer, struct gbe_boost_unit, timer2);
+
+	if (READ_ONCE(iter->state) == FREE)
+		return HRTIMER_NORESTART;
+
 	schedule_work(&iter->work2);
 	return HRTIMER_NORESTART;
 }

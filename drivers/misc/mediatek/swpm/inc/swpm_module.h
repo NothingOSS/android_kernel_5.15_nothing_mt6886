@@ -18,9 +18,6 @@
  ****************************************************************************/
 #define IDD_TBL_DBG
 
-#define MAX(a, b)			((a) >= (b) ? (a) : (b))
-#define MIN(a, b)			((a) >= (b) ? (b) : (a))
-
 #define SWPM_OPS (swpm_m.plat_ops)
 
 #define swpm_lock(lock)		mutex_lock(lock)

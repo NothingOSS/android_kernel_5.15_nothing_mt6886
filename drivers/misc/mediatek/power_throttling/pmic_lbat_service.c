@@ -21,6 +21,7 @@
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <linux/string.h>
 
 #include "pmic_lbat_service.h"
 
@@ -41,6 +42,7 @@
 #define DEF_R_RATIO_1		2
 
 #define LBAT_SERVICE_DBG	0
+#define LBAT_SERVICE_SYSFS	1
 
 struct lbat_thd_t {
 	bool is_dirty;
@@ -243,12 +245,34 @@ static int lv_list_cmp(void *priv, const struct list_head *a, const struct list_
 }
 
 #if LBAT_SERVICE_DBG
-static void dump_lbat_list(void)
+static void dump_lbat_user_thd(void)
 {
-	char buf[50];
+	int i, j = 0;
+	char buf[300];
 	char *p = buf;
+	struct lbat_user *user;
 	struct lbat_thd_t *thd;
 
+	for (i = 0; i < user_count; i++) {
+		user = lbat_user_table[i];
+		j = 0;
+		if (!list_empty(&user->thd_list)) {
+			p += sprintf(p, "[%s] %s, thd_list: ", __func__, user->name);
+			list_for_each_entry(thd, &user->thd_list, list) {
+				if (j == 0)
+					p += sprintf(p, "%d", thd->thd_volt);
+				else
+					p += sprintf(p, "->%d", thd->thd_volt);
+				++j;
+			}
+			p += sprintf(p, "\n");
+		} else {
+			p += sprintf(p, "%s, hv:%d, lv1:%d, lv2:%d\n",
+					 user->name, user->hv_thd->thd_volt,
+					 user->lv1_thd->thd_volt, user->lv2_thd->thd_volt);
+		}
+	}
+	p += sprintf(p, "HV");
 	list_for_each_entry(thd, &lbat_hv_list, list) {
 		p += sprintf(p, "->%d", thd->thd_volt);
 	}
@@ -256,8 +280,98 @@ static void dump_lbat_list(void)
 	list_for_each_entry(thd, &lbat_lv_list, list) {
 		p += sprintf(p, "->%d", thd->thd_volt);
 	}
-	pr_notice("HV%s\n", buf);
+	p += sprintf(p, "\n");
+	if (user_count != 0)
+		pr_info("%s\n", buf);
 }
+#endif
+
+#if LBAT_SERVICE_SYSFS
+/* Create sysfs entry for lbat throttling ext */
+static ssize_t lbat_user_modify_thd_ext_show(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	int i, j;
+	char *p = buf;
+	struct lbat_user *user;
+	struct lbat_thd_t *thd;
+
+	for (i = 0; i < user_count; i++) {
+		user = lbat_user_table[i];
+		pr_info("[%s] user%d name=%s\n", __func__, i, user->name);
+		j = 0;
+		if (!list_empty(&user->thd_list)) {
+			p += sprintf(p, "%s, thd_list: ", user->name);
+			list_for_each_entry(thd, &user->thd_list, list) {
+				if (j == 0)
+					p += sprintf(p, "%d", thd->thd_volt);
+				else
+					p += sprintf(p, "->%d", thd->thd_volt);
+				++j;
+			}
+			p += sprintf(p, "\n");
+		}
+	}
+	p += sprintf(p, "HV");
+	list_for_each_entry(thd, &lbat_hv_list, list) {
+		p += sprintf(p, "->%d", thd->thd_volt);
+	}
+	p += sprintf(p, ", LV");
+	list_for_each_entry(thd, &lbat_lv_list, list) {
+		p += sprintf(p, "->%d", thd->thd_volt);
+	}
+	p += sprintf(p, "\n");
+	if (user_count != 0)
+		pr_info("%s\n", buf);
+
+	return strlen(buf);
+}
+
+/* Digits in user_name are not allowed */
+static ssize_t lbat_user_modify_thd_ext_store(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t size)
+{
+	char *sepstr, *substr;
+	unsigned int thd_volt[20] = {0};
+	int i, thd_volt_size, ret = -1;
+
+	sepstr = (char *)buf;
+	while (*sepstr) {
+		if (*sepstr <= '9' && *sepstr >= '0') {
+			*(sepstr-1) = '\0';
+			break;
+		}
+		++sepstr;
+	}
+
+	i = 0;
+	substr = strsep(&sepstr, " ");
+	while (substr != NULL) {
+		ret = kstrtouint(substr, 10, &thd_volt[i++]);
+		substr = strsep(&sepstr, " ");
+	}
+
+	dev_info(dev, "input thd_volt array: ");
+	thd_volt_size = 0;
+	while (thd_volt[thd_volt_size] != 0)
+		dev_info(dev, "%d ", thd_volt[thd_volt_size++]);
+
+	for (i = 0; i < user_count; i++) {
+		if (!strcmp(lbat_user_table[i]->name, buf))
+			break;
+	}
+	if (i >= user_count) {
+		dev_info(dev, "user:%s not found\n", buf);
+		return -EINVAL;
+	}
+
+	lbat_user_modify_thd_ext(lbat_user_table[i], thd_volt, thd_volt_size);
+
+	return size;
+}
+static DEVICE_ATTR_RW(lbat_user_modify_thd_ext);
 #endif
 
 /*
@@ -295,7 +409,7 @@ static void lbat_list_add(struct lbat_thd_t *thd, struct list_head *lbat_list)
 	}
 	thd->is_dirty = false;
 #if LBAT_SERVICE_DBG
-	dump_lbat_list();
+	dump_lbat_user_thd();
 #endif
 }
 
@@ -478,6 +592,10 @@ struct lbat_user *lbat_user_register_ext(const char *name, unsigned int *thd_vol
 	INIT_DELAYED_WORK(&user->deb_work, lbat_deb_handler);
 	pr_info("[%s] name=%s, thd_volt_max=%d, thd_volt_min=%d\n", __func__,
 		user->name, thd_volt_arr[0], thd_volt_arr[thd_volt_size - 1]);
+#if LBAT_SERVICE_DBG
+	for (i = 0; i < thd_volt_size; ++i)
+		pr_info("thd_volt_arr[%d]=%d ", i, thd_volt_arr[i]);
+#endif
 	ret = lbat_user_update(user);
 out:
 	mutex_unlock(&lbat_mutex);
@@ -490,6 +608,121 @@ out:
 	return user;
 }
 EXPORT_SYMBOL(lbat_user_register_ext);
+
+int lbat_user_modify_thd_ext(struct lbat_user *user, unsigned int *thd_volt_arr,
+			     unsigned int thd_volt_size)
+{
+	int i, thd_list_size = 0, ret = 0;
+	int hv_thd_cnt = 0, lv_thd_cnt = 0;
+	struct lbat_thd_t *n, *thd, **hv_thd, **lv_thd;
+
+#if LBAT_SERVICE_DBG
+	pr_info("[%s] name=%s\n", __func__, user->name);
+	for (i = 0; i < thd_volt_size; ++i)
+		pr_info("thd_volt_arr[%d]=%d ", i, thd_volt_arr[i]);
+#endif
+
+	if (!regmap)
+		return -EPROBE_DEFER;
+
+	lockdep_assert_held(&lbat_mutex);
+	lbat_irq_disable();
+
+	for (i = 0; i < user_count; i++) {
+		if (user == lbat_user_table[i])
+			break;
+	}
+	if (i >= user_count) {
+		ret = -EINVAL;
+		goto out;
+	}
+	if (thd_volt_arr[0] >= THD_VOLT_MAX || thd_volt_arr[thd_volt_size - 1] <= THD_VOLT_MIN) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	list_for_each_entry_safe(thd, n, &lbat_hv_list, list) {
+		if (thd->user == user)
+			hv_thd_cnt++;
+	}
+
+	list_for_each_entry_safe(thd, n, &lbat_lv_list, list) {
+		if (thd->user == user)
+			lv_thd_cnt++;
+	}
+	hv_thd = kcalloc(hv_thd_cnt, sizeof(struct lbat_thd_t *), GFP_KERNEL);
+	lv_thd = kcalloc(lv_thd_cnt, sizeof(struct lbat_thd_t *), GFP_KERNEL);
+
+	i = 0;
+	list_for_each_entry_safe(thd, n, &lbat_hv_list, list) {
+		if (thd->user == user) {
+			list_move(&thd->list, &user->thd_list);
+			hv_thd[i++] = thd;
+		}
+	}
+
+	i = 0;
+	list_for_each_entry_safe(thd, n, &lbat_lv_list, list) {
+		if (thd->user == user) {
+			list_move(&thd->list, &user->thd_list);
+			lv_thd[i++] = thd;
+		}
+	}
+
+	list_for_each_entry(thd, &user->thd_list, list) {
+		thd_list_size++;
+	}
+	if (thd_volt_size != thd_list_size) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	list_sort(NULL, &user->thd_list, lv_list_cmp);
+
+	i = 0;
+	list_for_each_entry_safe(thd, n, &user->thd_list, list) {
+		if (thd_volt_arr[i] != thd->thd_volt) {
+			thd->is_dirty = true;
+			thd->thd_volt = thd_volt_arr[i];
+		}
+		++i;
+	}
+
+out:
+	/* If hv_thd/lv_thd is not equal to NULL, add to corresponding list */
+	for (i = 0; i < hv_thd_cnt; i++)
+		lbat_list_add(hv_thd[i], &lbat_hv_list);
+
+	for (i = 0; i < lv_thd_cnt; i++)
+		lbat_list_add(lv_thd[i], &lbat_lv_list);
+
+	kfree(hv_thd);
+	kfree(lv_thd);
+	if (ret) {
+		pr_notice("[%s] error ret=%d\n", __func__, ret);
+		return ret;
+	}
+
+#if LBAT_SERVICE_DBG
+	dump_lbat_user_thd();
+#endif
+
+	lbat_irq_enable();
+	return ret;
+}
+EXPORT_SYMBOL(lbat_user_modify_thd_ext);
+
+int lbat_user_modify_thd_ext_locked(struct lbat_user *user, unsigned int *thd_volt_arr,
+				    unsigned int thd_volt_size)
+{
+	int ret;
+
+	mutex_lock(&lbat_mutex);
+	ret = lbat_user_modify_thd_ext(user, thd_volt_arr, thd_volt_size);
+	mutex_unlock(&lbat_mutex);
+	return ret;
+}
+EXPORT_SYMBOL(lbat_user_modify_thd_ext_locked);
 
 struct lbat_user *lbat_user_register(const char *name, unsigned int hv_thd_volt,
 				     unsigned int lv1_thd_volt,
@@ -584,7 +817,7 @@ int lbat_user_modify_thd(struct lbat_user *user, unsigned int hv_thd_volt,
 		user->lv2_thd->thd_volt = lv2_thd_volt;
 
 #if LBAT_SERVICE_DBG
-	dump_lbat_list();
+	dump_lbat_user_thd();
 #endif
 out:
 	if (ret) {
@@ -653,9 +886,9 @@ static irqreturn_t bat_h_int_handler(int irq, void *data)
 		return IRQ_NONE;
 	}
 	mutex_lock(&lbat_mutex);
-	pr_info("[%s] cur_thd_volt=%d\n", __func__, cur_hv_ptr->thd_volt);
 
 	user = cur_hv_ptr->user;
+	pr_info("[%s] user=%s, cur_thd_volt=%d\n", __func__, user->name, cur_hv_ptr->thd_volt);
 	list_del_init(&cur_hv_ptr->list);
 	if (user->hv_deb_times) {
 		/* ignore debouncing LV event */
@@ -697,9 +930,9 @@ static irqreturn_t bat_l_int_handler(int irq, void *data)
 		return IRQ_NONE;
 	}
 	mutex_lock(&lbat_mutex);
-	pr_info("[%s] cur_thd_volt=%d\n", __func__, cur_lv_ptr->thd_volt);
 
 	user = cur_lv_ptr->user;
+	pr_info("[%s] user:%s, cur_thd_volt=%d\n", __func__, user->name, cur_lv_ptr->thd_volt);
 	list_del_init(&cur_lv_ptr->list);
 	if (user->lv_deb_times) {
 		/* ignore debouncing HV event */
@@ -791,8 +1024,17 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 		return 0;
 	}
 	ret = of_property_read_u32_array(np, "resistance-ratio", r_ratio, 2);
+	if (ret < 0)
+		dev_notice(&pdev->dev, "get resistance-ratio fail\n");
 	dev_info(&pdev->dev, "r_ratio = %d/%d\n", r_ratio[0], r_ratio[1]);
 
+
+#if LBAT_SERVICE_SYSFS
+	/* Create sysfs entry */
+	ret = device_create_file(&(pdev->dev), &dev_attr_lbat_user_modify_thd_ext);
+	if (ret < 0)
+		dev_notice(&pdev->dev, "failed to create lbat sysfs file\n");
+#endif
 	return ret;
 }
 

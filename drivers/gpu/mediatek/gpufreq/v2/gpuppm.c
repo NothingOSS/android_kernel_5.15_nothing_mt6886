@@ -310,18 +310,42 @@ static int __gpuppm_convert_limit_to_idx(enum gpufreq_target target, enum gpuppm
 			*floor_idx = GPUPPM_RESET_IDX;
 		break;
 	case LIMIT_BATT_OC:
-		/* limit info: batt_oc_level */
-		*ceiling_idx = __gpufreq_get_batt_oc_idx(ceiling_info);
+		/* limit info: freq */
+		if (ceiling_info > 0) {
+			if (target == TARGET_STACK)
+				*ceiling_idx = __gpufreq_get_idx_by_fstack(
+					(unsigned int)ceiling_info);
+			else
+				*ceiling_idx = __gpufreq_get_idx_by_fgpu(
+					(unsigned int)ceiling_info);
+		} else
+			*ceiling_idx = ceiling_info;
 		*floor_idx = GPUPPM_KEEP_IDX;
 		break;
 	case LIMIT_BATT_PERCENT:
-		/* limit info: batt_percent_level */
-		*ceiling_idx = __gpufreq_get_batt_percent_idx(ceiling_info);
+		/* limit info: freq */
+		if (ceiling_info > 0) {
+			if (target == TARGET_STACK)
+				*ceiling_idx = __gpufreq_get_idx_by_fstack(
+					(unsigned int)ceiling_info);
+			else
+				*ceiling_idx = __gpufreq_get_idx_by_fgpu(
+					(unsigned int)ceiling_info);
+		} else
+			*ceiling_idx = ceiling_info;
 		*floor_idx = GPUPPM_KEEP_IDX;
 		break;
 	case LIMIT_LOW_BATT:
-		/* limit info: low_batt_level */
-		*ceiling_idx = __gpufreq_get_low_batt_idx(ceiling_info);
+		/* limit info: freq */
+		if (ceiling_info > 0) {
+			if (target == TARGET_STACK)
+				*ceiling_idx = __gpufreq_get_idx_by_fstack(
+					(unsigned int)ceiling_info);
+			else
+				*ceiling_idx = __gpufreq_get_idx_by_fgpu(
+					(unsigned int)ceiling_info);
+		} else
+			*ceiling_idx = ceiling_info;
 		*floor_idx = GPUPPM_KEEP_IDX;
 		break;
 	case LIMIT_PBM:

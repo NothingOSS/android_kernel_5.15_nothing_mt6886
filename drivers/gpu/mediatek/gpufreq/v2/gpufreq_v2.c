@@ -35,15 +35,6 @@
 #if IS_ENABLED(CONFIG_MTK_PBM)
 #include <mtk_pbm_gpu_cb.h>
 #endif
-#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
-#include <mtk_battery_oc_throttling.h>
-#endif
-#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
-#include <mtk_bp_thl.h>
-#endif
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-#include <mtk_low_battery_throttling.h>
-#endif
 
 /**
  * ===============================================
@@ -1458,43 +1449,6 @@ static void gpufreq_abort(void)
 #endif /* GPUFREQ_FORCE_WDT_ENABLE */
 }
 
-#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
-static void gpufreq_batt_oc_callback(enum BATTERY_OC_LEVEL_TAG batt_oc_level)
-{
-	int ret = GPUFREQ_SUCCESS;
-
-	ret = gpufreq_set_limit(TARGET_DEFAULT, LIMIT_BATT_OC, batt_oc_level, GPUPPM_KEEP_IDX);
-	if (unlikely(ret))
-		GPUFREQ_LOGE("fail to set LIMIT_BATT_OC limit level: %d (%d)",
-			batt_oc_level, ret);
-}
-#endif /* CONFIG_MTK_BATTERY_OC_POWER_THROTTLING */
-
-#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
-static void gpufreq_batt_percent_callback(enum BATTERY_PERCENT_LEVEL_TAG batt_percent_level)
-{
-	int ret = GPUFREQ_SUCCESS;
-
-	ret = gpufreq_set_limit(TARGET_DEFAULT, LIMIT_BATT_PERCENT,
-		batt_percent_level, GPUPPM_KEEP_IDX);
-	if (unlikely(ret))
-		GPUFREQ_LOGE("fail to set LIMIT_BATT_PERCENT limit level: %d (%d)",
-			batt_percent_level, ret);
-}
-#endif /* CONFIG_MTK_BATTERY_PERCENT_THROTTLING */
-
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-static void gpufreq_low_batt_callback(enum LOW_BATTERY_LEVEL_TAG low_batt_level)
-{
-	int ret = GPUFREQ_SUCCESS;
-
-	ret = gpufreq_set_limit(TARGET_DEFAULT, LIMIT_LOW_BATT, low_batt_level, GPUPPM_KEEP_IDX);
-	if (unlikely(ret))
-		GPUFREQ_LOGE("fail to set LIMIT_LOW_BATT limit level: %d (%d)",
-			low_batt_level, ret);
-}
-#endif /* CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING */
-
 static void gpufreq_init_external_callback(void)
 {
 #if IS_ENABLED(CONFIG_MTK_PBM)
@@ -1517,19 +1471,6 @@ static void gpufreq_init_external_callback(void)
 #if IS_ENABLED(CONFIG_MTK_PBM)
 	register_pbm_gpu_notify(&pbm_cb);
 #endif /* CONFIG_MTK_PBM */
-
-	/* register power throttling callback */
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-	register_low_battery_notify(&gpufreq_low_batt_callback, LOW_BATTERY_PRIO_GPU);
-#endif /* CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING */
-
-#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
-	register_bp_thl_notify(&gpufreq_batt_percent_callback, BATTERY_PERCENT_PRIO_GPU);
-#endif /* CONFIG_MTK_BATTERY_PERCENT_THROTTLING */
-
-#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
-	register_battery_oc_notify(&gpufreq_batt_oc_callback, BATTERY_OC_PRIO_GPU);
-#endif /* CONFIG_MTK_BATTERY_OC_POWER_THROTTLING */
 }
 
 void gpufreq_register_gpufreq_fp(struct gpufreq_platform_fp *platform_fp)
