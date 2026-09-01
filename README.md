@@ -14,6 +14,9 @@
 4. OS 4.1 (Pacman-B4.1-260609-1925)
   - No update
 
+5. OS 4.1 (Pacman-B4.1-260813-0941)
+  - GKI: upgrade for android13-5.15-2026-03_r2
+
 
 # How do I submit patches to Android Common Kernels
 
